@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(if [ -d .claude ])",
+      "Bash(then ls -la .claude)",
+      "Bash(fi)",
+      "Bash(git add:*)"
+    ]
+  }
+}
