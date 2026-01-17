@@ -12,6 +12,9 @@ class Character {
         this.image = null;
         this.imageLoaded = false;
 
+        // Level system
+        this.level = 1;
+
         // Load character image
         this.loadImage(imagePath);
     }
@@ -101,5 +104,14 @@ class Character {
             top: this.y - this.height / 2,
             bottom: this.y + this.height / 2
         };
+    }
+
+    getLevel() {
+        return this.level;
+    }
+
+    levelUp() {
+        this.level++;
+        console.log(`Level up! Now level ${this.level}`);
     }
 }

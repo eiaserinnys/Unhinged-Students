@@ -51,6 +51,9 @@
 - **샤드 테스트**: `http://localhost:8000/test/shard.test.html`
   - 샤드 수집 시스템 테스트
 
+- **레벨 테스트**: `http://localhost:8000/test/level.test.html`
+  - 레벨 시스템 테스트
+
 ## 테스트 범위
 
 - **단위 테스트 (Unit Tests):** 개별 함수/메서드의 동작 검증

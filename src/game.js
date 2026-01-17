@@ -61,6 +61,11 @@ function update() {
         if (collectedShards.length > 0) {
             gameState.stats.shardsCollected += collectedShards.length;
             console.log(`Collected ${collectedShards.length} shard(s)! Total: ${gameState.stats.shardsCollected}`);
+
+            // Level up for each shard collected
+            for (let i = 0; i < collectedShards.length; i++) {
+                gameState.player.levelUp();
+            }
         }
     }
 }
@@ -86,12 +91,12 @@ function render() {
     ctx.fillStyle = '#00ff00';
     ctx.font = '24px Arial';
     ctx.textAlign = 'center';
-    ctx.fillText('Unhinged Students - Phase 2: Shards', canvas.width / 2, 40);
+    ctx.fillText('Unhinged Students - Phase 3: Level System', canvas.width / 2, 40);
 
     // Draw instructions
     ctx.fillStyle = '#ffffff';
     ctx.font = '14px Arial';
-    ctx.fillText('Move around to collect shards!', canvas.width / 2, 70);
+    ctx.fillText('Move around to collect shards and level up!', canvas.width / 2, 70);
 
     // Draw shards
     if (gameState.shardManager) {
@@ -111,11 +116,12 @@ function render() {
     if (gameState.player) {
         const pos = gameState.player.getPosition();
         ctx.fillText(`Position: (${Math.round(pos.x)}, ${Math.round(pos.y)})`, 10, 20);
+        ctx.fillText(`Level: ${gameState.player.getLevel()}`, 10, 40);
     }
 
     if (gameState.shardManager) {
-        ctx.fillText(`Shards: ${gameState.stats.shardsCollected} / ${gameState.shardManager.getTotalShardCount()}`, 10, 40);
-        ctx.fillText(`Remaining: ${gameState.shardManager.getActiveShardCount()}`, 10, 60);
+        ctx.fillText(`Shards: ${gameState.stats.shardsCollected} / ${gameState.shardManager.getTotalShardCount()}`, 10, 60);
+        ctx.fillText(`Remaining: ${gameState.shardManager.getActiveShardCount()}`, 10, 80);
     }
 }
 

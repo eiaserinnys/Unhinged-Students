@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Level System Test - Unhinged Students</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: Arial, sans-serif;
+            background-color: #1a1a1a;
+            color: #ffffff;
+        }
+        #test-info {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 15px;
+            border-radius: 5px;
+            max-width: 300px;
+            z-index: 1000;
+        }
+        .test-result {
+            padding: 5px;
+            margin: 3px 0;
+            border-radius: 3px;
+        }
+        .pass { background: rgba(0, 255, 0, 0.2); }
+        .fail { background: rgba(255, 0, 0, 0.2); }
+        h2 { margin-top: 0; color: #00ff00; }
+        canvas {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <div id="test-info">
+        <h2>Level System Test</h2>
+        <div id="test-results"></div>
+    </div>
+    <canvas id="gameCanvas"></canvas>
+
+    <script src="../src/input.js"></script>
+    <script src="../src/character.js"></script>
+    <script src="../src/shard.js"></script>
+
+    <script>
+        // Test utilities
+        function assert(condition, message) {
+            const resultDiv = document.createElement('div');
+            resultDiv.className = 'test-result ' + (condition ? 'pass' : 'fail');
+            resultDiv.textContent = (condition ? '✓ ' : '✗ ') + message;
+            document.getElementById('test-results').appendChild(resultDiv);
+            return condition;
+        }
+
+        // Canvas setup
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+
+        resizeCanvas();
+        window.addEventListener('resize', resizeCanvas);
+
+        // Test state
+        const testState = {
+            player: null,
+            testShards: [],
+            testsPassed: 0,
+            testsTotal: 0
+        };
+
+        // Run tests
+        function runTests() {
+            console.log('=== Level System Tests ===');
+
+            // Test 1: Character starts at level 1
+            testState.player = new Character(
+                canvas.width / 2,
+                canvas.height / 2,
+                '../asset/image/alien.png',
+                canvas.height
+            );
+
+            testState.testsTotal++;
+            if (assert(testState.player.level === 1, 'Character starts at level 1')) {
+                testState.testsPassed++;
+            }
+
+            // Test 2: levelUp() increases level
+            const initialLevel = testState.player.level;
+            testState.player.levelUp();
+            testState.testsTotal++;
+            if (assert(testState.player.level === initialLevel + 1, 'levelUp() increases level by 1')) {
+                testState.testsPassed++;
+            }
+
+            // Test 3: getLevel() returns current level
+            const currentLevel = testState.player.level;
+            testState.testsTotal++;
+            if (assert(testState.player.getLevel() === currentLevel, 'getLevel() returns current level')) {
+                testState.testsPassed++;
+            }
+
+            // Test 4: Multiple level ups
+            testState.player.levelUp();
+            testState.player.levelUp();
+            testState.testsTotal++;
+            if (assert(testState.player.level === 4, 'Multiple level ups work correctly')) {
+                testState.testsPassed++;
+            }
+
+            // Create visual test shards
+            testState.testShards.push(new Shard(canvas.width / 2 - 100, canvas.height / 2, 20));
+            testState.testShards.push(new Shard(canvas.width / 2 + 100, canvas.height / 2, 20));
+            testState.testShards.push(new Shard(canvas.width / 2, canvas.height / 2 - 100, 20));
+
+            // Summary
+            const summaryDiv = document.createElement('div');
+            summaryDiv.style.marginTop = '10px';
+            summaryDiv.style.padding = '10px';
+            summaryDiv.style.borderTop = '1px solid #444';
+            summaryDiv.innerHTML = `<strong>Total: ${testState.testsPassed}/${testState.testsTotal} passed</strong>`;
+            document.getElementById('test-results').appendChild(summaryDiv);
+
+            // Start visual test
+            gameLoop();
+        }
+
+        // Visual test loop
+        function gameLoop() {
+            // Clear canvas
+            ctx.fillStyle = '#1a1a1a';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Title
+            ctx.fillStyle = '#00ff00';
+            ctx.font = '24px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText('Level System Test - Collect shards to level up!', canvas.width / 2, 40);
+
+            // Instructions
+            ctx.fillStyle = '#ffffff';
+            ctx.font = '14px Arial';
+            ctx.fillText('Move with WASD or Arrow keys', canvas.width / 2, 70);
+
+            // Update and render player
+            if (testState.player) {
+                testState.player.update(canvas);
+                testState.player.render(ctx);
+
+                // Display level
+                ctx.fillStyle = '#ffff00';
+                ctx.font = '20px Arial';
+                ctx.textAlign = 'left';
+                ctx.fillText(`Level: ${testState.player.getLevel()}`, 10, 30);
+            }
+
+            // Render and check shard collisions
+            testState.testShards.forEach((shard, index) => {
+                if (!shard.collected) {
+                    shard.update();
+                    shard.render(ctx);
+
+                    if (shard.checkCollision(testState.player)) {
+                        shard.collect();
+                        testState.player.levelUp();
+                        console.log(`Shard ${index + 1} collected! Level up!`);
+                    }
+                }
+            });
+
+            // Check if all shards collected
+            const allCollected = testState.testShards.every(s => s.collected);
+            if (allCollected) {
+                ctx.fillStyle = '#00ff00';
+                ctx.font = '30px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText('All shards collected! Test complete!', canvas.width / 2, canvas.height / 2);
+            }
+
+            requestAnimationFrame(gameLoop);
+        }
+
+        // Initialize input system and run tests
+        initInput(canvas);
+        runTests();
+    </script>
+</body>
+</html>
