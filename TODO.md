@@ -5,6 +5,7 @@
 - [x] 개발 가이드라인 작성 (CLAUDE.md)
 - [x] Claude 규칙 설정 (.claude/rules)
 - [x] TODO.md 작업 관리 시스템 도입
+- [x] .gitignore에 로컬 설정 파일 제외 설정
 
 ## 진행 중
 - [ ] 프로젝트 기술 스택 결정
