@@ -9,6 +9,7 @@ const gameState = {
     running: false,
     player: null,
     shardManager: null,
+    networkManager: null,
     stats: {
         shardsCollected: 0
     }
@@ -44,6 +45,10 @@ function init() {
     gameState.shardManager = new ShardManager();
     gameState.shardManager.spawnShards(20, canvas.width, canvas.height);
 
+    // Initialize network manager and connect to server
+    gameState.networkManager = new NetworkManager();
+    gameState.networkManager.connect('http://localhost:3000');
+
     gameState.running = true;
     gameLoop();
 }
@@ -52,6 +57,17 @@ function init() {
 function update() {
     if (gameState.player) {
         gameState.player.update(canvas);
+
+        // Send player position to server
+        if (gameState.networkManager) {
+            const pos = gameState.player.getPosition();
+            gameState.networkManager.sendPlayerPosition(
+                pos.x,
+                pos.y,
+                gameState.player.playerName,
+                gameState.player.level
+            );
+        }
     }
 
     if (gameState.shardManager) {
@@ -66,6 +82,11 @@ function update() {
             // Add experience for each shard collected (1 shard = 1 exp)
             gameState.player.addExperience(collectedShards.length);
         }
+    }
+
+    // Update remote players
+    if (gameState.networkManager) {
+        gameState.networkManager.update();
     }
 }
 
@@ -90,19 +111,26 @@ function render() {
     ctx.fillStyle = '#00ff00';
     ctx.font = '24px Arial';
     ctx.textAlign = 'center';
-    ctx.fillText('Unhinged Students - Phase 3: Advanced Level System', canvas.width / 2, 40);
+    ctx.fillText('Unhinged Students - Multiplayer Test', canvas.width / 2, 40);
 
     // Draw instructions
     ctx.fillStyle = '#ffffff';
     ctx.font = '14px Arial';
-    ctx.fillText('Collect shards to gain experience! (Max level: 30, Shards respawn every 5s)', canvas.width / 2, 70);
+    const connectionStatus = gameState.networkManager && gameState.networkManager.connected ? 'Connected' : 'Connecting...';
+    const playerCount = gameState.networkManager ? gameState.networkManager.remotePlayers.size + 1 : 1;
+    ctx.fillText(`${connectionStatus} | Players: ${playerCount}`, canvas.width / 2, 70);
 
     // Draw shards
     if (gameState.shardManager) {
         gameState.shardManager.render(ctx);
     }
 
-    // Draw player character
+    // Draw remote players
+    if (gameState.networkManager) {
+        gameState.networkManager.render(ctx);
+    }
+
+    // Draw local player (on top of remote players)
     if (gameState.player) {
         gameState.player.render(ctx);
     }

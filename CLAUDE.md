@@ -31,9 +31,25 @@
 
 ## 🎮 게임 실행 방법
 
-프로젝트는 순수 HTML5 + JavaScript로 개발되어 별도 빌드 없이 실행 가능합니다.
+### 멀티플레이어 서버 실행 (권장)
 
-### 로컬 개발 서버 실행
+프로젝트에 멀티플레이어 기능이 추가되었습니다. Node.js 서버를 통해 실행하세요.
+
+```bash
+# 프로젝트 루트 디렉토리에서
+npm install  # 처음 한 번만 실행
+npm start    # 서버 시작
+
+# 브라우저에서 접속
+# http://localhost:3000
+```
+
+서버가 시작되면:
+- 포트 3000에서 게임 클라이언트 제공
+- WebSocket 서버로 멀티플레이어 지원
+- 여러 브라우저 탭/창에서 동시 플레이 가능
+
+### 로컬 개발 서버 (싱글플레이어 테스트용)
 
 **Python 사용:**
 ```bash
@@ -44,16 +60,15 @@ python -m http.server 8000
 # http://localhost:8000
 ```
 
-**또는 다른 웹 서버 사용:**
-- Live Server (VS Code 확장)
-- `npx http-server`
-- 기타 정적 파일 서버
+**주의**: Python 서버로 실행 시 멀티플레이어 기능은 작동하지 않습니다.
 
 ## 📁 프로젝트 구조
 
 ```
 Unhinged-Students/
 ├── index.html              # 메인 게임 HTML
+├── server.js               # 멀티플레이어 서버 (Node.js + Socket.io)
+├── package.json            # Node.js 프로젝트 설정
 ├── CLAUDE.md              # 개발 가이드라인 (본 문서)
 ├── TODO.md                # 작업 목록 및 진행 상황
 ├── README.md              # 프로젝트 설명
@@ -76,7 +91,8 @@ Unhinged-Students/
 │   ├── game.js            # 메인 게임 루프 및 상태 관리
 │   ├── input.js           # 입력 시스템 (키보드/마우스/터치)
 │   ├── character.js       # 캐릭터 클래스 및 로직
-│   └── shard.js           # 샤드(수집 아이템) 시스템
+│   ├── shard.js           # 샤드(수집 아이템) 시스템
+│   └── network.js         # 멀티플레이어 네트워크 (NetworkManager, RemotePlayer)
 │
 ├── asset/                 # 게임 에셋
 │   └── image/
@@ -93,8 +109,9 @@ Unhinged-Students/
 
 - **프론트엔드**: 순수 HTML5, CSS3, JavaScript (ES6+)
 - **렌더링**: Canvas API
+- **백엔드**: Node.js + Express
+- **멀티플레이어**: Socket.io (WebSocket)
 - **버전 관리**: Git/GitHub
-- **개발 서버**: Python HTTP Server (또는 기타)
 
 ## 📊 작업 현황
 

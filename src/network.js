@@ -1,0 +1,208 @@
+// Network module for multiplayer
+class NetworkManager {
+    constructor() {
+        this.socket = null;
+        this.playerId = null;
+        this.connected = false;
+        this.remotePlayers = new Map(); // Map of playerId -> RemotePlayer
+        this.updateRate = 1000 / 20; // 20 updates per second
+        this.lastUpdateTime = 0;
+    }
+
+    connect(serverUrl = 'http://localhost:3000') {
+        console.log(`Connecting to server: ${serverUrl}`);
+
+        this.socket = io(serverUrl);
+
+        // Connection established
+        this.socket.on('connected', (data) => {
+            this.playerId = data.playerId;
+            this.connected = true;
+            console.log(`Connected to server. Player ID: ${this.playerId}`);
+        });
+
+        // Receive existing players
+        this.socket.on('existingPlayers', (players) => {
+            console.log(`Received ${players.length} existing players`);
+            players.forEach(playerData => {
+                if (playerData.playerId !== this.playerId) {
+                    this.addRemotePlayer(playerData);
+                }
+            });
+        });
+
+        // New player joined
+        this.socket.on('playerJoined', (data) => {
+            console.log(`Player joined: ${data.playerId}`);
+            this.addRemotePlayer(data);
+        });
+
+        // Player moved
+        this.socket.on('playerMoved', (data) => {
+            const remotePlayer = this.remotePlayers.get(data.playerId);
+            if (remotePlayer) {
+                remotePlayer.updatePosition(data.x, data.y);
+                remotePlayer.level = data.level || 1;
+                remotePlayer.playerName = data.playerName || 'Player';
+            }
+        });
+
+        // Player left
+        this.socket.on('playerLeft', (data) => {
+            console.log(`Player left: ${data.playerId}`);
+            this.removeRemotePlayer(data.playerId);
+        });
+
+        // Connection error
+        this.socket.on('connect_error', (error) => {
+            console.error('Connection error:', error);
+        });
+
+        // Disconnection
+        this.socket.on('disconnect', () => {
+            console.log('Disconnected from server');
+            this.connected = false;
+        });
+    }
+
+    addRemotePlayer(playerData) {
+        const remotePlayer = new RemotePlayer(
+            playerData.playerId,
+            playerData.x || 0,
+            playerData.y || 0,
+            playerData.playerName || 'Player',
+            playerData.level || 1
+        );
+        this.remotePlayers.set(playerData.playerId, remotePlayer);
+    }
+
+    removeRemotePlayer(playerId) {
+        this.remotePlayers.delete(playerId);
+    }
+
+    // Send local player position to server
+    sendPlayerPosition(x, y, playerName, level) {
+        if (!this.connected || !this.socket) return;
+
+        const currentTime = Date.now();
+        if (currentTime - this.lastUpdateTime < this.updateRate) {
+            return; // Rate limit
+        }
+
+        this.lastUpdateTime = currentTime;
+
+        this.socket.emit('playerMove', {
+            x: x,
+            y: y,
+            playerName: playerName,
+            level: level
+        });
+    }
+
+    // Update all remote players
+    update() {
+        this.remotePlayers.forEach(remotePlayer => {
+            remotePlayer.update();
+        });
+    }
+
+    // Render all remote players
+    render(ctx) {
+        this.remotePlayers.forEach(remotePlayer => {
+            remotePlayer.render(ctx);
+        });
+    }
+
+    disconnect() {
+        if (this.socket) {
+            this.socket.disconnect();
+        }
+    }
+}
+
+// Remote player class (represents other players)
+class RemotePlayer {
+    constructor(playerId, x, y, playerName, level) {
+        this.playerId = playerId;
+        this.x = x;
+        this.y = y;
+        this.targetX = x;
+        this.targetY = y;
+        this.playerName = playerName;
+        this.level = level;
+
+        // Visual properties (same as local player)
+        this.width = 50;
+        this.height = 50;
+        this.color = '#ff6b6b'; // Red color for remote players
+
+        // Interpolation
+        this.interpolationSpeed = 0.2;
+    }
+
+    updatePosition(x, y) {
+        this.targetX = x;
+        this.targetY = y;
+    }
+
+    update() {
+        // Smooth interpolation to target position
+        this.x += (this.targetX - this.x) * this.interpolationSpeed;
+        this.y += (this.targetY - this.y) * this.interpolationSpeed;
+    }
+
+    render(ctx) {
+        // Draw remote player as red rectangle
+        ctx.fillStyle = this.color;
+        ctx.fillRect(
+            this.x - this.width / 2,
+            this.y - this.height / 2,
+            this.width,
+            this.height
+        );
+
+        // Draw info above remote player
+        this.renderInfoAbove(ctx);
+    }
+
+    renderInfoAbove(ctx) {
+        const infoY = this.y - this.height / 2 - 10;
+
+        // HP Bar (dummy - always full)
+        const hpBarWidth = this.width;
+        const hpBarHeight = 6;
+        const hpBarX = this.x - hpBarWidth / 2;
+        const hpBarY = infoY - hpBarHeight;
+
+        ctx.fillStyle = '#333333';
+        ctx.fillRect(hpBarX, hpBarY, hpBarWidth, hpBarHeight);
+
+        ctx.fillStyle = '#00ff00';
+        ctx.fillRect(hpBarX, hpBarY, hpBarWidth, hpBarHeight);
+
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(hpBarX, hpBarY, hpBarWidth, hpBarHeight);
+
+        // Player name and level
+        const nameY = hpBarY - 5;
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 12px Arial';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'bottom';
+
+        ctx.shadowColor = '#000000';
+        ctx.shadowBlur = 3;
+        ctx.shadowOffsetX = 1;
+        ctx.shadowOffsetY = 1;
+
+        ctx.fillText(`${this.playerName} Lv.${this.level}`, this.x, nameY);
+
+        ctx.shadowColor = 'transparent';
+        ctx.shadowBlur = 0;
+        ctx.shadowOffsetX = 0;
+        ctx.shadowOffsetY = 0;
+
+        ctx.textBaseline = 'alphabetic';
+    }
+}
