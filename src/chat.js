@@ -6,6 +6,7 @@ class ChatManager {
         this.socket = null;
         this.isInputFocused = false;
         this.maxMessages = 50;
+        this.localPlayer = null; // Reference to local player for chat bubbles
 
         this.setupEventListeners();
     }
@@ -46,6 +47,10 @@ class ChatManager {
         });
     }
 
+    setPlayer(player) {
+        this.localPlayer = player;
+    }
+
     focusInput() {
         this.chatInput.focus();
     }
@@ -56,6 +61,11 @@ class ChatManager {
         if (message && this.socket && message.length > 0) {
             // Send to server
             this.socket.emit('chatMessage', { message: message });
+
+            // Show chat bubble on local player
+            if (this.localPlayer) {
+                this.localPlayer.setChatMessage(message);
+            }
 
             // Clear input
             this.chatInput.value = '';
@@ -94,7 +104,7 @@ class ChatManager {
     addSystemMessage(message) {
         const messageDiv = document.createElement('div');
         messageDiv.className = 'chatMessage';
-        messageDiv.style.color = '#ffff00';
+        messageDiv.style.color = '#A78BFA';
         messageDiv.style.fontStyle = 'italic';
         messageDiv.textContent = `[System] ${message}`;
 

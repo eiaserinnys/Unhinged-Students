@@ -4,13 +4,17 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Unhinged Students</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
     <style>
         body {
             margin: 0;
             padding: 0;
             overflow: hidden;
             background-color: #000;
-            font-family: Arial, sans-serif;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
         }
         canvas {
             display: block;
@@ -22,7 +26,7 @@
             left: 10px;
             width: 350px;
             background: rgba(0, 0, 0, 0.7);
-            border: 2px solid #00ff00;
+            border: 2px solid #4ECDC4;
             border-radius: 5px;
             overflow: hidden;
         }
@@ -31,15 +35,16 @@
             overflow-y: auto;
             padding: 10px;
             color: #ffffff;
-            font-size: 12px;
+            font-size: 16px;
+            line-height: 1.5;
         }
         .chatMessage {
-            margin-bottom: 5px;
+            margin-bottom: 8px;
             word-wrap: break-word;
         }
         .chatMessage .playerName {
-            color: #00ff00;
-            font-weight: bold;
+            color: #4ECDC4;
+            font-weight: 600;
         }
         .chatMessage .messageText {
             color: #ffffff;
@@ -48,15 +53,16 @@
             display: flex;
             padding: 5px;
             background: rgba(0, 0, 0, 0.5);
-            border-top: 1px solid #00ff00;
+            border-top: 1px solid #4ECDC4;
         }
         #chatInput {
             flex: 1;
             background: rgba(255, 255, 255, 0.1);
-            border: 1px solid #00ff00;
+            border: 1px solid #4ECDC4;
             color: #ffffff;
-            padding: 5px 10px;
-            font-size: 12px;
+            padding: 8px 12px;
+            font-size: 16px;
+            font-family: 'Inter', sans-serif;
             outline: none;
         }
         #chatInput::placeholder {

@@ -1,10 +1,83 @@
 // Shard system - Collectible items for leveling up
 
+// Particle for collection effect
+class Particle {
+    constructor(x, y, color) {
+        this.x = x;
+        this.y = y;
+        this.color = color;
+
+        // Random velocity
+        const angle = Math.random() * Math.PI * 2;
+        const speed = 2 + Math.random() * 3;
+        this.vx = Math.cos(angle) * speed;
+        this.vy = Math.sin(angle) * speed;
+
+        // Size and lifetime
+        this.size = 4 + Math.random() * 4;
+        this.life = 1.0; // 0.0 to 1.0
+        this.decay = 0.02 + Math.random() * 0.02;
+    }
+
+    update() {
+        this.x += this.vx;
+        this.y += this.vy;
+        this.vx *= 0.95; // Friction
+        this.vy *= 0.95;
+        this.life -= this.decay;
+        return this.life > 0;
+    }
+
+    render(ctx) {
+        ctx.save();
+        ctx.globalAlpha = this.life;
+
+        // Glow effect
+        ctx.shadowBlur = 10;
+        ctx.shadowColor = this.color;
+
+        ctx.fillStyle = this.color;
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.size * this.life, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.restore();
+    }
+}
+
+// Collection effect
+class CollectEffect {
+    constructor(x, y, color = '#00ffff') {
+        this.particles = [];
+        this.active = true;
+
+        // Create particles
+        for (let i = 0; i < 20; i++) {
+            this.particles.push(new Particle(x, y, color));
+        }
+    }
+
+    update() {
+        // Update all particles and remove dead ones
+        this.particles = this.particles.filter(p => p.update());
+
+        // Deactivate when all particles are gone
+        if (this.particles.length === 0) {
+            this.active = false;
+        }
+    }
+
+    render(ctx) {
+        this.particles.forEach(p => p.render(ctx));
+    }
+}
+
 class Shard {
-    constructor(x, y, size = 20) {
+    constructor(x, y, size = 20, id = null) {
         this.x = x;
         this.y = y;
         this.size = size;
+        this.id = id; // Server-assigned ID
         this.collected = false;
         this.color = '#00ffff'; // Cyan color for shards
         this.pulsePhase = Math.random() * Math.PI * 2; // Random starting phase for animation
@@ -65,11 +138,52 @@ class Shard {
 class ShardManager {
     constructor() {
         this.shards = [];
+        this.effects = []; // Collection effects
         this.maxActiveShards = 40; // Maximum shards on map at once
+        this.maxActiveEffects = 10; // Maximum collection effects at once (performance cap)
         this.respawnInterval = 5000; // 5 seconds in milliseconds
         this.lastRespawnTime = Date.now();
         this.canvasWidth = 0;
         this.canvasHeight = 0;
+        this.serverMode = false; // Whether to use server-synced shards
+    }
+
+    // Load shards from server
+    loadShardsFromServer(shardData) {
+        this.shards = [];
+        shardData.forEach(data => {
+            this.shards.push(new Shard(data.x, data.y, 20, data.id));
+        });
+        console.log(`Loaded ${this.shards.length} shards from server`);
+    }
+
+    // Add shards from server spawn event
+    addShardsFromServer(shardData) {
+        shardData.forEach(data => {
+            // Check if shard already exists
+            const exists = this.shards.find(s => s.id === data.id);
+            if (!exists) {
+                this.shards.push(new Shard(data.x, data.y, 20, data.id));
+            }
+        });
+    }
+
+    // Remove shard by ID (server-synced)
+    removeShard(shardId) {
+        const shard = this.shards.find(s => s.id === shardId);
+        if (shard && !shard.collected) {
+            shard.collected = true;
+            // Create effect (with cap to prevent performance issues)
+            if (this.effects.length < this.maxActiveEffects) {
+                this.effects.push(new CollectEffect(shard.x, shard.y, shard.color));
+            }
+        }
+    }
+
+    // Enable server mode
+    enableServerMode() {
+        this.serverMode = true;
+        console.log('ShardManager: Server mode enabled');
     }
 
     spawnShards(count, canvasWidth, canvasHeight, margin = 100) {
@@ -96,11 +210,17 @@ class ShardManager {
     update() {
         this.shards.forEach(shard => shard.update());
 
-        // Check for respawn
-        const currentTime = Date.now();
-        if (currentTime - this.lastRespawnTime >= this.respawnInterval) {
-            this.checkRespawn();
-            this.lastRespawnTime = currentTime;
+        // Update effects and remove inactive ones
+        this.effects.forEach(effect => effect.update());
+        this.effects = this.effects.filter(effect => effect.active);
+
+        // Check for respawn (only in local mode)
+        if (!this.serverMode) {
+            const currentTime = Date.now();
+            if (currentTime - this.lastRespawnTime >= this.respawnInterval) {
+                this.checkRespawn();
+                this.lastRespawnTime = currentTime;
+            }
         }
     }
 
@@ -124,7 +244,11 @@ class ShardManager {
     }
 
     render(ctx) {
+        // Render shards first
         this.shards.forEach(shard => shard.render(ctx));
+
+        // Render effects on top
+        this.effects.forEach(effect => effect.render(ctx));
     }
 
     checkCollisions(character) {
@@ -134,6 +258,11 @@ class ShardManager {
             if (shard.checkCollision(character)) {
                 shard.collect();
                 collectedShards.push(shard);
+
+                // Create collection effect at shard position (with cap to prevent performance issues)
+                if (this.effects.length < this.maxActiveEffects) {
+                    this.effects.push(new CollectEffect(shard.x, shard.y, shard.color));
+                }
             }
         });
 

@@ -8,7 +8,7 @@ class Character {
         this.displaySize = canvasHeight / 8;
         this.width = this.displaySize;
         this.height = this.displaySize;
-        this.speed = 5;
+        this.speed = 300; // pixels per second (was 5 pixels per frame)
         this.image = null;
         this.imageLoaded = false;
 
@@ -20,9 +20,23 @@ class Character {
         this.experience = 0;
         this.maxLevel = 30;
 
-        // HP system (dummy for now)
+        // HP system
         this.maxHP = 100;
         this.currentHP = 100;
+
+        // Combat system
+        this.attackPower = 10; // Damage per attack
+        this.attackRange = 150; // Attack range in pixels
+        this.attackCooldown = 500; // Cooldown in milliseconds (0.5 seconds)
+        this.lastAttackTime = 0;
+        this.isAttacking = false;
+        this.attackAnimationTime = 200; // Attack animation duration in ms
+        this.attackStartTime = 0;
+
+        // Chat bubble system
+        this.chatMessage = null;
+        this.chatMessageTime = 0;
+        this.chatMessageDuration = 3000; // 3 seconds
 
         // Load character image
         this.loadImage(imagePath);
@@ -54,24 +68,45 @@ class Character {
         this.image.src = path;
     }
 
-    update(canvas) {
+    update(canvas, deltaTime = 0.016) {
+        // Default deltaTime is ~60fps if not provided (for backward compatibility)
+
         // Keyboard movement (WASD and Arrow keys)
+        // Movement is now frame-rate independent: distance = speed * deltaTime
+        const moveDistance = this.speed * deltaTime;
+
         if (isKeyPressed('w') || isKeyPressed('arrowup')) {
-            this.y -= this.speed;
+            this.y -= moveDistance;
         }
         if (isKeyPressed('s') || isKeyPressed('arrowdown')) {
-            this.y += this.speed;
+            this.y += moveDistance;
         }
         if (isKeyPressed('a') || isKeyPressed('arrowleft')) {
-            this.x -= this.speed;
+            this.x -= moveDistance;
         }
         if (isKeyPressed('d') || isKeyPressed('arrowright')) {
-            this.x += this.speed;
+            this.x += moveDistance;
         }
 
         // Keep character in bounds
         this.x = Math.max(this.width / 2, Math.min(canvas.width - this.width / 2, this.x));
         this.y = Math.max(this.height / 2, Math.min(canvas.height - this.height / 2, this.y));
+
+        // Attack input (Space key)
+        const currentTime = Date.now();
+        if (isKeyPressed(' ') && currentTime - this.lastAttackTime >= this.attackCooldown) {
+            this.attack();
+        }
+
+        // Update attack animation
+        if (this.isAttacking && currentTime - this.attackStartTime >= this.attackAnimationTime) {
+            this.isAttacking = false;
+        }
+
+        // Update chat bubble - remove message after duration
+        if (this.chatMessage && Date.now() - this.chatMessageTime > this.chatMessageDuration) {
+            this.chatMessage = null;
+        }
     }
 
     render(ctx) {
@@ -96,13 +131,19 @@ class Character {
 
             // Loading text
             ctx.fillStyle = '#ffffff';
-            ctx.font = '10px Arial';
+            ctx.font = '12px Inter, sans-serif';
             ctx.textAlign = 'center';
             ctx.fillText('Loading...', this.x, this.y);
         }
 
+        // Draw attack effect if attacking
+        this.renderAttackEffect(ctx);
+
         // Draw info above character
         this.renderInfoAbove(ctx);
+
+        // Draw chat bubble if active
+        this.renderChatBubble(ctx);
     }
 
     renderInfoAbove(ctx) {
@@ -131,7 +172,7 @@ class Character {
         // Player name and level
         const nameY = hpBarY - 5;
         ctx.fillStyle = '#ffffff';
-        ctx.font = 'bold 12px Arial';
+        ctx.font = '600 16px Inter, sans-serif';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'bottom';
 
@@ -148,6 +189,86 @@ class Character {
         ctx.shadowBlur = 0;
         ctx.shadowOffsetX = 0;
         ctx.shadowOffsetY = 0;
+
+        // Reset text baseline
+        ctx.textBaseline = 'alphabetic';
+    }
+
+    renderAttackEffect(ctx) {
+        if (!this.isAttacking) return;
+
+        // Calculate animation progress (0 to 1)
+        const currentTime = Date.now();
+        const progress = Math.min(1, (currentTime - this.attackStartTime) / this.attackAnimationTime);
+
+        // Draw expanding circle with fading opacity
+        const currentRadius = this.attackRange * progress;
+        const opacity = 1 - progress; // Fade out as it expands
+
+        ctx.save();
+        ctx.globalAlpha = opacity * 0.3;
+        ctx.strokeStyle = '#FF6B6B'; // Red attack effect
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, currentRadius, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.restore();
+    }
+
+    renderChatBubble(ctx) {
+        if (!this.chatMessage) return;
+
+        // Position bubble above player info
+        const bubbleY = this.y - this.height / 2 - 50; // Above HP bar and name
+
+        // Measure text to determine bubble size
+        ctx.font = '20px Inter, sans-serif';
+        const textMetrics = ctx.measureText(this.chatMessage);
+        const textWidth = textMetrics.width;
+
+        const padding = 14;
+        const bubbleWidth = textWidth + padding * 2;
+        const bubbleHeight = 32;
+        const bubbleX = this.x - bubbleWidth / 2;
+
+        // Draw bubble background
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+        ctx.strokeStyle = '#333333';
+        ctx.lineWidth = 2;
+
+        // Rounded rectangle for bubble
+        const radius = 5;
+        ctx.beginPath();
+        ctx.moveTo(bubbleX + radius, bubbleY);
+        ctx.lineTo(bubbleX + bubbleWidth - radius, bubbleY);
+        ctx.quadraticCurveTo(bubbleX + bubbleWidth, bubbleY, bubbleX + bubbleWidth, bubbleY + radius);
+        ctx.lineTo(bubbleX + bubbleWidth, bubbleY + bubbleHeight - radius);
+        ctx.quadraticCurveTo(bubbleX + bubbleWidth, bubbleY + bubbleHeight, bubbleX + bubbleWidth - radius, bubbleY + bubbleHeight);
+        ctx.lineTo(bubbleX + radius, bubbleY + bubbleHeight);
+        ctx.quadraticCurveTo(bubbleX, bubbleY + bubbleHeight, bubbleX, bubbleY + bubbleHeight - radius);
+        ctx.lineTo(bubbleX, bubbleY + radius);
+        ctx.quadraticCurveTo(bubbleX, bubbleY, bubbleX + radius, bubbleY);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+
+        // Draw small triangle pointer
+        const pointerSize = 5;
+        ctx.beginPath();
+        ctx.moveTo(this.x - pointerSize, bubbleY + bubbleHeight);
+        ctx.lineTo(this.x, bubbleY + bubbleHeight + pointerSize);
+        ctx.lineTo(this.x + pointerSize, bubbleY + bubbleHeight);
+        ctx.closePath();
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+        ctx.fill();
+        ctx.stroke();
+
+        // Draw text
+        ctx.fillStyle = '#000000';
+        ctx.font = '20px Inter, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(this.chatMessage, this.x, bubbleY + bubbleHeight / 2);
 
         // Reset text baseline
         ctx.textBaseline = 'alphabetic';
@@ -205,5 +326,47 @@ class Character {
     // Legacy method for compatibility
     levelUp() {
         this.addExperience(this.getRequiredExperience());
+    }
+
+    // Attack method
+    attack() {
+        const currentTime = Date.now();
+        this.lastAttackTime = currentTime;
+        this.isAttacking = true;
+        this.attackStartTime = currentTime;
+        console.log(`${this.playerName} attacks!`);
+        return this.getAttackArea();
+    }
+
+    // Get attack area (circle around character)
+    getAttackArea() {
+        return {
+            x: this.x,
+            y: this.y,
+            radius: this.attackRange
+        };
+    }
+
+    // Take damage
+    takeDamage(amount) {
+        this.currentHP = Math.max(0, this.currentHP - amount);
+        console.log(`${this.playerName} took ${amount} damage! HP: ${this.currentHP}/${this.maxHP}`);
+
+        if (this.currentHP <= 0) {
+            console.log(`${this.playerName} has been defeated!`);
+            return true; // Character died
+        }
+        return false;
+    }
+
+    // Check if character is alive
+    isAlive() {
+        return this.currentHP > 0;
+    }
+
+    // Set chat message to display in bubble
+    setChatMessage(message) {
+        this.chatMessage = message;
+        this.chatMessageTime = Date.now();
     }
 }

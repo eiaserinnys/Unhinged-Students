@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Combat Test - Unhinged Students</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f0f0f0;
+        }
+        .test-section {
+            background: white;
+            padding: 20px;
+            margin: 10px 0;
+            border-radius: 5px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        .test-result {
+            padding: 10px;
+            margin: 5px 0;
+            border-radius: 3px;
+        }
+        .pass {
+            background-color: #d4edda;
+            color: #155724;
+        }
+        .fail {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+        canvas {
+            border: 2px solid #333;
+            margin: 10px 0;
+            background-color: #1a1a1a;
+        }
+        .controls {
+            margin: 10px 0;
+            padding: 10px;
+            background-color: #e9ecef;
+            border-radius: 5px;
+        }
+        .controls button {
+            margin: 5px;
+            padding: 10px 20px;
+            font-size: 14px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <h1>Combat System Test</h1>
+
+    <div class="test-section">
+        <h2>Test Results</h2>
+        <div id="results"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>Visual Test</h2>
+        <div class="controls">
+            <p><strong>Controls:</strong></p>
+            <p>WASD or Arrow Keys: Move character</p>
+            <p>Spacebar: Attack (red circle expands)</p>
+            <p>Move close to dummy and press Spacebar to deal damage</p>
+            <button id="resetBtn">Reset Dummy HP</button>
+        </div>
+        <canvas id="testCanvas" width="800" height="600"></canvas>
+    </div>
+
+    <script src="../src/input.js"></script>
+    <script src="../src/character.js"></script>
+    <script>
+        const canvas = document.getElementById('testCanvas');
+        const ctx = canvas.getContext('2d');
+        const resultsDiv = document.getElementById('results');
+        const resetBtn = document.getElementById('resetBtn');
+
+        let testResults = [];
+        let testPlayer;
+        let testDummy;
+
+        function addTestResult(name, passed, message) {
+            testResults.push({ name, passed, message });
+            updateResults();
+        }
+
+        function updateResults() {
+            resultsDiv.innerHTML = testResults.map(result =>
+                `<div class="test-result ${result.passed ? 'pass' : 'fail'}">
+                    ${result.passed ? '✓' : '✗'} ${result.name}: ${result.message}
+                </div>`
+            ).join('');
+        }
+
+        // Initialize input system
+        initInput(canvas);
+
+        // Test 1: Character has combat properties
+        testPlayer = new Character(300, 300, '../asset/image/alien.png', 600, 'TestPlayer');
+        addTestResult(
+            'Combat Properties',
+            testPlayer.hasOwnProperty('attackPower') &&
+            testPlayer.hasOwnProperty('attackRange') &&
+            testPlayer.hasOwnProperty('attackCooldown'),
+            'Character has attackPower, attackRange, attackCooldown'
+        );
+
+        // Test 2: Character has combat methods
+        const methods = ['attack', 'takeDamage', 'isAlive', 'getAttackArea'];
+        methods.forEach(method => {
+            addTestResult(
+                `Method: ${method}`,
+                typeof testPlayer[method] === 'function',
+                typeof testPlayer[method] === 'function' ? 'Method exists' : 'Method not found'
+            );
+        });
+
+        // Test 3: Attack method returns attack area
+        const attackArea = testPlayer.attack();
+        addTestResult(
+            'Attack Returns Area',
+            attackArea && attackArea.x !== undefined && attackArea.y !== undefined && attackArea.radius !== undefined,
+            `Attack area: {x: ${attackArea.x}, y: ${attackArea.y}, radius: ${attackArea.radius}}`
+        );
+
+        // Test 4: Take damage reduces HP
+        const initialHP = testPlayer.currentHP;
+        testPlayer.takeDamage(20);
+        addTestResult(
+            'Take Damage',
+            testPlayer.currentHP === initialHP - 20,
+            `HP reduced from ${initialHP} to ${testPlayer.currentHP}`
+        );
+
+        // Reset player HP
+        testPlayer.currentHP = testPlayer.maxHP;
+
+        // Test 5: isAlive check
+        addTestResult(
+            'isAlive() when alive',
+            testPlayer.isAlive() === true,
+            'Character is alive'
+        );
+
+        // Test 6: Death detection
+        testPlayer.takeDamage(testPlayer.currentHP);
+        addTestResult(
+            'isAlive() when dead',
+            testPlayer.isAlive() === false && testPlayer.currentHP === 0,
+            'Character is dead when HP = 0'
+        );
+
+        // Reset player HP
+        testPlayer.currentHP = testPlayer.maxHP;
+
+        // Test 7: Attack cooldown
+        const time1 = testPlayer.lastAttackTime;
+        setTimeout(() => {
+            testPlayer.attack();
+            const time2 = testPlayer.lastAttackTime;
+            addTestResult(
+                'Attack Cooldown',
+                time2 > time1,
+                `Attack time updated: ${time1} -> ${time2}`
+            );
+        }, 100);
+
+        // Create test dummy
+        testDummy = new Character(500, 300, '../asset/image/alien.png', 600, 'Test Dummy');
+        testDummy.speed = 0; // Stationary
+
+        // Reset button
+        resetBtn.addEventListener('click', () => {
+            testDummy.currentHP = testDummy.maxHP;
+            console.log('Dummy HP reset to', testDummy.maxHP);
+        });
+
+        // Visual test loop with delta time
+        let lastTime = 0;
+        let lastDamageCheck = 0;
+
+        function testLoop(currentTime) {
+            // Calculate delta time
+            const deltaTime = lastTime === 0 ? 0.016 : (currentTime - lastTime) / 1000;
+            lastTime = currentTime;
+
+            // Clear canvas
+            ctx.fillStyle = '#1a1a1a';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Update characters
+            if (testPlayer) {
+                testPlayer.update(canvas, deltaTime);
+            }
+
+            if (testDummy) {
+                testDummy.update(canvas, deltaTime);
+            }
+
+            // Check for attack collisions (throttle to prevent multiple hits per attack)
+            if (testPlayer && testPlayer.isAttacking && currentTime - lastDamageCheck > testPlayer.attackCooldown) {
+                const attackArea = testPlayer.getAttackArea();
+
+                if (testDummy && testDummy.isAlive()) {
+                    // Calculate distance between player and dummy
+                    const dx = testDummy.x - attackArea.x;
+                    const dy = testDummy.y - attackArea.y;
+                    const distance = Math.sqrt(dx * dx + dy * dy);
+
+                    // Check if dummy is within attack range
+                    if (distance <= attackArea.radius) {
+                        testDummy.takeDamage(testPlayer.attackPower);
+                        lastDamageCheck = currentTime;
+                    }
+                }
+            }
+
+            // Render characters
+            if (testDummy && testDummy.isAlive()) {
+                testDummy.render(ctx);
+            }
+
+            if (testPlayer) {
+                testPlayer.render(ctx);
+            }
+
+            // Draw stats
+            ctx.fillStyle = '#ffff00';
+            ctx.font = '14px Arial';
+            ctx.textAlign = 'left';
+
+            if (testPlayer) {
+                const pos = testPlayer.getPosition();
+                ctx.fillText(`Player Position: (${Math.round(pos.x)}, ${Math.round(pos.y)})`, 10, 20);
+                ctx.fillText(`Player HP: ${testPlayer.currentHP}/${testPlayer.maxHP}`, 10, 40);
+                ctx.fillText(`Attack Power: ${testPlayer.attackPower}`, 10, 60);
+                ctx.fillText(`Attack Range: ${testPlayer.attackRange}`, 10, 80);
+            }
+
+            if (testDummy) {
+                ctx.fillText(`Dummy HP: ${testDummy.currentHP}/${testDummy.maxHP}`, 10, 110);
+
+                // Calculate distance to dummy
+                const dx = testDummy.x - testPlayer.x;
+                const dy = testDummy.y - testPlayer.y;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+                ctx.fillText(`Distance to Dummy: ${Math.round(distance)}px`, 10, 130);
+
+                const inRange = distance <= testPlayer.attackRange;
+                ctx.fillStyle = inRange ? '#00ff00' : '#ff0000';
+                ctx.fillText(inRange ? 'IN ATTACK RANGE' : 'OUT OF RANGE', 10, 150);
+            }
+
+            requestAnimationFrame(testLoop);
+        }
+
+        requestAnimationFrame(testLoop);
+    </script>
+</body>
+</html>

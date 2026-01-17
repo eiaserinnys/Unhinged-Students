@@ -7,6 +7,11 @@ class NetworkManager {
         this.remotePlayers = new Map(); // Map of playerId -> RemotePlayer
         this.updateRate = 1000 / 20; // 20 updates per second
         this.lastUpdateTime = 0;
+        this.shardManager = null; // Reference to shard manager for sync
+    }
+
+    setShardManager(shardManager) {
+        this.shardManager = shardManager;
     }
 
     connect(serverUrl = null) {
@@ -69,7 +74,52 @@ class NetworkManager {
         this.socket.on('disconnect', () => {
             console.log('Disconnected from server');
             this.connected = false;
+
+            // Auto-reload after server disconnect (useful for development)
+            console.log('Server disconnected. Reloading page in 2 seconds...');
+            setTimeout(() => {
+                window.location.reload();
+            }, 2000);
         });
+
+        // Chat message (for showing bubbles on remote players)
+        this.socket.on('chatMessage', (data) => {
+            // Show chat bubble on the player who sent it
+            if (data.playerId && data.playerId !== this.playerId) {
+                const remotePlayer = this.remotePlayers.get(data.playerId);
+                if (remotePlayer) {
+                    remotePlayer.setChatMessage(data.message);
+                }
+            }
+        });
+
+        // Shard events
+        this.socket.on('existingShards', (shards) => {
+            console.log(`Received ${shards.length} existing shards`);
+            if (this.shardManager) {
+                this.shardManager.loadShardsFromServer(shards);
+            }
+        });
+
+        this.socket.on('shardsSpawned', (shards) => {
+            console.log(`${shards.length} new shards spawned`);
+            if (this.shardManager) {
+                this.shardManager.addShardsFromServer(shards);
+            }
+        });
+
+        this.socket.on('shardCollected', (data) => {
+            console.log(`Shard ${data.shardId} collected by ${data.playerId}`);
+            if (this.shardManager) {
+                this.shardManager.removeShard(data.shardId);
+            }
+        });
+    }
+
+    // Send shard collection to server
+    sendShardCollection(shardId) {
+        if (!this.connected || !this.socket) return;
+        this.socket.emit('collectShard', { shardId });
     }
 
     addRemotePlayer(playerData) {
@@ -138,13 +188,53 @@ class RemotePlayer {
         this.playerName = playerName;
         this.level = level;
 
-        // Visual properties (same as local player)
-        this.width = 50;
-        this.height = 50;
-        this.color = '#ff6b6b'; // Red color for remote players
+        // Visual properties
+        // Use same display size calculation as Character
+        const canvasHeight = 1080; // Game world height
+        this.displaySize = canvasHeight / 8;
+        this.width = this.displaySize;
+        this.height = this.displaySize;
+
+        // Image properties
+        this.image = null;
+        this.imageLoaded = false;
 
         // Interpolation
         this.interpolationSpeed = 0.2;
+
+        // Chat bubble system
+        this.chatMessage = null;
+        this.chatMessageTime = 0;
+        this.chatMessageDuration = 3000; // 3 seconds
+
+        // Load alien image
+        this.loadImage('asset/image/alien.png');
+    }
+
+    loadImage(path) {
+        this.image = new Image();
+        this.image.onload = () => {
+            this.imageLoaded = true;
+
+            // Calculate dimensions maintaining aspect ratio
+            const aspectRatio = this.image.width / this.image.height;
+
+            if (aspectRatio > 1) {
+                // Wider than tall
+                this.width = this.displaySize;
+                this.height = this.displaySize / aspectRatio;
+            } else {
+                // Taller than wide
+                this.height = this.displaySize;
+                this.width = this.displaySize * aspectRatio;
+            }
+
+            console.log(`Remote player image loaded: ${path}`);
+        };
+        this.image.onerror = () => {
+            console.error(`Failed to load remote player image: ${path}`);
+        };
+        this.image.src = path;
     }
 
     updatePosition(x, y) {
@@ -156,20 +246,45 @@ class RemotePlayer {
         // Smooth interpolation to target position
         this.x += (this.targetX - this.x) * this.interpolationSpeed;
         this.y += (this.targetY - this.y) * this.interpolationSpeed;
+
+        // Update chat bubble - remove message after duration
+        if (this.chatMessage && Date.now() - this.chatMessageTime > this.chatMessageDuration) {
+            this.chatMessage = null;
+        }
     }
 
     render(ctx) {
-        // Draw remote player as red rectangle
-        ctx.fillStyle = this.color;
-        ctx.fillRect(
-            this.x - this.width / 2,
-            this.y - this.height / 2,
-            this.width,
-            this.height
-        );
+        if (this.imageLoaded && this.image) {
+            // Draw remote player image
+            ctx.drawImage(
+                this.image,
+                this.x - this.width / 2,
+                this.y - this.height / 2,
+                this.width,
+                this.height
+            );
+        } else {
+            // Fallback: draw colored rectangle if image not loaded
+            ctx.fillStyle = '#ff6b6b'; // Red color for remote players
+            ctx.fillRect(
+                this.x - this.width / 2,
+                this.y - this.height / 2,
+                this.width,
+                this.height
+            );
+
+            // Loading text
+            ctx.fillStyle = '#ffffff';
+            ctx.font = '12px Inter, sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText('Loading...', this.x, this.y);
+        }
 
         // Draw info above remote player
         this.renderInfoAbove(ctx);
+
+        // Draw chat bubble if active
+        this.renderChatBubble(ctx);
     }
 
     renderInfoAbove(ctx) {
@@ -194,7 +309,7 @@ class RemotePlayer {
         // Player name and level
         const nameY = hpBarY - 5;
         ctx.fillStyle = '#ffffff';
-        ctx.font = 'bold 12px Arial';
+        ctx.font = '600 16px Inter, sans-serif';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'bottom';
 
@@ -211,5 +326,70 @@ class RemotePlayer {
         ctx.shadowOffsetY = 0;
 
         ctx.textBaseline = 'alphabetic';
+    }
+
+    renderChatBubble(ctx) {
+        if (!this.chatMessage) return;
+
+        // Position bubble above player info
+        const bubbleY = this.y - this.height / 2 - 50; // Above HP bar and name
+
+        // Measure text to determine bubble size
+        ctx.font = '20px Inter, sans-serif';
+        const textMetrics = ctx.measureText(this.chatMessage);
+        const textWidth = textMetrics.width;
+
+        const padding = 14;
+        const bubbleWidth = textWidth + padding * 2;
+        const bubbleHeight = 32;
+        const bubbleX = this.x - bubbleWidth / 2;
+
+        // Draw bubble background
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+        ctx.strokeStyle = '#333333';
+        ctx.lineWidth = 2;
+
+        // Rounded rectangle for bubble
+        const radius = 5;
+        ctx.beginPath();
+        ctx.moveTo(bubbleX + radius, bubbleY);
+        ctx.lineTo(bubbleX + bubbleWidth - radius, bubbleY);
+        ctx.quadraticCurveTo(bubbleX + bubbleWidth, bubbleY, bubbleX + bubbleWidth, bubbleY + radius);
+        ctx.lineTo(bubbleX + bubbleWidth, bubbleY + bubbleHeight - radius);
+        ctx.quadraticCurveTo(bubbleX + bubbleWidth, bubbleY + bubbleHeight, bubbleX + bubbleWidth - radius, bubbleY + bubbleHeight);
+        ctx.lineTo(bubbleX + radius, bubbleY + bubbleHeight);
+        ctx.quadraticCurveTo(bubbleX, bubbleY + bubbleHeight, bubbleX, bubbleY + bubbleHeight - radius);
+        ctx.lineTo(bubbleX, bubbleY + radius);
+        ctx.quadraticCurveTo(bubbleX, bubbleY, bubbleX + radius, bubbleY);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+
+        // Draw small triangle pointer
+        const pointerSize = 5;
+        ctx.beginPath();
+        ctx.moveTo(this.x - pointerSize, bubbleY + bubbleHeight);
+        ctx.lineTo(this.x, bubbleY + bubbleHeight + pointerSize);
+        ctx.lineTo(this.x + pointerSize, bubbleY + bubbleHeight);
+        ctx.closePath();
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+        ctx.fill();
+        ctx.stroke();
+
+        // Draw text
+        ctx.fillStyle = '#000000';
+        ctx.font = '20px Inter, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(this.chatMessage, this.x, bubbleY + bubbleHeight / 2);
+
+        // Reset text baseline
+        ctx.textBaseline = 'alphabetic';
+    }
+
+    // Set chat message to display in bubble
+    setChatMessage(message) {
+        this.chatMessage = message;
+        this.chatMessageTime = Date.now();
     }
 }

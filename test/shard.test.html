@@ -81,34 +81,48 @@
         // Initialize
         initInput(canvas);
 
-        // Test 1: Shard class exists
+        // Test 1: Particle class exists
+        addTestResult(
+            'Particle Class',
+            typeof Particle === 'function',
+            typeof Particle === 'function' ? 'Particle class is defined' : 'Particle class not found'
+        );
+
+        // Test 2: CollectEffect class exists
+        addTestResult(
+            'CollectEffect Class',
+            typeof CollectEffect === 'function',
+            typeof CollectEffect === 'function' ? 'CollectEffect class is defined' : 'CollectEffect class not found'
+        );
+
+        // Test 3: Shard class exists
         addTestResult(
             'Shard Class',
             typeof Shard === 'function',
             typeof Shard === 'function' ? 'Shard class is defined' : 'Shard class not found'
         );
 
-        // Test 2: ShardManager class exists
+        // Test 4: ShardManager class exists
         addTestResult(
             'ShardManager Class',
             typeof ShardManager === 'function',
             typeof ShardManager === 'function' ? 'ShardManager class is defined' : 'ShardManager class not found'
         );
 
-        // Test 3: Create shard instance
+        // Test 5: Create shard instance with ID
         let testShard;
         try {
-            testShard = new Shard(100, 100);
+            testShard = new Shard(100, 100, 20, 123);
             addTestResult(
                 'Shard Creation',
-                testShard instanceof Shard,
-                'Shard instance created successfully'
+                testShard instanceof Shard && testShard.id === 123,
+                `Shard instance created with id=${testShard.id}`
             );
         } catch (e) {
             addTestResult('Shard Creation', false, `Error: ${e.message}`);
         }
 
-        // Test 4: Shard has required methods
+        // Test 6: Shard has required methods
         if (testShard) {
             const methods = ['update', 'render', 'checkCollision', 'collect'];
             methods.forEach(method => {
@@ -120,7 +134,7 @@
             });
         }
 
-        // Test 5: Create ShardManager instance
+        // Test 7: Create ShardManager instance
         try {
             shardManager = new ShardManager();
             addTestResult(
@@ -132,9 +146,13 @@
             addTestResult('ShardManager Creation', false, `Error: ${e.message}`);
         }
 
-        // Test 6: ShardManager methods
+        // Test 8: ShardManager methods (including new sync methods)
         if (shardManager) {
-            const methods = ['spawnShards', 'update', 'render', 'checkCollisions', 'getActiveShardCount', 'getTotalShardCount', 'clear'];
+            const methods = [
+                'spawnShards', 'update', 'render', 'checkCollisions',
+                'getActiveShardCount', 'getTotalShardCount', 'clear',
+                'loadShardsFromServer', 'addShardsFromServer', 'removeShard', 'enableServerMode'
+            ];
             methods.forEach(method => {
                 addTestResult(
                     `ShardManager.${method}`,
@@ -144,8 +162,56 @@
             });
         }
 
-        // Test 7: Spawn shards
+        // Test 9: Server mode toggle
         if (shardManager) {
+            shardManager.enableServerMode();
+            addTestResult(
+                'Enable Server Mode',
+                shardManager.serverMode === true,
+                `Server mode: ${shardManager.serverMode}`
+            );
+        }
+
+        // Test 10: Load shards from server
+        if (shardManager) {
+            const serverShards = [
+                { id: 1, x: 100, y: 100 },
+                { id: 2, x: 200, y: 200 },
+                { id: 3, x: 300, y: 300 }
+            ];
+            shardManager.loadShardsFromServer(serverShards);
+            addTestResult(
+                'Load Shards from Server',
+                shardManager.getTotalShardCount() === 3,
+                `Loaded ${shardManager.getTotalShardCount()} shards from server`
+            );
+        }
+
+        // Test 11: CollectEffect creation
+        let testEffect;
+        try {
+            testEffect = new CollectEffect(150, 150, '#00ffff');
+            addTestResult(
+                'CollectEffect Creation',
+                testEffect instanceof CollectEffect && testEffect.active === true,
+                'CollectEffect instance created and active'
+            );
+        } catch (e) {
+            addTestResult('CollectEffect Creation', false, `Error: ${e.message}`);
+        }
+
+        // Test 12: CollectEffect has particles
+        if (testEffect) {
+            addTestResult(
+                'CollectEffect Particles',
+                Array.isArray(testEffect.particles) && testEffect.particles.length > 0,
+                `CollectEffect has ${testEffect.particles.length} particles`
+            );
+        }
+
+        // Test 13: Spawn shards (clear first to start fresh)
+        if (shardManager) {
+            shardManager.clear();
             shardManager.spawnShards(5, canvas.width, canvas.height);
             addTestResult(
                 'Spawn Shards',
@@ -166,14 +232,19 @@
             }
         });
 
-        // Visual test loop
+        // Visual test loop with delta time
         let collectedCount = 0;
-        function testLoop() {
+        let lastTime = 0;
+        function testLoop(currentTime) {
+            // Calculate delta time
+            const deltaTime = lastTime === 0 ? 0.016 : (currentTime - lastTime) / 1000;
+            lastTime = currentTime;
+
             ctx.fillStyle = '#1a1a1a';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
             if (testChar) {
-                testChar.update(canvas);
+                testChar.update(canvas, deltaTime);
                 testChar.render(ctx);
             }
 
@@ -202,7 +273,7 @@
             requestAnimationFrame(testLoop);
         }
 
-        testLoop();
+        requestAnimationFrame(testLoop);
     </script>
 </body>
 </html>

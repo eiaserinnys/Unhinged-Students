@@ -4,6 +4,15 @@
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 
+// Game world constants (16:9 aspect ratio)
+const GAME_WIDTH = 1920;
+const GAME_HEIGHT = 1080;
+
+// Viewport/scaling variables
+let scale = 1;
+let offsetX = 0;
+let offsetY = 0;
+
 // Game state
 const gameState = {
     running: false,
@@ -11,16 +20,44 @@ const gameState = {
     shardManager: null,
     networkManager: null,
     chatManager: null,
+    dummies: [], // Test dummies for combat practice
     stats: {
         shardsCollected: 0
-    }
+    },
+    lastFrameTime: 0,
+    deltaTime: 0
 };
 
-// Resize canvas to fill window
+// Resize canvas to fill window while maintaining 16:9 aspect ratio
 function resizeCanvas() {
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
-    console.log(`Canvas resized to ${canvas.width}x${canvas.height}`);
+    const windowWidth = window.innerWidth;
+    const windowHeight = window.innerHeight;
+    const windowAspectRatio = windowWidth / windowHeight;
+    const gameAspectRatio = GAME_WIDTH / GAME_HEIGHT;
+
+    if (windowAspectRatio > gameAspectRatio) {
+        // Window is wider - fit to height
+        canvas.height = windowHeight;
+        canvas.width = windowHeight * gameAspectRatio;
+        offsetX = (windowWidth - canvas.width) / 2;
+        offsetY = 0;
+    } else {
+        // Window is taller - fit to width
+        canvas.width = windowWidth;
+        canvas.height = windowWidth / gameAspectRatio;
+        offsetX = 0;
+        offsetY = (windowHeight - canvas.height) / 2;
+    }
+
+    // Calculate scale factor for rendering
+    scale = canvas.width / GAME_WIDTH;
+
+    // Position canvas in center of window
+    canvas.style.position = 'absolute';
+    canvas.style.left = offsetX + 'px';
+    canvas.style.top = offsetY + 'px';
+
+    console.log(`Canvas resized to ${canvas.width}x${canvas.height}, scale: ${scale.toFixed(2)}`);
 }
 
 // Initialize game
@@ -34,24 +71,50 @@ function init() {
     initInput(canvas);
 
     // Create player character (Alien) with player name
+    // Position in center of game world (not canvas)
     gameState.player = new Character(
-        canvas.width / 2,
-        canvas.height / 2,
+        GAME_WIDTH / 2,
+        GAME_HEIGHT / 2,
         'asset/image/alien.png',
-        canvas.height,
+        GAME_HEIGHT,
         '마나리' // Player name
     );
 
-    // Create shard manager and spawn initial shards
+    // Create test dummies for combat practice
+    // Position them around the map for testing
+    const dummyPositions = [
+        { x: GAME_WIDTH / 2 + 300, y: GAME_HEIGHT / 2, name: 'Dummy 1' },
+        { x: GAME_WIDTH / 2 - 300, y: GAME_HEIGHT / 2, name: 'Dummy 2' },
+        { x: GAME_WIDTH / 2, y: GAME_HEIGHT / 2 + 300, name: 'Dummy 3' },
+    ];
+
+    dummyPositions.forEach(pos => {
+        const dummy = new Character(
+            pos.x,
+            pos.y,
+            'asset/image/alien.png',
+            GAME_HEIGHT,
+            pos.name
+        );
+        // Make dummies stationary and distinguishable
+        dummy.speed = 0; // Don't move
+        gameState.dummies.push(dummy);
+    });
+
+    console.log(`Created ${gameState.dummies.length} test dummies`);
+
+    // Create shard manager (will be populated by server)
     gameState.shardManager = new ShardManager();
-    gameState.shardManager.spawnShards(20, canvas.width, canvas.height);
+    gameState.shardManager.enableServerMode();
 
     // Initialize chat manager
     gameState.chatManager = new ChatManager();
+    gameState.chatManager.setPlayer(gameState.player);
 
     // Initialize network manager and connect to server
     // Auto-detects server address from window.location.hostname
     gameState.networkManager = new NetworkManager();
+    gameState.networkManager.setShardManager(gameState.shardManager);
     gameState.networkManager.connect();
 
     // Connect chat to network after socket is ready
@@ -67,12 +130,13 @@ function init() {
 }
 
 // Update game logic
-function update() {
+function update(deltaTime) {
     // Don't update player movement if chat is focused
     const isChatting = gameState.chatManager && gameState.chatManager.isChatInputFocused();
 
     if (gameState.player && !isChatting) {
-        gameState.player.update(canvas);
+        // Pass game world dimensions and delta time
+        gameState.player.update({ width: GAME_WIDTH, height: GAME_HEIGHT }, deltaTime);
 
         // Send player position to server
         if (gameState.networkManager) {
@@ -97,7 +161,40 @@ function update() {
 
             // Add experience for each shard collected (1 shard = 1 exp)
             gameState.player.addExperience(collectedShards.length);
+
+            // Send shard collection to server
+            if (gameState.networkManager) {
+                collectedShards.forEach(shard => {
+                    if (shard.id !== null) {
+                        gameState.networkManager.sendShardCollection(shard.id);
+                    }
+                });
+            }
         }
+    }
+
+    // Update dummies
+    gameState.dummies.forEach(dummy => {
+        dummy.update({ width: GAME_WIDTH, height: GAME_HEIGHT }, deltaTime);
+    });
+
+    // Check for attack collisions with dummies
+    if (gameState.player && gameState.player.isAttacking) {
+        const attackArea = gameState.player.getAttackArea();
+
+        gameState.dummies.forEach(dummy => {
+            if (!dummy.isAlive()) return;
+
+            // Calculate distance between player and dummy
+            const dx = dummy.x - attackArea.x;
+            const dy = dummy.y - attackArea.y;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+
+            // Check if dummy is within attack range
+            if (distance <= attackArea.radius) {
+                dummy.takeDamage(gameState.player.attackPower);
+            }
+        });
     }
 
     // Update remote players
@@ -107,34 +204,52 @@ function update() {
 }
 
 // Game loop
-function gameLoop() {
+function gameLoop(currentTime) {
     if (!gameState.running) return;
+
+    // Calculate delta time (in seconds)
+    if (gameState.lastFrameTime === 0) {
+        gameState.lastFrameTime = currentTime;
+    }
+    gameState.deltaTime = (currentTime - gameState.lastFrameTime) / 1000; // Convert to seconds
+    gameState.lastFrameTime = currentTime;
+
+    // Cap delta time to prevent huge jumps (e.g., when tab is inactive)
+    if (gameState.deltaTime > 0.1) {
+        gameState.deltaTime = 0.1;
+    }
 
     // Clear canvas
     ctx.fillStyle = '#1a1a1a';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
+    // Apply scaling for game world rendering
+    ctx.save();
+    ctx.scale(scale, scale);
+
     // Update and render
-    update();
+    update(gameState.deltaTime);
     render();
+
+    ctx.restore();
 
     requestAnimationFrame(gameLoop);
 }
 
 // Render function
 function render() {
-    // Draw title
-    ctx.fillStyle = '#00ff00';
-    ctx.font = '24px Arial';
+    // Draw title (in game world coordinates)
+    ctx.fillStyle = '#00D9FF';
+    ctx.font = '600 28px Inter, sans-serif';
     ctx.textAlign = 'center';
-    ctx.fillText('Unhinged Students - Multiplayer Test', canvas.width / 2, 40);
+    ctx.fillText('Unhinged Students - Multiplayer Test', GAME_WIDTH / 2, 40);
 
     // Draw instructions
-    ctx.fillStyle = '#ffffff';
-    ctx.font = '14px Arial';
+    ctx.fillStyle = '#E0E0E0';
+    ctx.font = '16px Inter, sans-serif';
     const connectionStatus = gameState.networkManager && gameState.networkManager.connected ? 'Connected' : 'Connecting...';
     const playerCount = gameState.networkManager ? gameState.networkManager.remotePlayers.size + 1 : 1;
-    ctx.fillText(`${connectionStatus} | Players: ${playerCount}`, canvas.width / 2, 70);
+    ctx.fillText(`${connectionStatus} | Players: ${playerCount}`, GAME_WIDTH / 2, 70);
 
     // Draw shards
     if (gameState.shardManager) {
@@ -146,14 +261,21 @@ function render() {
         gameState.networkManager.render(ctx);
     }
 
-    // Draw local player (on top of remote players)
+    // Draw test dummies
+    gameState.dummies.forEach(dummy => {
+        if (dummy.isAlive()) {
+            dummy.render(ctx);
+        }
+    });
+
+    // Draw local player (on top of remote players and dummies)
     if (gameState.player) {
         gameState.player.render(ctx);
     }
 
     // Draw UI
-    ctx.fillStyle = '#ffff00';
-    ctx.font = '12px Arial';
+    ctx.fillStyle = '#A78BFA';
+    ctx.font = '14px Inter, sans-serif';
     ctx.textAlign = 'left';
 
     if (gameState.player) {

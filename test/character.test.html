@@ -145,27 +145,34 @@
             }
         }, 2000);
 
-        // Visual test loop
-        function testLoop() {
+        // Visual test loop with delta time
+        let lastTime = 0;
+        function testLoop(currentTime) {
+            // Calculate delta time
+            const deltaTime = lastTime === 0 ? 0.016 : (currentTime - lastTime) / 1000;
+            lastTime = currentTime;
+
             ctx.fillStyle = '#1a1a1a';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
             if (testChar) {
-                testChar.update(canvas);
+                testChar.update(canvas, deltaTime);
                 testChar.render(ctx);
 
-                // Show position
+                // Show position and FPS
                 ctx.fillStyle = '#ffff00';
                 ctx.font = '12px Arial';
                 ctx.textAlign = 'left';
                 const pos = testChar.getPosition();
+                const fps = Math.round(1 / deltaTime);
                 ctx.fillText(`Position: (${Math.round(pos.x)}, ${Math.round(pos.y)})`, 10, 20);
+                ctx.fillText(`FPS: ${fps}`, 10, 40);
             }
 
             requestAnimationFrame(testLoop);
         }
 
-        testLoop();
+        requestAnimationFrame(testLoop);
     </script>
 </body>
 </html>
