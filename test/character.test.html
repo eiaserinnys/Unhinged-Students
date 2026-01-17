@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Character Test - Unhinged Students</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f0f0f0;
+        }
+        .test-section {
+            background: white;
+            padding: 20px;
+            margin: 10px 0;
+            border-radius: 5px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        .test-result {
+            padding: 10px;
+            margin: 5px 0;
+            border-radius: 3px;
+        }
+        .pass {
+            background-color: #d4edda;
+            color: #155724;
+        }
+        .fail {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+        canvas {
+            border: 2px solid #333;
+            margin: 10px 0;
+            background-color: #1a1a1a;
+        }
+    </style>
+</head>
+<body>
+    <h1>Character System Test</h1>
+
+    <div class="test-section">
+        <h2>Test Results</h2>
+        <div id="results"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>Visual Test</h2>
+        <canvas id="testCanvas" width="400" height="300"></canvas>
+        <p>Use WASD or Arrow Keys to move the character</p>
+    </div>
+
+    <script src="../src/input.js"></script>
+    <script src="../src/character.js"></script>
+    <script>
+        const canvas = document.getElementById('testCanvas');
+        const ctx = canvas.getContext('2d');
+        const resultsDiv = document.getElementById('results');
+
+        let testResults = [];
+
+        function addTestResult(name, passed, message) {
+            testResults.push({ name, passed, message });
+            updateResults();
+        }
+
+        function updateResults() {
+            resultsDiv.innerHTML = testResults.map(result =>
+                `<div class="test-result ${result.passed ? 'pass' : 'fail'}">
+                    ${result.passed ? '✓' : '✗'} ${result.name}: ${result.message}
+                </div>`
+            ).join('');
+        }
+
+        // Initialize input system
+        initInput(canvas);
+
+        // Test 1: Character class exists
+        addTestResult(
+            'Character Class',
+            typeof Character === 'function',
+            typeof Character === 'function' ? 'Character class is defined' : 'Character class not found'
+        );
+
+        // Test 2: Create character instance
+        let testChar;
+        try {
+            testChar = new Character(200, 150, '../asset/image/alien.png', 300);
+            addTestResult(
+                'Character Creation',
+                testChar instanceof Character,
+                'Character instance created successfully'
+            );
+        } catch (e) {
+            addTestResult('Character Creation', false, `Error: ${e.message}`);
+        }
+
+        // Test 3: Character has required methods
+        if (testChar) {
+            const methods = ['update', 'render', 'getPosition', 'getBounds', 'loadImage'];
+            methods.forEach(method => {
+                addTestResult(
+                    `Method: ${method}`,
+                    typeof testChar[method] === 'function',
+                    typeof testChar[method] === 'function' ? 'Method exists' : 'Method not found'
+                );
+            });
+
+            // Test 4: Character has required properties
+            const props = ['x', 'y', 'width', 'height', 'speed'];
+            props.forEach(prop => {
+                addTestResult(
+                    `Property: ${prop}`,
+                    testChar.hasOwnProperty(prop),
+                    testChar.hasOwnProperty(prop) ? `Value: ${testChar[prop]}` : 'Property not found'
+                );
+            });
+
+            // Test 5: getPosition returns correct format
+            const pos = testChar.getPosition();
+            addTestResult(
+                'getPosition()',
+                pos && typeof pos.x === 'number' && typeof pos.y === 'number',
+                `Returns: {x: ${pos.x}, y: ${pos.y}}`
+            );
+
+            // Test 6: getBounds returns correct format
+            const bounds = testChar.getBounds();
+            addTestResult(
+                'getBounds()',
+                bounds && 'left' in bounds && 'right' in bounds && 'top' in bounds && 'bottom' in bounds,
+                'Returns correct bounds object'
+            );
+        }
+
+        // Test 7: Image loading
+        setTimeout(() => {
+            if (testChar) {
+                addTestResult(
+                    'Image Loading',
+                    testChar.imageLoaded,
+                    testChar.imageLoaded ? 'Image loaded successfully' : 'Image still loading or failed'
+                );
+            }
+        }, 2000);
+
+        // Visual test loop
+        function testLoop() {
+            ctx.fillStyle = '#1a1a1a';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            if (testChar) {
+                testChar.update(canvas);
+                testChar.render(ctx);
+
+                // Show position
+                ctx.fillStyle = '#ffff00';
+                ctx.font = '12px Arial';
+                ctx.textAlign = 'left';
+                const pos = testChar.getPosition();
+                ctx.fillText(`Position: (${Math.round(pos.x)}, ${Math.round(pos.y)})`, 10, 20);
+            }
+
+            requestAnimationFrame(testLoop);
+        }
+
+        testLoop();
+    </script>
+</body>
+</html>
