@@ -10,15 +10,74 @@
             padding: 0;
             overflow: hidden;
             background-color: #000;
+            font-family: Arial, sans-serif;
         }
         canvas {
             display: block;
             background-color: #1a1a1a;
         }
+        #chatContainer {
+            position: fixed;
+            bottom: 10px;
+            left: 10px;
+            width: 350px;
+            background: rgba(0, 0, 0, 0.7);
+            border: 2px solid #00ff00;
+            border-radius: 5px;
+            overflow: hidden;
+        }
+        #chatMessages {
+            height: 150px;
+            overflow-y: auto;
+            padding: 10px;
+            color: #ffffff;
+            font-size: 12px;
+        }
+        .chatMessage {
+            margin-bottom: 5px;
+            word-wrap: break-word;
+        }
+        .chatMessage .playerName {
+            color: #00ff00;
+            font-weight: bold;
+        }
+        .chatMessage .messageText {
+            color: #ffffff;
+        }
+        #chatInputContainer {
+            display: flex;
+            padding: 5px;
+            background: rgba(0, 0, 0, 0.5);
+            border-top: 1px solid #00ff00;
+        }
+        #chatInput {
+            flex: 1;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid #00ff00;
+            color: #ffffff;
+            padding: 5px 10px;
+            font-size: 12px;
+            outline: none;
+        }
+        #chatInput::placeholder {
+            color: #888;
+        }
+        #chatInput:focus {
+            background: rgba(255, 255, 255, 0.2);
+        }
     </style>
 </head>
 <body>
     <canvas id="gameCanvas"></canvas>
+
+    <!-- Chat UI -->
+    <div id="chatContainer">
+        <div id="chatMessages"></div>
+        <div id="chatInputContainer">
+            <input type="text" id="chatInput" placeholder="Press Enter to chat..." maxlength="100">
+        </div>
+    </div>
+
     <!-- Socket.io client -->
     <script src="/socket.io/socket.io.js"></script>
     <!-- Game scripts -->
@@ -26,6 +85,7 @@
     <script src="src/character.js"></script>
     <script src="src/shard.js"></script>
     <script src="src/network.js"></script>
+    <script src="src/chat.js"></script>
     <script src="src/game.js"></script>
 </body>
 </html>

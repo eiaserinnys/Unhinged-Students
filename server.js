@@ -61,6 +61,22 @@ io.on('connection', (socket) => {
         });
     });
 
+    // Handle chat messages
+    socket.on('chatMessage', (data) => {
+        const playerData = players.get(socket.id);
+        const message = {
+            playerId: socket.id,
+            playerName: playerData ? playerData.playerName : 'Unknown',
+            message: data.message,
+            timestamp: Date.now()
+        };
+
+        console.log(`Chat from ${message.playerName}: ${message.message}`);
+
+        // Broadcast to all players (including sender)
+        io.emit('chatMessage', message);
+    });
+
     // Handle disconnection
     socket.on('disconnect', () => {
         console.log(`Player disconnected: ${socket.id}`);

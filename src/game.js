@@ -10,6 +10,7 @@ const gameState = {
     player: null,
     shardManager: null,
     networkManager: null,
+    chatManager: null,
     stats: {
         shardsCollected: 0
     }
@@ -45,10 +46,21 @@ function init() {
     gameState.shardManager = new ShardManager();
     gameState.shardManager.spawnShards(20, canvas.width, canvas.height);
 
+    // Initialize chat manager
+    gameState.chatManager = new ChatManager();
+
     // Initialize network manager and connect to server
     // Auto-detects server address from window.location.hostname
     gameState.networkManager = new NetworkManager();
     gameState.networkManager.connect();
+
+    // Connect chat to network after socket is ready
+    setTimeout(() => {
+        if (gameState.networkManager.socket) {
+            gameState.chatManager.setSocket(gameState.networkManager.socket);
+            gameState.chatManager.addSystemMessage('Connected to server. Press Enter to chat.');
+        }
+    }, 500);
 
     gameState.running = true;
     gameLoop();
@@ -56,7 +68,10 @@ function init() {
 
 // Update game logic
 function update() {
-    if (gameState.player) {
+    // Don't update player movement if chat is focused
+    const isChatting = gameState.chatManager && gameState.chatManager.isChatInputFocused();
+
+    if (gameState.player && !isChatting) {
         gameState.player.update(canvas);
 
         // Send player position to server
