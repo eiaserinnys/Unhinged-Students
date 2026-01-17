@@ -9,7 +9,14 @@ class NetworkManager {
         this.lastUpdateTime = 0;
     }
 
-    connect(serverUrl = 'http://localhost:3000') {
+    connect(serverUrl = null) {
+        // Auto-detect server URL if not provided
+        if (!serverUrl) {
+            const hostname = window.location.hostname;
+            const port = 3000;
+            serverUrl = `http://${hostname}:${port}`;
+        }
+
         console.log(`Connecting to server: ${serverUrl}`);
 
         this.socket = io(serverUrl);

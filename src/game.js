@@ -46,8 +46,9 @@ function init() {
     gameState.shardManager.spawnShards(20, canvas.width, canvas.height);
 
     // Initialize network manager and connect to server
+    // Auto-detects server address from window.location.hostname
     gameState.networkManager = new NetworkManager();
-    gameState.networkManager.connect('http://localhost:3000');
+    gameState.networkManager.connect();
 
     gameState.running = true;
     gameLoop();
