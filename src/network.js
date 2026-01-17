@@ -8,10 +8,15 @@ class NetworkManager {
         this.updateRate = 1000 / 20; // 20 updates per second
         this.lastUpdateTime = 0;
         this.shardManager = null; // Reference to shard manager for sync
+        this.localPlayer = null; // Reference to local player for HP sync
     }
 
     setShardManager(shardManager) {
         this.shardManager = shardManager;
+    }
+
+    setLocalPlayer(player) {
+        this.localPlayer = player;
     }
 
     connect(serverUrl = null) {
@@ -114,6 +119,36 @@ class NetworkManager {
                 this.shardManager.removeShard(data.shardId);
             }
         });
+
+        // Player damage event
+        this.socket.on('playerDamaged', (data) => {
+            console.log(`Players damaged by ${data.attackerId}:`, data.hitPlayers);
+            data.hitPlayers.forEach(hit => {
+                // Check if it's the local player
+                if (hit.playerId === this.playerId && this.localPlayer) {
+                    this.localPlayer.currentHP = hit.currentHP;
+                    console.log(`You took damage! HP: ${hit.currentHP}/${hit.maxHP}`);
+                } else {
+                    // Update remote player HP
+                    const player = this.remotePlayers.get(hit.playerId);
+                    if (player) {
+                        player.currentHP = hit.currentHP;
+                        player.maxHP = hit.maxHP;
+                    }
+                }
+            });
+        });
+    }
+
+    // Send attack to server
+    sendAttack(x, y, range, power) {
+        if (!this.connected || !this.socket) return;
+        this.socket.emit('playerAttack', {
+            x: x,
+            y: y,
+            range: range,
+            power: power
+        });
     }
 
     // Send shard collection to server
@@ -130,6 +165,13 @@ class NetworkManager {
             playerData.playerName || 'Player',
             playerData.level || 1
         );
+        // Set HP if provided
+        if (playerData.currentHP !== undefined) {
+            remotePlayer.currentHP = playerData.currentHP;
+        }
+        if (playerData.maxHP !== undefined) {
+            remotePlayer.maxHP = playerData.maxHP;
+        }
         this.remotePlayers.set(playerData.playerId, remotePlayer);
     }
 
@@ -206,6 +248,10 @@ class RemotePlayer {
         this.chatMessage = null;
         this.chatMessageTime = 0;
         this.chatMessageDuration = 3000; // 3 seconds
+
+        // HP system
+        this.maxHP = 100;
+        this.currentHP = 100;
 
         // Load alien image
         this.loadImage('asset/image/alien.png');
@@ -290,17 +336,20 @@ class RemotePlayer {
     renderInfoAbove(ctx) {
         const infoY = this.y - this.height / 2 - 10;
 
-        // HP Bar (dummy - always full)
+        // HP Bar
         const hpBarWidth = this.width;
         const hpBarHeight = 6;
         const hpBarX = this.x - hpBarWidth / 2;
         const hpBarY = infoY - hpBarHeight;
 
+        // HP Bar background
         ctx.fillStyle = '#333333';
         ctx.fillRect(hpBarX, hpBarY, hpBarWidth, hpBarHeight);
 
+        // HP Bar fill
+        const hpPercentage = this.currentHP / this.maxHP;
         ctx.fillStyle = '#00ff00';
-        ctx.fillRect(hpBarX, hpBarY, hpBarWidth, hpBarHeight);
+        ctx.fillRect(hpBarX, hpBarY, hpBarWidth * hpPercentage, hpBarHeight);
 
         ctx.strokeStyle = '#ffffff';
         ctx.lineWidth = 1;
@@ -391,5 +440,37 @@ class RemotePlayer {
     setChatMessage(message) {
         this.chatMessage = message;
         this.chatMessageTime = Date.now();
+    }
+
+    // Take damage
+    takeDamage(amount) {
+        this.currentHP = Math.max(0, this.currentHP - amount);
+        console.log(`${this.playerName} took ${amount} damage! HP: ${this.currentHP}/${this.maxHP}`);
+
+        if (this.currentHP <= 0) {
+            console.log(`${this.playerName} has been defeated!`);
+            return true; // Character died
+        }
+        return false;
+    }
+
+    // Check if character is alive
+    isAlive() {
+        return this.currentHP > 0;
+    }
+
+    // Get bounds for collision detection
+    getBounds() {
+        return {
+            left: this.x - this.width / 2,
+            right: this.x + this.width / 2,
+            top: this.y - this.height / 2,
+            bottom: this.y + this.height / 2
+        };
+    }
+
+    // Get position
+    getPosition() {
+        return { x: this.x, y: this.y };
     }
 }

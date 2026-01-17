@@ -25,7 +25,8 @@ const gameState = {
         shardsCollected: 0
     },
     lastFrameTime: 0,
-    deltaTime: 0
+    deltaTime: 0,
+    lastAttackSentTime: 0 // Track last attack sent to server
 };
 
 // Resize canvas to fill window while maintaining 16:9 aspect ratio
@@ -94,10 +95,13 @@ function init() {
             pos.y,
             'asset/image/alien.png',
             GAME_HEIGHT,
-            pos.name
+            pos.name,
+            true // isDummy = true
         );
         // Make dummies stationary and distinguishable
         dummy.speed = 0; // Don't move
+        dummy.maxHP = 30; // 3 hits to kill (10 damage x 3 = 30)
+        dummy.currentHP = 30;
         gameState.dummies.push(dummy);
     });
 
@@ -115,6 +119,7 @@ function init() {
     // Auto-detects server address from window.location.hostname
     gameState.networkManager = new NetworkManager();
     gameState.networkManager.setShardManager(gameState.shardManager);
+    gameState.networkManager.setLocalPlayer(gameState.player);
     gameState.networkManager.connect();
 
     // Connect chat to network after socket is ready
@@ -176,12 +181,32 @@ function update(deltaTime) {
     // Update dummies
     gameState.dummies.forEach(dummy => {
         dummy.update({ width: GAME_WIDTH, height: GAME_HEIGHT }, deltaTime);
+
+        // Check for respawn
+        if (!dummy.isAlive() && dummy.canRespawn()) {
+            dummy.respawn();
+        }
     });
 
-    // Check for attack collisions with dummies
+    // Check for attack collisions with dummies (local only) and send attack to server
     if (gameState.player && gameState.player.isAttacking) {
         const attackArea = gameState.player.getAttackArea();
 
+        // Send attack to server once per attack (when attack just started)
+        const currentTime = Date.now();
+        if (!gameState.lastAttackSentTime || currentTime - gameState.lastAttackSentTime > gameState.player.attackCooldown) {
+            if (gameState.networkManager) {
+                gameState.networkManager.sendAttack(
+                    attackArea.x,
+                    attackArea.y,
+                    attackArea.radius,
+                    gameState.player.attackPower
+                );
+                gameState.lastAttackSentTime = currentTime;
+            }
+        }
+
+        // Check dummies (local only)
         gameState.dummies.forEach(dummy => {
             if (!dummy.isAlive()) return;
 

@@ -1,7 +1,7 @@
 // Character system
 
 class Character {
-    constructor(x, y, imagePath, canvasHeight, playerName = 'Player') {
+    constructor(x, y, imagePath, canvasHeight, playerName = 'Player', isDummy = false) {
         this.x = x;
         this.y = y;
         // Size relative to screen height (LOL-style: about 1/8 of screen height)
@@ -14,6 +14,7 @@ class Character {
 
         // Player info
         this.playerName = playerName;
+        this.isDummy = isDummy; // Enemy/dummy flag
 
         // Level system
         this.level = 1;
@@ -32,6 +33,12 @@ class Character {
         this.isAttacking = false;
         this.attackAnimationTime = 200; // Attack animation duration in ms
         this.attackStartTime = 0;
+
+        // Respawn system (for dummies)
+        this.deathTime = 0;
+        this.respawnDelay = 5000; // 5 seconds
+        this.initialX = x; // Store initial position for respawn
+        this.initialY = y;
 
         // Chat bubble system
         this.chatMessage = null;
@@ -92,9 +99,9 @@ class Character {
         this.x = Math.max(this.width / 2, Math.min(canvas.width - this.width / 2, this.x));
         this.y = Math.max(this.height / 2, Math.min(canvas.height - this.height / 2, this.y));
 
-        // Attack input (Space key)
+        // Attack input (Space key) - only for non-dummies
         const currentTime = Date.now();
-        if (isKeyPressed(' ') && currentTime - this.lastAttackTime >= this.attackCooldown) {
+        if (!this.isDummy && isKeyPressed(' ') && currentTime - this.lastAttackTime >= this.attackCooldown) {
             this.attack();
         }
 
@@ -110,7 +117,16 @@ class Character {
     }
 
     render(ctx) {
-        if (this.imageLoaded && this.image) {
+        if (this.isDummy) {
+            // Draw dummy as red rectangle
+            ctx.fillStyle = '#ff0000';
+            ctx.fillRect(
+                this.x - this.width / 2,
+                this.y - this.height / 2,
+                this.width,
+                this.height
+            );
+        } else if (this.imageLoaded && this.image) {
             // Draw character image
             ctx.drawImage(
                 this.image,
@@ -206,7 +222,7 @@ class Character {
         const opacity = 1 - progress; // Fade out as it expands
 
         ctx.save();
-        ctx.globalAlpha = opacity * 0.3;
+        ctx.globalAlpha = opacity * 0.6; // Increased opacity for better visibility
         ctx.strokeStyle = '#FF6B6B'; // Red attack effect
         ctx.lineWidth = 3;
         ctx.beginPath();
@@ -353,6 +369,7 @@ class Character {
         console.log(`${this.playerName} took ${amount} damage! HP: ${this.currentHP}/${this.maxHP}`);
 
         if (this.currentHP <= 0) {
+            this.deathTime = Date.now();
             console.log(`${this.playerName} has been defeated!`);
             return true; // Character died
         }
@@ -362,6 +379,21 @@ class Character {
     // Check if character is alive
     isAlive() {
         return this.currentHP > 0;
+    }
+
+    // Respawn character (for dummies)
+    respawn() {
+        this.currentHP = this.maxHP;
+        this.x = this.initialX;
+        this.y = this.initialY;
+        this.deathTime = 0;
+        console.log(`${this.playerName} respawned!`);
+    }
+
+    // Check if ready to respawn
+    canRespawn() {
+        if (this.deathTime === 0) return false;
+        return Date.now() - this.deathTime >= this.respawnDelay;
     }
 
     // Set chat message to display in bubble
