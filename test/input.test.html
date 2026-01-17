@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Input Test - Unhinged Students</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f0f0f0;
+        }
+        .test-section {
+            background: white;
+            padding: 20px;
+            margin: 10px 0;
+            border-radius: 5px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        .test-result {
+            padding: 10px;
+            margin: 5px 0;
+            border-radius: 3px;
+        }
+        .pass {
+            background-color: #d4edda;
+            color: #155724;
+        }
+        .fail {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+        canvas {
+            border: 2px solid #333;
+            margin: 10px 0;
+        }
+        #log {
+            background: #1a1a1a;
+            color: #00ff00;
+            font-family: monospace;
+            padding: 10px;
+            height: 200px;
+            overflow-y: auto;
+            border-radius: 3px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Input System Test</h1>
+
+    <div class="test-section">
+        <h2>Test Canvas</h2>
+        <canvas id="testCanvas" width="400" height="300"></canvas>
+        <p>Try pressing keys, clicking, or touching the canvas</p>
+    </div>
+
+    <div class="test-section">
+        <h2>Test Results</h2>
+        <div id="results"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>Event Log</h2>
+        <div id="log"></div>
+    </div>
+
+    <script src="../src/input.js"></script>
+    <script>
+        const canvas = document.getElementById('testCanvas');
+        const ctx = canvas.getContext('2d');
+        const resultsDiv = document.getElementById('results');
+        const logDiv = document.getElementById('log');
+
+        let testResults = [];
+        let logMessages = [];
+
+        function log(message) {
+            const timestamp = new Date().toLocaleTimeString();
+            logMessages.unshift(`[${timestamp}] ${message}`);
+            if (logMessages.length > 50) logMessages.pop();
+            logDiv.innerHTML = logMessages.join('<br>');
+        }
+
+        function addTestResult(name, passed, message) {
+            testResults.push({ name, passed, message });
+            updateResults();
+        }
+
+        function updateResults() {
+            resultsDiv.innerHTML = testResults.map(result =>
+                `<div class="test-result ${result.passed ? 'pass' : 'fail'}">
+                    ${result.passed ? '✓' : '✗'} ${result.name}: ${result.message}
+                </div>`
+            ).join('');
+        }
+
+        // Initialize input system
+        initInput(canvas);
+        log('Input system initialized');
+
+        // Test 1: Input object exists
+        addTestResult(
+            'Input Object Exists',
+            typeof Input !== 'undefined',
+            typeof Input !== 'undefined' ? 'Input object is defined' : 'Input object not found'
+        );
+
+        // Test 2: Helper functions exist
+        const helpers = ['isKeyPressed', 'isMousePressed', 'getMousePosition', 'isTouchActive', 'getTouchPosition'];
+        helpers.forEach(fn => {
+            addTestResult(
+                `Function ${fn} exists`,
+                typeof window[fn] === 'function',
+                typeof window[fn] === 'function' ? 'Function is defined' : 'Function not found'
+            );
+        });
+
+        // Test 3: Keyboard input tracking
+        let keyTestPassed = false;
+        window.addEventListener('keydown', (e) => {
+            if (!keyTestPassed && isKeyPressed(e.key.toLowerCase())) {
+                keyTestPassed = true;
+                addTestResult('Keyboard Input', true, `Key "${e.key}" detected correctly`);
+                log(`Key pressed: ${e.key}`);
+            }
+        });
+
+        // Test 4: Mouse input tracking
+        let mouseTestPassed = false;
+        canvas.addEventListener('mousedown', () => {
+            if (!mouseTestPassed && isMousePressed()) {
+                mouseTestPassed = true;
+                const pos = getMousePosition();
+                addTestResult('Mouse Input', true, `Mouse click detected at (${Math.round(pos.x)}, ${Math.round(pos.y)})`);
+                log(`Mouse clicked at (${Math.round(pos.x)}, ${Math.round(pos.y)})`);
+            }
+        });
+
+        // Test 5: Touch input tracking
+        let touchTestPassed = false;
+        canvas.addEventListener('touchstart', () => {
+            if (!touchTestPassed && isTouchActive()) {
+                touchTestPassed = true;
+                const pos = getTouchPosition();
+                addTestResult('Touch Input', true, `Touch detected at (${Math.round(pos.x)}, ${Math.round(pos.y)})`);
+                log(`Touch at (${Math.round(pos.x)}, ${Math.round(pos.y)})`);
+            }
+        });
+
+        // Visual feedback loop
+        function drawTestCanvas() {
+            ctx.fillStyle = '#1a1a1a';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            ctx.fillStyle = '#ffffff';
+            ctx.font = '14px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText('Interactive Test Area', canvas.width / 2, 30);
+
+            // Show pressed keys
+            const pressedKeys = Object.keys(Input.keys).filter(k => Input.keys[k]);
+            if (pressedKeys.length > 0) {
+                ctx.fillStyle = '#00ff00';
+                ctx.fillText(`Keys: ${pressedKeys.join(', ')}`, canvas.width / 2, 60);
+            }
+
+            // Show mouse
+            if (isMousePressed()) {
+                const pos = getMousePosition();
+                ctx.fillStyle = '#ff0000';
+                ctx.beginPath();
+                ctx.arc(pos.x, pos.y, 20, 0, Math.PI * 2);
+                ctx.fill();
+            }
+
+            // Show touch
+            if (isTouchActive()) {
+                const pos = getTouchPosition();
+                ctx.fillStyle = '#0000ff';
+                ctx.beginPath();
+                ctx.arc(pos.x, pos.y, 25, 0, Math.PI * 2);
+                ctx.fill();
+            }
+
+            requestAnimationFrame(drawTestCanvas);
+        }
+
+        drawTestCanvas();
+        log('Test started - interact with the canvas');
+    </script>
+</body>
+</html>
