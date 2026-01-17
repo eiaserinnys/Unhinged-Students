@@ -65,9 +65,17 @@ class Shard {
 class ShardManager {
     constructor() {
         this.shards = [];
+        this.maxActiveShards = 40; // Maximum shards on map at once
+        this.respawnInterval = 5000; // 5 seconds in milliseconds
+        this.lastRespawnTime = Date.now();
+        this.canvasWidth = 0;
+        this.canvasHeight = 0;
     }
 
     spawnShards(count, canvasWidth, canvasHeight, margin = 100) {
+        this.canvasWidth = canvasWidth;
+        this.canvasHeight = canvasHeight;
+
         for (let i = 0; i < count; i++) {
             const x = margin + Math.random() * (canvasWidth - margin * 2);
             const y = margin + Math.random() * (canvasHeight - margin * 2);
@@ -76,8 +84,43 @@ class ShardManager {
         console.log(`Spawned ${count} shards`);
     }
 
+    // Spawn a single shard at random location
+    spawnSingleShard(margin = 100) {
+        if (this.canvasWidth === 0 || this.canvasHeight === 0) return;
+
+        const x = margin + Math.random() * (this.canvasWidth - margin * 2);
+        const y = margin + Math.random() * (this.canvasHeight - margin * 2);
+        this.shards.push(new Shard(x, y));
+    }
+
     update() {
         this.shards.forEach(shard => shard.update());
+
+        // Check for respawn
+        const currentTime = Date.now();
+        if (currentTime - this.lastRespawnTime >= this.respawnInterval) {
+            this.checkRespawn();
+            this.lastRespawnTime = currentTime;
+        }
+    }
+
+    // Check and respawn shards if needed
+    checkRespawn() {
+        const activeCount = this.getActiveShardCount();
+
+        if (activeCount < this.maxActiveShards) {
+            // Spawn 5-10 shards randomly
+            const spawnCount = Math.floor(Math.random() * 6) + 5; // 5-10
+            const actualSpawnCount = Math.min(spawnCount, this.maxActiveShards - activeCount);
+
+            for (let i = 0; i < actualSpawnCount; i++) {
+                this.spawnSingleShard();
+            }
+
+            if (actualSpawnCount > 0) {
+                console.log(`Respawned ${actualSpawnCount} shards (Active: ${activeCount + actualSpawnCount}/${this.maxActiveShards})`);
+            }
+        }
     }
 
     render(ctx) {

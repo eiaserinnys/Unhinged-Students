@@ -14,6 +14,8 @@ class Character {
 
         // Level system
         this.level = 1;
+        this.experience = 0;
+        this.maxLevel = 30;
 
         // Load character image
         this.loadImage(imagePath);
@@ -110,8 +112,40 @@ class Character {
         return this.level;
     }
 
+    getExperience() {
+        return this.experience;
+    }
+
+    // Calculate shards required for next level
+    // Level n->n+1 requires: 10 + (n-1) * 2 shards
+    getRequiredExperience() {
+        if (this.level >= this.maxLevel) return 0;
+        return 10 + (this.level - 1) * 2;
+    }
+
+    // Add experience and check for level up
+    addExperience(amount) {
+        if (this.level >= this.maxLevel) {
+            console.log('Max level reached!');
+            return false;
+        }
+
+        this.experience += amount;
+
+        // Check for level up
+        let leveledUp = false;
+        while (this.level < this.maxLevel && this.experience >= this.getRequiredExperience()) {
+            this.experience -= this.getRequiredExperience();
+            this.level++;
+            leveledUp = true;
+            console.log(`Level up! Now level ${this.level}`);
+        }
+
+        return leveledUp;
+    }
+
+    // Legacy method for compatibility
     levelUp() {
-        this.level++;
-        console.log(`Level up! Now level ${this.level}`);
+        this.addExperience(this.getRequiredExperience());
     }
 }

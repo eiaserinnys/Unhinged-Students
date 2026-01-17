@@ -93,28 +93,45 @@
                 testState.testsPassed++;
             }
 
-            // Test 2: levelUp() increases level
-            const initialLevel = testState.player.level;
-            testState.player.levelUp();
+            // Test 2: Experience starts at 0
             testState.testsTotal++;
-            if (assert(testState.player.level === initialLevel + 1, 'levelUp() increases level by 1')) {
+            if (assert(testState.player.experience === 0, 'Experience starts at 0')) {
                 testState.testsPassed++;
             }
 
-            // Test 3: getLevel() returns current level
-            const currentLevel = testState.player.level;
+            // Test 3: Required experience for level 2 is 10
             testState.testsTotal++;
-            if (assert(testState.player.getLevel() === currentLevel, 'getLevel() returns current level')) {
+            if (assert(testState.player.getRequiredExperience() === 10, 'Level 1->2 requires 10 exp')) {
                 testState.testsPassed++;
             }
 
-            // Test 4: Multiple level ups
-            testState.player.levelUp();
-            testState.player.levelUp();
+            // Test 4: Adding experience increases level
+            testState.player.addExperience(10);
             testState.testsTotal++;
-            if (assert(testState.player.level === 4, 'Multiple level ups work correctly')) {
+            if (assert(testState.player.level === 2, 'Adding 10 exp levels up to level 2')) {
                 testState.testsPassed++;
             }
+
+            // Test 5: Experience carries over
+            testState.player.addExperience(15); // Level 2->3 requires 12, so 3 exp left
+            testState.testsTotal++;
+            if (assert(testState.player.level === 3 && testState.player.experience === 3, 'Experience carries over correctly')) {
+                testState.testsPassed++;
+            }
+
+            // Test 6: Max level cap
+            testState.testsTotal++;
+            if (assert(testState.player.maxLevel === 30, 'Max level is 30')) {
+                testState.testsPassed++;
+            }
+
+            // Reset for visual test
+            testState.player = new Character(
+                canvas.width / 2,
+                canvas.height / 2,
+                '../asset/image/alien.png',
+                canvas.height
+            );
 
             // Create visual test shards
             testState.testShards.push(new Shard(canvas.width / 2 - 100, canvas.height / 2, 20));
@@ -143,23 +160,31 @@
             ctx.fillStyle = '#00ff00';
             ctx.font = '24px Arial';
             ctx.textAlign = 'center';
-            ctx.fillText('Level System Test - Collect shards to level up!', canvas.width / 2, 40);
+            ctx.fillText('Level System Test - Experience & Progression', canvas.width / 2, 40);
 
             // Instructions
             ctx.fillStyle = '#ffffff';
             ctx.font = '14px Arial';
-            ctx.fillText('Move with WASD or Arrow keys', canvas.width / 2, 70);
+            ctx.fillText('Collect shards to gain experience and level up! (10 exp for level 2)', canvas.width / 2, 70);
 
             // Update and render player
             if (testState.player) {
                 testState.player.update(canvas);
                 testState.player.render(ctx);
 
-                // Display level
+                // Display level and experience
                 ctx.fillStyle = '#ffff00';
                 ctx.font = '20px Arial';
                 ctx.textAlign = 'left';
-                ctx.fillText(`Level: ${testState.player.getLevel()}`, 10, 30);
+                const level = testState.player.getLevel();
+                const exp = testState.player.getExperience();
+                const requiredExp = testState.player.getRequiredExperience();
+
+                if (level >= testState.player.maxLevel) {
+                    ctx.fillText(`Level: ${level} (MAX)`, 10, 30);
+                } else {
+                    ctx.fillText(`Level: ${level} (${exp}/${requiredExp} exp)`, 10, 30);
+                }
             }
 
             // Render and check shard collisions
@@ -170,8 +195,8 @@
 
                     if (shard.checkCollision(testState.player)) {
                         shard.collect();
-                        testState.player.levelUp();
-                        console.log(`Shard ${index + 1} collected! Level up!`);
+                        testState.player.addExperience(1);
+                        console.log(`Shard ${index + 1} collected! Experience +1`);
                     }
                 }
             });

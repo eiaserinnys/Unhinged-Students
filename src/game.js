@@ -39,9 +39,9 @@ function init() {
         canvas.height
     );
 
-    // Create shard manager and spawn shards
+    // Create shard manager and spawn initial shards
     gameState.shardManager = new ShardManager();
-    gameState.shardManager.spawnShards(10, canvas.width, canvas.height);
+    gameState.shardManager.spawnShards(20, canvas.width, canvas.height);
 
     gameState.running = true;
     gameLoop();
@@ -62,10 +62,8 @@ function update() {
             gameState.stats.shardsCollected += collectedShards.length;
             console.log(`Collected ${collectedShards.length} shard(s)! Total: ${gameState.stats.shardsCollected}`);
 
-            // Level up for each shard collected
-            for (let i = 0; i < collectedShards.length; i++) {
-                gameState.player.levelUp();
-            }
+            // Add experience for each shard collected (1 shard = 1 exp)
+            gameState.player.addExperience(collectedShards.length);
         }
     }
 }
@@ -91,12 +89,12 @@ function render() {
     ctx.fillStyle = '#00ff00';
     ctx.font = '24px Arial';
     ctx.textAlign = 'center';
-    ctx.fillText('Unhinged Students - Phase 3: Level System', canvas.width / 2, 40);
+    ctx.fillText('Unhinged Students - Phase 3: Advanced Level System', canvas.width / 2, 40);
 
     // Draw instructions
     ctx.fillStyle = '#ffffff';
     ctx.font = '14px Arial';
-    ctx.fillText('Move around to collect shards and level up!', canvas.width / 2, 70);
+    ctx.fillText('Collect shards to gain experience! (Max level: 30, Shards respawn every 5s)', canvas.width / 2, 70);
 
     // Draw shards
     if (gameState.shardManager) {
@@ -115,13 +113,23 @@ function render() {
 
     if (gameState.player) {
         const pos = gameState.player.getPosition();
+        const level = gameState.player.getLevel();
+        const exp = gameState.player.getExperience();
+        const requiredExp = gameState.player.getRequiredExperience();
+
         ctx.fillText(`Position: (${Math.round(pos.x)}, ${Math.round(pos.y)})`, 10, 20);
-        ctx.fillText(`Level: ${gameState.player.getLevel()}`, 10, 40);
+
+        // Level display with max level indicator
+        if (level >= gameState.player.maxLevel) {
+            ctx.fillText(`Level: ${level} (MAX)`, 10, 40);
+        } else {
+            ctx.fillText(`Level: ${level} (${exp}/${requiredExp} exp)`, 10, 40);
+        }
     }
 
     if (gameState.shardManager) {
-        ctx.fillText(`Shards: ${gameState.stats.shardsCollected} / ${gameState.shardManager.getTotalShardCount()}`, 10, 60);
-        ctx.fillText(`Remaining: ${gameState.shardManager.getActiveShardCount()}`, 10, 80);
+        ctx.fillText(`Shards Collected: ${gameState.stats.shardsCollected}`, 10, 60);
+        ctx.fillText(`Active Shards: ${gameState.shardManager.getActiveShardCount()}/${gameState.shardManager.maxActiveShards}`, 10, 80);
     }
 }
 
