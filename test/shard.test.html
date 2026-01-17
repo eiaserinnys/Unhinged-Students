@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Shard Test - Unhinged Students</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f0f0f0;
+        }
+        .test-section {
+            background: white;
+            padding: 20px;
+            margin: 10px 0;
+            border-radius: 5px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        .test-result {
+            padding: 10px;
+            margin: 5px 0;
+            border-radius: 3px;
+        }
+        .pass {
+            background-color: #d4edda;
+            color: #155724;
+        }
+        .fail {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+        canvas {
+            border: 2px solid #333;
+            margin: 10px 0;
+            background-color: #1a1a1a;
+        }
+    </style>
+</head>
+<body>
+    <h1>Shard System Test</h1>
+
+    <div class="test-section">
+        <h2>Test Results</h2>
+        <div id="results"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>Visual Test</h2>
+        <canvas id="testCanvas" width="600" height="400"></canvas>
+        <p>Move near shards to collect them</p>
+        <button id="resetBtn">Reset Shards</button>
+    </div>
+
+    <script src="../src/input.js"></script>
+    <script src="../src/character.js"></script>
+    <script src="../src/shard.js"></script>
+    <script>
+        const canvas = document.getElementById('testCanvas');
+        const ctx = canvas.getContext('2d');
+        const resultsDiv = document.getElementById('results');
+        const resetBtn = document.getElementById('resetBtn');
+
+        let testResults = [];
+        let testChar;
+        let shardManager;
+
+        function addTestResult(name, passed, message) {
+            testResults.push({ name, passed, message });
+            updateResults();
+        }
+
+        function updateResults() {
+            resultsDiv.innerHTML = testResults.map(result =>
+                `<div class="test-result ${result.passed ? 'pass' : 'fail'}">
+                    ${result.passed ? '✓' : '✗'} ${result.name}: ${result.message}
+                </div>`
+            ).join('');
+        }
+
+        // Initialize
+        initInput(canvas);
+
+        // Test 1: Shard class exists
+        addTestResult(
+            'Shard Class',
+            typeof Shard === 'function',
+            typeof Shard === 'function' ? 'Shard class is defined' : 'Shard class not found'
+        );
+
+        // Test 2: ShardManager class exists
+        addTestResult(
+            'ShardManager Class',
+            typeof ShardManager === 'function',
+            typeof ShardManager === 'function' ? 'ShardManager class is defined' : 'ShardManager class not found'
+        );
+
+        // Test 3: Create shard instance
+        let testShard;
+        try {
+            testShard = new Shard(100, 100);
+            addTestResult(
+                'Shard Creation',
+                testShard instanceof Shard,
+                'Shard instance created successfully'
+            );
+        } catch (e) {
+            addTestResult('Shard Creation', false, `Error: ${e.message}`);
+        }
+
+        // Test 4: Shard has required methods
+        if (testShard) {
+            const methods = ['update', 'render', 'checkCollision', 'collect'];
+            methods.forEach(method => {
+                addTestResult(
+                    `Shard.${method}`,
+                    typeof testShard[method] === 'function',
+                    typeof testShard[method] === 'function' ? 'Method exists' : 'Method not found'
+                );
+            });
+        }
+
+        // Test 5: Create ShardManager instance
+        try {
+            shardManager = new ShardManager();
+            addTestResult(
+                'ShardManager Creation',
+                shardManager instanceof ShardManager,
+                'ShardManager instance created successfully'
+            );
+        } catch (e) {
+            addTestResult('ShardManager Creation', false, `Error: ${e.message}`);
+        }
+
+        // Test 6: ShardManager methods
+        if (shardManager) {
+            const methods = ['spawnShards', 'update', 'render', 'checkCollisions', 'getActiveShardCount', 'getTotalShardCount', 'clear'];
+            methods.forEach(method => {
+                addTestResult(
+                    `ShardManager.${method}`,
+                    typeof shardManager[method] === 'function',
+                    typeof shardManager[method] === 'function' ? 'Method exists' : 'Method not found'
+                );
+            });
+        }
+
+        // Test 7: Spawn shards
+        if (shardManager) {
+            shardManager.spawnShards(5, canvas.width, canvas.height);
+            addTestResult(
+                'Spawn Shards',
+                shardManager.getTotalShardCount() === 5,
+                `Spawned ${shardManager.getTotalShardCount()} shards`
+            );
+        }
+
+        // Create test character
+        testChar = new Character(canvas.width / 2, canvas.height / 2, '../asset/image/alien.png', canvas.height);
+
+        // Reset button
+        resetBtn.addEventListener('click', () => {
+            if (shardManager) {
+                shardManager.clear();
+                shardManager.spawnShards(10, canvas.width, canvas.height);
+                console.log('Shards reset');
+            }
+        });
+
+        // Visual test loop
+        let collectedCount = 0;
+        function testLoop() {
+            ctx.fillStyle = '#1a1a1a';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            if (testChar) {
+                testChar.update(canvas);
+                testChar.render(ctx);
+            }
+
+            if (shardManager) {
+                shardManager.update();
+                shardManager.render(ctx);
+
+                if (testChar) {
+                    const collected = shardManager.checkCollisions(testChar);
+                    if (collected.length > 0) {
+                        collectedCount += collected.length;
+                        console.log(`Collected ${collected.length} shard(s)! Total: ${collectedCount}`);
+                    }
+                }
+            }
+
+            // Draw stats
+            ctx.fillStyle = '#ffff00';
+            ctx.font = '14px Arial';
+            ctx.textAlign = 'left';
+            if (shardManager) {
+                ctx.fillText(`Collected: ${collectedCount}`, 10, 20);
+                ctx.fillText(`Remaining: ${shardManager.getActiveShardCount()}`, 10, 40);
+            }
+
+            requestAnimationFrame(testLoop);
+        }
+
+        testLoop();
+    </script>
+</body>
+</html>
