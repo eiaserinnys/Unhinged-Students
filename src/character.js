@@ -1,7 +1,7 @@
 // Character system
 
 class Character {
-    constructor(x, y, imagePath, canvasHeight) {
+    constructor(x, y, imagePath, canvasHeight, playerName = 'Player') {
         this.x = x;
         this.y = y;
         // Size relative to screen height (LOL-style: about 1/8 of screen height)
@@ -12,10 +12,17 @@ class Character {
         this.image = null;
         this.imageLoaded = false;
 
+        // Player info
+        this.playerName = playerName;
+
         // Level system
         this.level = 1;
         this.experience = 0;
         this.maxLevel = 30;
+
+        // HP system (dummy for now)
+        this.maxHP = 100;
+        this.currentHP = 100;
 
         // Load character image
         this.loadImage(imagePath);
@@ -93,6 +100,57 @@ class Character {
             ctx.textAlign = 'center';
             ctx.fillText('Loading...', this.x, this.y);
         }
+
+        // Draw info above character
+        this.renderInfoAbove(ctx);
+    }
+
+    renderInfoAbove(ctx) {
+        const infoY = this.y - this.height / 2 - 10; // Start 10px above character
+
+        // HP Bar
+        const hpBarWidth = this.width;
+        const hpBarHeight = 6;
+        const hpBarX = this.x - hpBarWidth / 2;
+        const hpBarY = infoY - hpBarHeight;
+
+        // HP Bar background (dark gray)
+        ctx.fillStyle = '#333333';
+        ctx.fillRect(hpBarX, hpBarY, hpBarWidth, hpBarHeight);
+
+        // HP Bar fill (green)
+        const hpPercentage = this.currentHP / this.maxHP;
+        ctx.fillStyle = '#00ff00';
+        ctx.fillRect(hpBarX, hpBarY, hpBarWidth * hpPercentage, hpBarHeight);
+
+        // HP Bar border
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(hpBarX, hpBarY, hpBarWidth, hpBarHeight);
+
+        // Player name and level
+        const nameY = hpBarY - 5;
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 12px Arial';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'bottom';
+
+        // Add text shadow for better visibility
+        ctx.shadowColor = '#000000';
+        ctx.shadowBlur = 3;
+        ctx.shadowOffsetX = 1;
+        ctx.shadowOffsetY = 1;
+
+        ctx.fillText(`${this.playerName} Lv.${this.level}`, this.x, nameY);
+
+        // Reset shadow
+        ctx.shadowColor = 'transparent';
+        ctx.shadowBlur = 0;
+        ctx.shadowOffsetX = 0;
+        ctx.shadowOffsetY = 0;
+
+        // Reset text baseline
+        ctx.textBaseline = 'alphabetic';
     }
 
     getPosition() {

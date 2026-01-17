@@ -31,12 +31,13 @@ function init() {
 
     initInput(canvas);
 
-    // Create player character (Alien)
+    // Create player character (Alien) with player name
     gameState.player = new Character(
         canvas.width / 2,
         canvas.height / 2,
         'asset/image/alien.png',
-        canvas.height
+        canvas.height,
+        '마나리' // Player name
     );
 
     // Create shard manager and spawn initial shards
