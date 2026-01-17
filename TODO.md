@@ -33,6 +33,7 @@
   - [x] CLAUDE.md 프로젝트 구조 갱신 규칙
   - [x] 작업 현황은 TODO.md에만 기록 규칙
 - [x] CLAUDE.md에서 작업 현황 제거 및 TODO.md 참조 추가
+- [x] organize-claude-md 스킬 추가
 
 ## 진행 중
 ### 1단계: 게임 플레이 MVP (로컬)

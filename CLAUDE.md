@@ -78,6 +78,11 @@ Unhinged-Students/
 ├── TODO.md                # 작업 목록 및 진행 상황
 ├── README.md              # 프로젝트 설명
 │
+├── .claude/               # Claude Code 설정
+│   ├── rules              # 프로젝트 개발 규칙
+│   └── skills/            # 커스텀 스킬
+│       └── organize-claude-md.md # CLAUDE.md 정리 스킬
+│
 ├── docs/                  # 기획 문서
 │   ├── overview.md        # 게임 전체 개요
 │   ├── characters.md      # 캐릭터 스펙
