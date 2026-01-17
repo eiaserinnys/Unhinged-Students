@@ -33,6 +33,117 @@
 - 불명확한 부분은 사용자에게 질문하기
 - `docs/production.md`의 개발 순서를 따르기
 
+## 🎮 게임 실행 방법
+
+### 로컬 개발 서버 실행
+
+프로젝트는 순수 HTML5 + JavaScript로 개발되어 별도 빌드 없이 실행 가능합니다.
+
+**Python 사용:**
+```bash
+# 프로젝트 루트 디렉토리에서
+python -m http.server 8000
+
+# 브라우저에서 접속
+# http://localhost:8000
+```
+
+**또는 다른 웹 서버 사용:**
+- Live Server (VS Code 확장)
+- `npx http-server`
+- 기타 정적 파일 서버
+
+### 테스트 페이지
+
+개발 중인 기능을 테스트할 수 있는 페이지들:
+
+- **메인 게임**: `http://localhost:8000/index.html`
+  - 현재 구현된 게임 전체를 플레이
+
+- **입력 테스트**: `http://localhost:8000/test/input.test.html`
+  - 키보드, 마우스, 터치 입력 테스트
+
+- **캐릭터 테스트**: `http://localhost:8000/test/character.test.html`
+  - 캐릭터 시스템 단위 테스트
+
+- **샤드 테스트**: `http://localhost:8000/test/shard.test.html`
+  - 샤드 수집 시스템 테스트
+
+## 📁 프로젝트 구조
+
+```
+Unhinged-Students/
+├── index.html              # 메인 게임 HTML
+├── CLAUDE.md              # 개발 가이드라인 (본 문서)
+├── TODO.md                # 작업 목록 및 진행 상황
+├── README.md              # 프로젝트 설명
+│
+├── docs/                  # 기획 문서
+│   ├── overview.md        # 게임 전체 개요
+│   ├── characters.md      # 캐릭터 스펙
+│   └── production.md      # 개발 단계 계획
+│
+├── src/                   # 소스 코드
+│   ├── game.js            # 메인 게임 루프 및 상태 관리
+│   ├── input.js           # 입력 시스템 (키보드/마우스/터치)
+│   ├── character.js       # 캐릭터 클래스 및 로직
+│   └── shard.js           # 샤드(수집 아이템) 시스템
+│
+├── asset/                 # 게임 에셋
+│   └── image/
+│       └── alien.png      # 외계인 캐릭터 스프라이트
+│
+└── test/                  # 테스트 페이지
+    ├── input.test.html    # 입력 시스템 테스트
+    ├── character.test.html # 캐릭터 시스템 테스트
+    └── shard.test.html    # 샤드 시스템 테스트
+```
+
+## 🎯 현재 구현 상태
+
+### ✅ 완료된 기능 (Phase 0-2)
+
+**0단계: 개발 준비**
+- 순수 HTML5 Canvas + JavaScript 환경 구축
+- 게임 루프 및 렌더링 시스템
+- 전체 화면 캔버스 (반응형)
+- 입력 시스템 (WASD/방향키, 마우스, 터치)
+
+**Phase 1: 캐릭터 표시 및 이동**
+- 외계인 캐릭터 이미지 로드 및 표시
+- 캐릭터 이동 (WASD/방향키)
+- 화면 경계 충돌 처리
+- LOL 스타일 캐릭터 크기 조정 (화면 높이의 1/8)
+
+**Phase 2: 샤드 시스템**
+- 샤드 랜덤 생성 (10개)
+- 다이아몬드 모양 렌더링
+- 펄스 애니메이션 + 글로우 효과
+- 충돌 감지 및 수집
+- 수집 통계 UI
+
+### 🚧 진행 중 (Phase 3)
+
+**Phase 3: 레벨 시스템**
+- 레벨 변수 및 시스템
+- 샤드 획득 시 레벨 증가
+- 레벨 UI 표시
+- 레벨업 효과
+
+### 📋 대기 중 (Phase 4-5 및 2단계)
+
+- Phase 4: 체력 및 전투 시스템
+- Phase 5: 사망 및 리스폰
+- 2단계: 로컬 팀전 (5 vs 5)
+- 멀티플레이어 전환
+
+## 🔧 기술 스택
+
+- **프론트엔드**: 순수 HTML5, CSS3, JavaScript (ES6+)
+- **렌더링**: Canvas API
+- **버전 관리**: Git/GitHub
+- **개발 서버**: Python HTTP Server (또는 기타)
+
 ## 핵심 원칙
 
 ### 1. 테스트 주도 개발 (Test-Driven Development)
