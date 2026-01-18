@@ -103,6 +103,14 @@ class NetworkManager {
             }
         });
 
+        // Player attack event (for showing other players' attacks)
+        this.socket.on('playerAttacked', (data) => {
+            const remotePlayer = this.remotePlayers.get(data.playerId);
+            if (remotePlayer) {
+                remotePlayer.startAttackEffect(data.x, data.y, data.range);
+            }
+        });
+
         // Shard events
         this.socket.on('existingShards', (shards) => {
             console.log(`Received ${shards.length} existing shards`);
@@ -132,6 +140,18 @@ class NetworkManager {
                 // Check if it's the local player
                 if (hit.playerId === this.playerId && this.localPlayer) {
                     this.localPlayer.currentHP = hit.currentHP;
+                    this.localPlayer.hitFlashTime = Date.now(); // Trigger hit flash
+
+                    // Start knockback if knockback info is provided
+                    if (hit.knockbackEndX !== undefined && hit.knockbackEndY !== undefined) {
+                        this.localPlayer.startKnockback(
+                            hit.attackerX,
+                            hit.attackerY,
+                            hit.knockbackEndX,
+                            hit.knockbackEndY
+                        );
+                    }
+
                     console.log(`You took damage! HP: ${hit.currentHP}/${hit.maxHP}`);
                 } else {
                     // Update remote player HP
@@ -139,6 +159,17 @@ class NetworkManager {
                     if (player) {
                         player.currentHP = hit.currentHP;
                         player.maxHP = hit.maxHP;
+                        player.hitFlashTime = Date.now(); // Trigger hit flash
+
+                        // Start knockback for remote player
+                        if (hit.knockbackEndX !== undefined && hit.knockbackEndY !== undefined) {
+                            player.startKnockback(
+                                hit.attackerX,
+                                hit.attackerY,
+                                hit.knockbackEndX,
+                                hit.knockbackEndY
+                            );
+                        }
                     }
                 }
             });
@@ -169,6 +200,18 @@ class NetworkManager {
                     if (dummy) {
                         dummy.currentHP = hit.currentHP;
                         dummy.maxHP = hit.maxHP;
+                        dummy.hitFlashTime = Date.now(); // Trigger hit flash
+
+                        // Start knockback for dummy
+                        if (hit.knockbackEndX !== undefined && hit.knockbackEndY !== undefined) {
+                            dummy.startKnockback(
+                                hit.attackerX,
+                                hit.attackerY,
+                                hit.knockbackEndX,
+                                hit.knockbackEndY
+                            );
+                        }
+
                         if (dummy.currentHP <= 0) {
                             dummy.deathTime = Date.now();
                         }
@@ -358,6 +401,27 @@ class RemotePlayer {
         // Death state
         this.isDead = false;
 
+        // Hit flash effect (micro reaction)
+        this.hitFlashTime = 0;
+        this.hitFlashDuration = 100; // 100ms flash duration
+
+        // Knockback system
+        this.isKnockedBack = false;
+        this.knockbackStartTime = 0;
+        this.knockbackDuration = 200; // 200ms knockback animation
+        this.knockbackStartX = 0;
+        this.knockbackStartY = 0;
+        this.knockbackEndX = 0;
+        this.knockbackEndY = 0;
+
+        // Attack effect system
+        this.isAttacking = false;
+        this.attackStartTime = 0;
+        this.attackAnimationTime = 200; // 200ms attack animation
+        this.attackX = 0;
+        this.attackY = 0;
+        this.attackRange = 150;
+
         // Load alien image
         this.loadImage('asset/image/alien.png');
     }
@@ -394,13 +458,39 @@ class RemotePlayer {
     }
 
     update() {
-        // Smooth interpolation to target position
-        this.x += (this.targetX - this.x) * this.interpolationSpeed;
-        this.y += (this.targetY - this.y) * this.interpolationSpeed;
+        const currentTime = Date.now();
+
+        // Handle knockback animation
+        if (this.isKnockedBack) {
+            const elapsed = currentTime - this.knockbackStartTime;
+            if (elapsed >= this.knockbackDuration) {
+                // Knockback finished - snap to end position
+                this.x = this.knockbackEndX;
+                this.y = this.knockbackEndY;
+                this.targetX = this.knockbackEndX;
+                this.targetY = this.knockbackEndY;
+                this.isKnockedBack = false;
+            } else {
+                // Interpolate position during knockback (easeOut for smooth deceleration)
+                const progress = elapsed / this.knockbackDuration;
+                const easeOut = 1 - Math.pow(1 - progress, 3); // Cubic ease out
+                this.x = this.knockbackStartX + (this.knockbackEndX - this.knockbackStartX) * easeOut;
+                this.y = this.knockbackStartY + (this.knockbackEndY - this.knockbackStartY) * easeOut;
+            }
+        } else {
+            // Smooth interpolation to target position
+            this.x += (this.targetX - this.x) * this.interpolationSpeed;
+            this.y += (this.targetY - this.y) * this.interpolationSpeed;
+        }
 
         // Update chat bubble - remove message after duration
         if (this.chatMessage && Date.now() - this.chatMessageTime > this.chatMessageDuration) {
             this.chatMessage = null;
+        }
+
+        // Update attack animation
+        if (this.isAttacking && currentTime - this.attackStartTime >= this.attackAnimationTime) {
+            this.isAttacking = false;
         }
     }
 
@@ -409,6 +499,15 @@ class RemotePlayer {
         if (this.isDead) {
             ctx.save();
             ctx.globalAlpha = 0.3;
+        }
+
+        // Calculate hit flash intensity (1.0 at hit, fades to 0 over hitFlashDuration)
+        let hitFlashIntensity = 0;
+        if (this.hitFlashTime > 0) {
+            const elapsed = Date.now() - this.hitFlashTime;
+            if (elapsed < this.hitFlashDuration) {
+                hitFlashIntensity = 1 - (elapsed / this.hitFlashDuration);
+            }
         }
 
         if (this.imageLoaded && this.image) {
@@ -420,6 +519,20 @@ class RemotePlayer {
                 this.width,
                 this.height
             );
+
+            // Apply hit flash overlay
+            if (hitFlashIntensity > 0) {
+                ctx.save();
+                ctx.globalAlpha = hitFlashIntensity * 0.6;
+                ctx.fillStyle = '#ff0000'; // Red flash
+                ctx.fillRect(
+                    this.x - this.width / 2,
+                    this.y - this.height / 2,
+                    this.width,
+                    this.height
+                );
+                ctx.restore();
+            }
         } else {
             // Fallback: draw colored rectangle if image not loaded
             ctx.fillStyle = '#ff6b6b'; // Red color for remote players
@@ -435,7 +548,24 @@ class RemotePlayer {
             ctx.font = '12px Inter, sans-serif';
             ctx.textAlign = 'center';
             ctx.fillText('Loading...', this.x, this.y);
+
+            // Apply hit flash overlay for fallback
+            if (hitFlashIntensity > 0) {
+                ctx.save();
+                ctx.globalAlpha = hitFlashIntensity * 0.6;
+                ctx.fillStyle = '#ff0000';
+                ctx.fillRect(
+                    this.x - this.width / 2,
+                    this.y - this.height / 2,
+                    this.width,
+                    this.height
+                );
+                ctx.restore();
+            }
         }
+
+        // Draw attack effect if attacking
+        this.renderAttackEffect(ctx);
 
         // Draw info above remote player
         this.renderInfoAbove(ctx);
@@ -446,6 +576,35 @@ class RemotePlayer {
         if (this.isDead) {
             ctx.restore();
         }
+    }
+
+    // Render attack effect for remote player
+    renderAttackEffect(ctx) {
+        if (!this.isAttacking) return;
+
+        // Calculate animation progress (0 to 1)
+        const currentTime = Date.now();
+        const progress = Math.min(1, (currentTime - this.attackStartTime) / this.attackAnimationTime);
+
+        // Draw full attack range circle that fades out
+        const opacity = (1 - progress) * 0.4; // Start at 40% opacity, fade to 0
+
+        ctx.save();
+        ctx.globalAlpha = opacity;
+
+        // Fill with semi-transparent red
+        ctx.fillStyle = '#FF4444';
+        ctx.beginPath();
+        ctx.arc(this.attackX, this.attackY, this.attackRange, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Border for clarity
+        ctx.globalAlpha = opacity * 1.5;
+        ctx.strokeStyle = '#FF0000';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+
+        ctx.restore();
     }
 
     // Calculate required experience for next level (same formula as Character)
@@ -615,5 +774,27 @@ class RemotePlayer {
     // Get position
     getPosition() {
         return { x: this.x, y: this.y };
+    }
+
+    // Start knockback from an attacker position
+    startKnockback(attackerX, attackerY, endX, endY) {
+        // Start knockback animation
+        this.isKnockedBack = true;
+        this.knockbackStartTime = Date.now();
+        this.knockbackStartX = this.x; // Start from current local position
+        this.knockbackStartY = this.y;
+        this.knockbackEndX = endX; // End at server-specified position
+        this.knockbackEndY = endY;
+
+        console.log(`${this.playerName} knocked back from (${this.x.toFixed(1)}, ${this.y.toFixed(1)}) to (${endX.toFixed(1)}, ${endY.toFixed(1)})`);
+    }
+
+    // Start attack effect for visual display
+    startAttackEffect(x, y, range) {
+        this.isAttacking = true;
+        this.attackStartTime = Date.now();
+        this.attackX = x;
+        this.attackY = y;
+        this.attackRange = range;
     }
 }

@@ -35,6 +35,45 @@ const DUMMY_RESPAWN_DELAY = 5000; // 5 seconds
 // Player respawn settings
 const PLAYER_RESPAWN_DELAY = 3000; // 3 seconds
 
+// Knockback settings
+const KNOCKBACK_MIN = 30; // Minimum knockback distance (at max attack range)
+const KNOCKBACK_MAX = 100; // Maximum knockback distance (at 0 distance)
+
+// Calculate knockback distance based on distance from attacker (closer = more knockback)
+function calculateKnockbackDistance(attackRange, distance) {
+    const ratio = Math.min(1, distance / attackRange);
+    return KNOCKBACK_MAX - ratio * (KNOCKBACK_MAX - KNOCKBACK_MIN);
+}
+
+// Calculate knockback end position
+function calculateKnockbackEndPosition(attackerX, attackerY, targetX, targetY, knockbackDistance) {
+    let dirX = targetX - attackerX;
+    let dirY = targetY - attackerY;
+    const distance = Math.sqrt(dirX * dirX + dirY * dirY);
+
+    // If positions are identical, use random direction
+    if (distance < 0.001) {
+        const randomAngle = Math.random() * Math.PI * 2;
+        dirX = Math.cos(randomAngle);
+        dirY = Math.sin(randomAngle);
+    } else {
+        // Normalize direction
+        dirX /= distance;
+        dirY /= distance;
+    }
+
+    // Calculate end position
+    let endX = targetX + dirX * knockbackDistance;
+    let endY = targetY + dirY * knockbackDistance;
+
+    // Clamp to game bounds (with margin for character size)
+    const margin = 50;
+    endX = Math.max(margin, Math.min(GAME_WIDTH - margin, endX));
+    endY = Math.max(margin, Math.min(GAME_HEIGHT - margin, endY));
+
+    return { x: endX, y: endY };
+}
+
 function initializeDummies() {
     const dummyPositions = [
         { x: GAME_WIDTH / 2 + 300, y: GAME_HEIGHT / 2, name: 'Dummy 1' },
@@ -296,6 +335,14 @@ io.on('connection', (socket) => {
         const attackRange = data.range;
         const attackPower = data.power;
 
+        // Broadcast attack to all other players (for visual effect)
+        socket.broadcast.emit('playerAttacked', {
+            playerId: socket.id,
+            x: attackX,
+            y: attackY,
+            range: attackRange
+        });
+
         // Check all players in range
         const hitPlayers = [];
         const killedPlayers = [];
@@ -312,13 +359,26 @@ io.on('connection', (socket) => {
             if (distance <= attackRange) {
                 // Apply damage
                 player.currentHP = Math.max(0, player.currentHP - attackPower);
+
+                // Calculate knockback
+                const knockbackDist = calculateKnockbackDistance(attackRange, distance);
+                const knockbackEnd = calculateKnockbackEndPosition(attackX, attackY, player.x, player.y, knockbackDist);
+
+                // Update player position to knockback end (server-authoritative)
+                player.x = knockbackEnd.x;
+                player.y = knockbackEnd.y;
+
                 hitPlayers.push({
                     playerId: playerId,
                     currentHP: player.currentHP,
-                    maxHP: player.maxHP
+                    maxHP: player.maxHP,
+                    knockbackEndX: knockbackEnd.x,
+                    knockbackEndY: knockbackEnd.y,
+                    attackerX: attackX,
+                    attackerY: attackY
                 });
 
-                console.log(`${socket.id} hit ${playerId} for ${attackPower} damage (HP: ${player.currentHP}/${player.maxHP})`);
+                console.log(`${socket.id} hit ${playerId} for ${attackPower} damage (HP: ${player.currentHP}/${player.maxHP}), knockback to (${knockbackEnd.x.toFixed(1)}, ${knockbackEnd.y.toFixed(1)})`);
 
                 // Check if player died
                 if (player.currentHP <= 0 && !player.isDead) {
@@ -367,13 +427,26 @@ io.on('connection', (socket) => {
             if (distance <= attackRange + 67.5) {
                 // Apply damage
                 dummy.currentHP = Math.max(0, dummy.currentHP - attackPower);
+
+                // Calculate knockback
+                const knockbackDist = calculateKnockbackDistance(attackRange, distance);
+                const knockbackEnd = calculateKnockbackEndPosition(attackX, attackY, dummy.x, dummy.y, knockbackDist);
+
+                // Update dummy position to knockback end (server-authoritative)
+                dummy.x = knockbackEnd.x;
+                dummy.y = knockbackEnd.y;
+
                 hitDummies.push({
                     dummyId: dummy.id,
                     currentHP: dummy.currentHP,
-                    maxHP: dummy.maxHP
+                    maxHP: dummy.maxHP,
+                    knockbackEndX: knockbackEnd.x,
+                    knockbackEndY: knockbackEnd.y,
+                    attackerX: attackX,
+                    attackerY: attackY
                 });
 
-                console.log(`${socket.id} hit ${dummy.name} for ${attackPower} damage (HP: ${dummy.currentHP}/${dummy.maxHP})`);
+                console.log(`${socket.id} hit ${dummy.name} for ${attackPower} damage (HP: ${dummy.currentHP}/${dummy.maxHP}), knockback to (${knockbackEnd.x.toFixed(1)}, ${knockbackEnd.y.toFixed(1)})`);
 
                 // Mark death time if killed
                 if (dummy.currentHP <= 0) {

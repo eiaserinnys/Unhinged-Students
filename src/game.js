@@ -1,4 +1,4 @@
-// Unhinged Students - Main Game File
+// 미친 제자들 (Unhinged Students) - Main Game File
 
 // Canvas setup
 const canvas = document.getElementById('gameCanvas');
@@ -287,7 +287,7 @@ function render() {
     ctx.fillStyle = '#00D9FF';
     ctx.font = '600 28px Inter, sans-serif';
     ctx.textAlign = 'center';
-    ctx.fillText('Unhinged Students - Multiplayer Test', GAME_WIDTH / 2, 40);
+    ctx.fillText('미친 제자들', GAME_WIDTH / 2, 40);
 
     // Draw instructions
     ctx.fillStyle = '#E0E0E0';
