@@ -151,24 +151,31 @@ class NetworkManager {
             }
         });
 
-        // Telepathy tick damage (no knockback, no vignette - just HP update)
+        // Telepathy tick damage (no knockback, but with hit flash and vignette)
         this.socket.on('telepathyTick', (data) => {
             data.hitPlayers.forEach(hit => {
                 if (hit.playerId === this.playerId && this.localPlayer) {
-                    // Update local player HP only (no knockback, no vignette)
+                    // Update local player HP with hit flash and vignette (no knockback)
                     this.localPlayer.currentHP = hit.currentHP;
+                    this.localPlayer.hitFlashTime = Date.now();
+
+                    // Trigger screen vignette effect
+                    if (typeof triggerHitVignette === 'function') {
+                        triggerHitVignette();
+                    }
                 } else {
-                    // Update remote player HP only
+                    // Update remote player HP with hit flash
                     const player = this.remotePlayers.get(hit.playerId);
                     if (player) {
                         player.currentHP = hit.currentHP;
                         player.maxHP = hit.maxHP;
+                        player.hitFlashTime = Date.now();
                     }
                 }
             });
         });
 
-        // Telepathy tick damage for dummies (no knockback)
+        // Telepathy tick damage for dummies (no knockback, with hit flash)
         this.socket.on('telepathyTickDummy', (data) => {
             if (this.dummies) {
                 data.hitDummies.forEach(hit => {
@@ -176,6 +183,7 @@ class NetworkManager {
                     if (dummy) {
                         dummy.currentHP = hit.currentHP;
                         dummy.maxHP = hit.maxHP;
+                        dummy.hitFlashTime = Date.now();
                         if (dummy.currentHP <= 0) {
                             dummy.deathTime = Date.now();
                         }
