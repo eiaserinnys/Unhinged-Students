@@ -116,7 +116,7 @@ class LaserBeamEffect {
         this.dirY = 0;
 
         // Damage
-        this.damage = 22; // 1.5x of original 15
+        this.damage = 44; // 2x damage
         this.hasDealtDamage = false;
     }
 
@@ -416,12 +416,13 @@ class TeleportEffect {
     }
 }
 
-// Telepathy Effect - handles the E skill visual and logic
+// Telepathy Effect - handles the E skill visual and logic (3 second channeling)
 class TelepathyEffect {
     constructor() {
         this.active = false;
         this.startTime = 0;
-        this.duration = 500; // 0.5 second effect
+        this.duration = 3000; // 3 second channeling
+        this.tickInterval = 100; // 0.1 second tick interval
 
         // Position
         this.x = 0;
@@ -429,19 +430,21 @@ class TelepathyEffect {
 
         // Settings
         this.radius = 180; // Larger than attack range
-        this.damagePerTarget = 8; // Damage per enemy hit
-        this.maxHeal = 30; // Maximum heal cap
+        this.damagePerTick = 2; // Damage per tick per enemy (total ~60 over 3 sec with 30 ticks)
+        this.maxHealPerTick = 4; // Max heal per tick
 
-        // Flags
-        this.hasDealtDamage = false;
+        // Tick tracking
+        this.lastTickTime = 0;
+        this.tickCount = 0;
     }
 
     start(playerX, playerY) {
         this.active = true;
         this.startTime = Date.now();
+        this.lastTickTime = 0;
+        this.tickCount = 0;
         this.x = playerX;
         this.y = playerY;
-        this.hasDealtDamage = false;
     }
 
     update(playerX, playerY) {
@@ -457,10 +460,15 @@ class TelepathyEffect {
         }
     }
 
-    // Check if should deal damage (at start)
+    // Check if should deal damage (every 0.1 seconds during channel)
     shouldDealDamage() {
-        if (this.active && !this.hasDealtDamage) {
-            this.hasDealtDamage = true;
+        if (!this.active) return false;
+
+        const elapsed = Date.now() - this.startTime;
+        const expectedTicks = Math.floor(elapsed / this.tickInterval);
+
+        if (expectedTicks > this.tickCount) {
+            this.tickCount = expectedTicks;
             return true;
         }
         return false;
@@ -472,8 +480,8 @@ class TelepathyEffect {
             x: this.x,
             y: this.y,
             radius: this.radius,
-            damagePerTarget: this.damagePerTarget,
-            maxHeal: this.maxHeal
+            damagePerTarget: this.damagePerTick,
+            maxHeal: this.maxHealPerTick
         };
     }
 

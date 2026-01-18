@@ -120,8 +120,8 @@ function init() {
 
     // Add skills: Q = Laser Beam, W = Teleport, E = Telepathy
     gameState.skillManager.addSkill(new Skill('레이저', 'q', 2000, '#FF4444')); // Red - 2sec cooldown
-    gameState.skillManager.addSkill(new Skill('순간이동', 'w', 10000, '#44FF44')); // Green - 10sec cooldown
-    gameState.skillManager.addSkill(new Skill('텔레파시', 'e', 15000, '#8B5CF6')); // Purple - 15sec cooldown
+    gameState.skillManager.addSkill(new Skill('순간이동', 'w', 7000, '#44FF44')); // Green - 7sec cooldown
+    gameState.skillManager.addSkill(new Skill('텔레파시', 'e', 12000, '#8B5CF6')); // Purple - 12sec cooldown
 
     // Initialize skill UI
     gameState.skillUI = new SkillUI(gameState.skillManager);

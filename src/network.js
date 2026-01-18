@@ -555,10 +555,10 @@ class RemotePlayer {
         this.teleportEndY = 0;
         this.teleportDamageRadius = 100;
 
-        // Telepathy effect system
+        // Telepathy effect system (3 second channeling)
         this.telepathyActive = false;
         this.telepathyStartTime = 0;
-        this.telepathyDuration = 500;
+        this.telepathyDuration = 3000;
         this.telepathyX = 0;
         this.telepathyY = 0;
         this.telepathyRadius = 180;
