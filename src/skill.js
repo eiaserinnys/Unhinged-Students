@@ -1,0 +1,221 @@
+// Skill System for Unhinged Students
+
+// Base Skill class
+class Skill {
+    constructor(name, key, cooldown, iconColor = '#666666') {
+        this.name = name;
+        this.key = key;
+        this.cooldown = cooldown; // in milliseconds
+        this.lastUsedTime = 0;
+        this.iconColor = iconColor;
+
+        // Ready flash effect
+        this.readyFlashTime = 0;
+        this.readyFlashDuration = 300; // 300ms flash when ready
+        this.wasOnCooldown = false;
+    }
+
+    isReady() {
+        return Date.now() - this.lastUsedTime >= this.cooldown;
+    }
+
+    use() {
+        if (!this.isReady()) return false;
+        this.lastUsedTime = Date.now();
+        this.wasOnCooldown = true;
+        return true;
+    }
+
+    getRemainingCooldown() {
+        const elapsed = Date.now() - this.lastUsedTime;
+        return Math.max(0, this.cooldown - elapsed);
+    }
+
+    getCooldownProgress() {
+        if (this.lastUsedTime === 0) return 1; // Never used, fully ready
+        const elapsed = Date.now() - this.lastUsedTime;
+        return Math.min(1, elapsed / this.cooldown);
+    }
+
+    // Check and trigger ready flash
+    checkReadyFlash() {
+        if (this.wasOnCooldown && this.isReady()) {
+            this.readyFlashTime = Date.now();
+            this.wasOnCooldown = false;
+            return true;
+        }
+        return false;
+    }
+
+    isFlashing() {
+        if (this.readyFlashTime === 0) return false;
+        return Date.now() - this.readyFlashTime < this.readyFlashDuration;
+    }
+
+    getFlashIntensity() {
+        if (!this.isFlashing()) return 0;
+        const elapsed = Date.now() - this.readyFlashTime;
+        const progress = elapsed / this.readyFlashDuration;
+        // Flash in and out
+        return Math.sin(progress * Math.PI);
+    }
+}
+
+// Skill Manager - handles all skills for a character
+class SkillManager {
+    constructor() {
+        this.skills = new Map(); // key -> Skill
+        this.skillOrder = []; // For UI ordering
+    }
+
+    addSkill(skill) {
+        this.skills.set(skill.key.toLowerCase(), skill);
+        this.skillOrder.push(skill.key.toLowerCase());
+    }
+
+    getSkill(key) {
+        return this.skills.get(key.toLowerCase());
+    }
+
+    useSkill(key) {
+        const skill = this.getSkill(key);
+        if (skill && skill.use()) {
+            return skill;
+        }
+        return null;
+    }
+
+    update() {
+        // Check for ready flashes
+        this.skills.forEach(skill => {
+            skill.checkReadyFlash();
+        });
+    }
+
+    // Get all skills in order for UI
+    getAllSkills() {
+        return this.skillOrder.map(key => this.skills.get(key));
+    }
+}
+
+// Skill UI Renderer
+class SkillUI {
+    constructor(skillManager) {
+        this.skillManager = skillManager;
+
+        // UI Settings
+        this.boxSize = 60; // Size of each skill box
+        this.boxGap = 10; // Gap between boxes
+        this.bottomMargin = 30; // Distance from bottom of screen
+        this.borderRadius = 8;
+    }
+
+    render(ctx, canvasWidth, canvasHeight) {
+        const skills = this.skillManager.getAllSkills();
+        if (skills.length === 0) return;
+
+        // Calculate total width and starting position (centered)
+        const totalWidth = skills.length * this.boxSize + (skills.length - 1) * this.boxGap;
+        const startX = (canvasWidth - totalWidth) / 2;
+        const startY = canvasHeight - this.bottomMargin - this.boxSize;
+
+        skills.forEach((skill, index) => {
+            const x = startX + index * (this.boxSize + this.boxGap);
+            const y = startY;
+            this.renderSkillBox(ctx, skill, x, y);
+        });
+    }
+
+    renderSkillBox(ctx, skill, x, y) {
+        const isReady = skill.isReady();
+        const cooldownProgress = skill.getCooldownProgress();
+        const isFlashing = skill.isFlashing();
+        const flashIntensity = skill.getFlashIntensity();
+
+        ctx.save();
+
+        // Background box
+        ctx.fillStyle = isReady ? '#333333' : '#1a1a1a';
+        this.roundRect(ctx, x, y, this.boxSize, this.boxSize, this.borderRadius);
+        ctx.fill();
+
+        // Cooldown overlay (fills from bottom to top)
+        if (!isReady) {
+            const cooldownHeight = this.boxSize * (1 - cooldownProgress);
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+            ctx.beginPath();
+            // Clip to rounded rect area
+            ctx.save();
+            this.roundRect(ctx, x, y, this.boxSize, this.boxSize, this.borderRadius);
+            ctx.clip();
+            ctx.fillRect(x, y, this.boxSize, cooldownHeight);
+            ctx.restore();
+        }
+
+        // Ready flash effect
+        if (isFlashing) {
+            ctx.fillStyle = `rgba(255, 255, 255, ${flashIntensity * 0.5})`;
+            this.roundRect(ctx, x, y, this.boxSize, this.boxSize, this.borderRadius);
+            ctx.fill();
+        }
+
+        // Border
+        ctx.strokeStyle = isReady ? '#4ECDC4' : '#555555';
+        ctx.lineWidth = isReady ? 2 : 1;
+        this.roundRect(ctx, x, y, this.boxSize, this.boxSize, this.borderRadius);
+        ctx.stroke();
+
+        // Skill icon color indicator (small square)
+        const iconSize = 20;
+        const iconX = x + (this.boxSize - iconSize) / 2;
+        const iconY = y + 8;
+        ctx.fillStyle = isReady ? skill.iconColor : this.darkenColor(skill.iconColor);
+        ctx.fillRect(iconX, iconY, iconSize, iconSize);
+
+        // Key label (Q, W, E)
+        ctx.fillStyle = isReady ? '#ffffff' : '#666666';
+        ctx.font = 'bold 14px Inter, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(skill.key.toUpperCase(), x + this.boxSize / 2, y + this.boxSize / 2 + 5);
+
+        // Skill name (below key)
+        ctx.fillStyle = isReady ? '#cccccc' : '#555555';
+        ctx.font = '9px Inter, sans-serif';
+        ctx.fillText(skill.name, x + this.boxSize / 2, y + this.boxSize - 8);
+
+        // Cooldown text (remaining seconds)
+        if (!isReady) {
+            const remaining = Math.ceil(skill.getRemainingCooldown() / 1000);
+            ctx.fillStyle = '#ffffff';
+            ctx.font = 'bold 18px Inter, sans-serif';
+            ctx.fillText(remaining.toString(), x + this.boxSize / 2, y + this.boxSize / 2 - 8);
+        }
+
+        ctx.restore();
+    }
+
+    // Helper: draw rounded rectangle
+    roundRect(ctx, x, y, width, height, radius) {
+        ctx.beginPath();
+        ctx.moveTo(x + radius, y);
+        ctx.lineTo(x + width - radius, y);
+        ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
+        ctx.lineTo(x + width, y + height - radius);
+        ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
+        ctx.lineTo(x + radius, y + height);
+        ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
+        ctx.lineTo(x, y + radius);
+        ctx.quadraticCurveTo(x, y, x + radius, y);
+        ctx.closePath();
+    }
+
+    // Helper: darken a hex color
+    darkenColor(hex) {
+        const r = parseInt(hex.slice(1, 3), 16);
+        const g = parseInt(hex.slice(3, 5), 16);
+        const b = parseInt(hex.slice(5, 7), 16);
+        const factor = 0.4;
+        return `rgb(${Math.floor(r * factor)}, ${Math.floor(g * factor)}, ${Math.floor(b * factor)})`;
+    }
+}

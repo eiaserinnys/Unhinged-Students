@@ -20,6 +20,8 @@ const gameState = {
     shardManager: null,
     networkManager: null,
     chatManager: null,
+    skillManager: null, // Skill system
+    skillUI: null, // Skill UI renderer
     dummies: [], // Test dummies for combat practice
     stats: {
         shardsCollected: 0
@@ -109,6 +111,19 @@ function init() {
     });
 
     console.log(`Created ${gameState.dummies.length} test dummies`);
+
+    // Initialize skill system
+    gameState.skillManager = new SkillManager();
+
+    // Add skills: Q = Laser Beam, W = Teleport, E = Telepathy
+    gameState.skillManager.addSkill(new Skill('레이저', 'q', 3000, '#FF4444')); // Red - 3sec cooldown
+    gameState.skillManager.addSkill(new Skill('순간이동', 'w', 10000, '#44FF44')); // Green - 10sec cooldown
+    gameState.skillManager.addSkill(new Skill('텔레파시', 'e', 15000, '#8B5CF6')); // Purple - 15sec cooldown
+
+    // Initialize skill UI
+    gameState.skillUI = new SkillUI(gameState.skillManager);
+
+    console.log('Skill system initialized');
 
     // Create shard manager (will be populated by server)
     gameState.shardManager = new ShardManager();
@@ -213,6 +228,11 @@ function update(deltaTime) {
     // Update remote players
     if (gameState.networkManager) {
         gameState.networkManager.update();
+    }
+
+    // Update skill manager (check for ready flashes)
+    if (gameState.skillManager) {
+        gameState.skillManager.update();
     }
 }
 
@@ -391,6 +411,11 @@ function render() {
     if (gameState.shardManager) {
         ctx.fillText(`Shards Collected: ${gameState.stats.shardsCollected}`, 10, 60);
         ctx.fillText(`Active Shards: ${gameState.shardManager.getActiveShardCount()}/${gameState.shardManager.maxActiveShards}`, 10, 80);
+    }
+
+    // Draw skill UI (above game elements, below vignette)
+    if (gameState.skillUI) {
+        gameState.skillUI.render(ctx, GAME_WIDTH, GAME_HEIGHT);
     }
 
     // Draw hit vignette effect (on top of everything)
