@@ -24,6 +24,7 @@ const gameState = {
     skillUI: null, // Skill UI renderer
     laserBeamEffect: null, // Laser beam (Q skill) effect
     teleportEffect: null, // Teleport (W skill) effect
+    telepathyEffect: null, // Telepathy (E skill) effect
     dummies: [], // Test dummies for combat practice
     stats: {
         shardsCollected: 0
@@ -130,6 +131,9 @@ function init() {
 
     // Initialize teleport effect
     gameState.teleportEffect = new TeleportEffect();
+
+    // Initialize telepathy effect
+    gameState.telepathyEffect = new TelepathyEffect();
 
     console.log('Skill system initialized');
 
@@ -268,13 +272,22 @@ function update(deltaTime) {
             }
         }
 
-        // W - Teleport
+        // W - Teleport (to random enemy)
         if (isKeyJustPressed('w') && !gameState.teleportEffect.active) {
             const skill = gameState.skillManager.useSkill('w');
             if (skill) {
                 const playerPos = gameState.player.getPosition();
-                gameState.teleportEffect.start(playerPos.x, playerPos.y, GAME_WIDTH, GAME_HEIGHT);
-                console.log(`Used skill: ${skill.name}`);
+                const target = findRandomEnemy();
+
+                if (target) {
+                    // Teleport to near the target enemy
+                    gameState.teleportEffect.start(playerPos.x, playerPos.y, GAME_WIDTH, GAME_HEIGHT, target.x, target.y);
+                    console.log(`Used skill: ${skill.name} - teleporting to ${target.type} at (${target.x.toFixed(0)}, ${target.y.toFixed(0)})`);
+                } else {
+                    // No enemies, teleport randomly
+                    gameState.teleportEffect.start(playerPos.x, playerPos.y, GAME_WIDTH, GAME_HEIGHT);
+                    console.log(`Used skill: ${skill.name} - random teleport (no enemies)`);
+                }
 
                 // Send teleport event to server for sync
                 if (gameState.networkManager) {
@@ -288,12 +301,22 @@ function update(deltaTime) {
             }
         }
 
-        // E - Telepathy (TODO)
-        if (isKeyJustPressed('e')) {
+        // E - Telepathy
+        if (isKeyJustPressed('e') && !gameState.telepathyEffect.active) {
             const skill = gameState.skillManager.useSkill('e');
             if (skill) {
+                const playerPos = gameState.player.getPosition();
+                gameState.telepathyEffect.start(playerPos.x, playerPos.y);
                 console.log(`Used skill: ${skill.name}`);
-                // TODO: Implement telepathy
+
+                // Send telepathy event to server for sync
+                if (gameState.networkManager) {
+                    gameState.networkManager.sendTelepathy(
+                        playerPos.x,
+                        playerPos.y,
+                        gameState.telepathyEffect.radius
+                    );
+                }
             }
         }
     }
@@ -336,6 +359,26 @@ function update(deltaTime) {
                     area.y,
                     area.radius,
                     area.damage
+                );
+            }
+        }
+    }
+
+    // Update telepathy effect
+    if (gameState.telepathyEffect && gameState.telepathyEffect.active) {
+        const playerPos = gameState.player.getPosition();
+        gameState.telepathyEffect.update(playerPos.x, playerPos.y);
+
+        // Check if telepathy should deal damage and heal
+        if (gameState.telepathyEffect.shouldDealDamage()) {
+            const area = gameState.telepathyEffect.getDamageArea();
+            if (gameState.networkManager) {
+                gameState.networkManager.sendTelepathyDamage(
+                    area.x,
+                    area.y,
+                    area.radius,
+                    area.damagePerTarget,
+                    area.maxHeal
                 );
             }
         }
@@ -532,6 +575,11 @@ function render() {
         gameState.teleportEffect.render(ctx);
     }
 
+    // Draw telepathy effect
+    if (gameState.telepathyEffect) {
+        gameState.telepathyEffect.render(ctx);
+    }
+
     // Draw skill UI (above game elements, below vignette)
     if (gameState.skillUI) {
         gameState.skillUI.render(ctx, GAME_WIDTH, GAME_HEIGHT);
@@ -590,6 +638,34 @@ function findNearestEnemy() {
     }
 
     return nearestEnemy;
+}
+
+// Find a random enemy (dummy or remote player) for teleport targeting
+function findRandomEnemy() {
+    const enemies = [];
+
+    // Collect all alive dummies
+    gameState.dummies.forEach(dummy => {
+        if (dummy.isAlive()) {
+            enemies.push({ x: dummy.x, y: dummy.y, type: 'dummy' });
+        }
+    });
+
+    // Collect all alive remote players
+    if (gameState.networkManager) {
+        gameState.networkManager.remotePlayers.forEach(remotePlayer => {
+            if (remotePlayer.isAlive()) {
+                enemies.push({ x: remotePlayer.x, y: remotePlayer.y, type: 'player' });
+            }
+        });
+    }
+
+    // Return random enemy or null if none
+    if (enemies.length === 0) {
+        return null;
+    }
+
+    return enemies[Math.floor(Math.random() * enemies.length)];
 }
 
 // Start game when page loads

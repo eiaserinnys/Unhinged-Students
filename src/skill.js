@@ -276,7 +276,7 @@ class TeleportEffect {
         this.hasTeleported = false;
     }
 
-    start(playerX, playerY, gameWidth, gameHeight) {
+    start(playerX, playerY, gameWidth, gameHeight, targetX = null, targetY = null) {
         this.active = true;
         this.phase = 'disappear';
         this.startTime = Date.now();
@@ -285,12 +285,25 @@ class TeleportEffect {
         this.hasDealtDamage = false;
         this.hasTeleported = false;
 
-        // Calculate random teleport destination
-        const angle = Math.random() * Math.PI * 2;
-        const distance = this.minDistance + Math.random() * (this.maxDistance - this.minDistance);
+        let newX, newY;
 
-        let newX = playerX + Math.cos(angle) * distance;
-        let newY = playerY + Math.sin(angle) * distance;
+        // If target position is provided, teleport near the target
+        if (targetX !== null && targetY !== null) {
+            // Random angle around the target
+            const angle = Math.random() * Math.PI * 2;
+            // Distance within damage radius (so we can hit them)
+            const distance = Math.random() * (this.damageRadius * 0.8);
+
+            newX = targetX + Math.cos(angle) * distance;
+            newY = targetY + Math.sin(angle) * distance;
+        } else {
+            // Fallback: random teleport if no target
+            const angle = Math.random() * Math.PI * 2;
+            const distance = this.minDistance + Math.random() * (this.maxDistance - this.minDistance);
+
+            newX = playerX + Math.cos(angle) * distance;
+            newY = playerY + Math.sin(angle) * distance;
+        }
 
         // Clamp to game bounds
         const margin = 50;
@@ -398,6 +411,126 @@ class TeleportEffect {
             ctx.arc(this.endX, this.endY, 30 * (1 - progress * 0.5), 0, Math.PI * 2);
             ctx.fill();
         }
+
+        ctx.restore();
+    }
+}
+
+// Telepathy Effect - handles the E skill visual and logic
+class TelepathyEffect {
+    constructor() {
+        this.active = false;
+        this.startTime = 0;
+        this.duration = 500; // 0.5 second effect
+
+        // Position
+        this.x = 0;
+        this.y = 0;
+
+        // Settings
+        this.radius = 180; // Larger than attack range
+        this.damagePerTarget = 8; // Damage per enemy hit
+        this.maxHeal = 30; // Maximum heal cap
+
+        // Flags
+        this.hasDealtDamage = false;
+    }
+
+    start(playerX, playerY) {
+        this.active = true;
+        this.startTime = Date.now();
+        this.x = playerX;
+        this.y = playerY;
+        this.hasDealtDamage = false;
+    }
+
+    update(playerX, playerY) {
+        if (!this.active) return;
+
+        // Follow player position
+        this.x = playerX;
+        this.y = playerY;
+
+        const elapsed = Date.now() - this.startTime;
+        if (elapsed >= this.duration) {
+            this.active = false;
+        }
+    }
+
+    // Check if should deal damage (at start)
+    shouldDealDamage() {
+        if (this.active && !this.hasDealtDamage) {
+            this.hasDealtDamage = true;
+            return true;
+        }
+        return false;
+    }
+
+    // Get damage area
+    getDamageArea() {
+        return {
+            x: this.x,
+            y: this.y,
+            radius: this.radius,
+            damagePerTarget: this.damagePerTarget,
+            maxHeal: this.maxHeal
+        };
+    }
+
+    render(ctx) {
+        if (!this.active) return;
+
+        const elapsed = Date.now() - this.startTime;
+        const progress = elapsed / this.duration;
+
+        ctx.save();
+
+        // Pulsing effect
+        const pulseScale = 1 + Math.sin(progress * Math.PI * 4) * 0.1;
+        const currentRadius = this.radius * pulseScale;
+
+        // Expanding ring effect
+        const ringProgress = Math.min(1, progress * 2);
+        const ringRadius = this.radius * ringProgress;
+
+        // Main purple area (fades out)
+        const mainOpacity = (1 - progress) * 0.3;
+        ctx.globalAlpha = mainOpacity;
+        ctx.fillStyle = '#8B5CF6';
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, currentRadius, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Border ring
+        ctx.globalAlpha = (1 - progress) * 0.8;
+        ctx.strokeStyle = '#A78BFA';
+        ctx.lineWidth = 4;
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, currentRadius, 0, Math.PI * 2);
+        ctx.stroke();
+
+        // Expanding ring (life drain visual)
+        if (ringProgress < 1) {
+            ctx.globalAlpha = (1 - ringProgress) * 0.6;
+            ctx.strokeStyle = '#C4B5FD';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.arc(this.x, this.y, ringRadius, 0, Math.PI * 2);
+            ctx.stroke();
+        }
+
+        // Inner glow
+        const innerGradient = ctx.createRadialGradient(
+            this.x, this.y, 0,
+            this.x, this.y, currentRadius * 0.5
+        );
+        innerGradient.addColorStop(0, `rgba(139, 92, 246, ${(1 - progress) * 0.5})`);
+        innerGradient.addColorStop(1, 'rgba(139, 92, 246, 0)');
+        ctx.globalAlpha = 1;
+        ctx.fillStyle = innerGradient;
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, currentRadius * 0.5, 0, Math.PI * 2);
+        ctx.fill();
 
         ctx.restore();
     }

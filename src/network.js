@@ -135,6 +135,22 @@ class NetworkManager {
             }
         });
 
+        // Telepathy event (for showing other players' telepathy)
+        this.socket.on('playerTelepathy', (data) => {
+            const remotePlayer = this.remotePlayers.get(data.playerId);
+            if (remotePlayer) {
+                remotePlayer.startTelepathy(data.x, data.y, data.radius);
+            }
+        });
+
+        // Telepathy heal event (for local player HP recovery)
+        this.socket.on('telepathyHeal', (data) => {
+            if (data.playerId === this.playerId && this.localPlayer) {
+                this.localPlayer.currentHP = Math.min(this.localPlayer.maxHP, this.localPlayer.currentHP + data.healAmount);
+                console.log(`Telepathy healed ${data.healAmount} HP! Current: ${this.localPlayer.currentHP}/${this.localPlayer.maxHP}`);
+            }
+        });
+
         // Shard events
         this.socket.on('existingShards', (shards) => {
             console.log(`Received ${shards.length} existing shards`);
@@ -366,6 +382,28 @@ class NetworkManager {
         });
     }
 
+    // Send telepathy event to server (for sync with other players)
+    sendTelepathy(x, y, radius) {
+        if (!this.connected || !this.socket) return;
+        this.socket.emit('telepathy', {
+            x: x,
+            y: y,
+            radius: radius
+        });
+    }
+
+    // Send telepathy damage to server
+    sendTelepathyDamage(x, y, radius, damagePerTarget, maxHeal) {
+        if (!this.connected || !this.socket) return;
+        this.socket.emit('telepathyDamage', {
+            x: x,
+            y: y,
+            radius: radius,
+            damagePerTarget: damagePerTarget,
+            maxHeal: maxHeal
+        });
+    }
+
     // Send shard collection to server
     sendShardCollection(shardId) {
         if (!this.connected || !this.socket) return;
@@ -517,6 +555,14 @@ class RemotePlayer {
         this.teleportEndY = 0;
         this.teleportDamageRadius = 100;
 
+        // Telepathy effect system
+        this.telepathyActive = false;
+        this.telepathyStartTime = 0;
+        this.telepathyDuration = 500;
+        this.telepathyX = 0;
+        this.telepathyY = 0;
+        this.telepathyRadius = 180;
+
         // Load alien image
         this.loadImage('asset/image/alien.png');
     }
@@ -593,6 +639,9 @@ class RemotePlayer {
 
         // Update teleport effect
         this.updateTeleport();
+
+        // Update telepathy effect
+        this.updateTelepathy();
     }
 
     render(ctx) {
@@ -673,6 +722,9 @@ class RemotePlayer {
 
         // Draw teleport effect
         this.renderTeleport(ctx);
+
+        // Draw telepathy effect
+        this.renderTelepathy(ctx);
 
         // Draw info above remote player
         this.renderInfoAbove(ctx);
@@ -1083,6 +1135,60 @@ class RemotePlayer {
             ctx.arc(this.teleportEndX, this.teleportEndY, 30 * (1 - progress * 0.5), 0, Math.PI * 2);
             ctx.fill();
         }
+
+        ctx.restore();
+    }
+
+    // Start telepathy effect
+    startTelepathy(x, y, radius) {
+        this.telepathyActive = true;
+        this.telepathyStartTime = Date.now();
+        this.telepathyX = x;
+        this.telepathyY = y;
+        this.telepathyRadius = radius;
+    }
+
+    // Update telepathy effect state
+    updateTelepathy() {
+        if (!this.telepathyActive) return;
+
+        const elapsed = Date.now() - this.telepathyStartTime;
+        if (elapsed >= this.telepathyDuration) {
+            this.telepathyActive = false;
+        }
+
+        // Follow player position
+        this.telepathyX = this.x;
+        this.telepathyY = this.y;
+    }
+
+    // Render telepathy effect
+    renderTelepathy(ctx) {
+        if (!this.telepathyActive) return;
+
+        const elapsed = Date.now() - this.telepathyStartTime;
+        const progress = elapsed / this.telepathyDuration;
+
+        ctx.save();
+
+        // Pulsing effect
+        const pulseScale = 1 + Math.sin(progress * Math.PI * 4) * 0.1;
+        const currentRadius = this.telepathyRadius * pulseScale;
+
+        // Main purple area
+        ctx.globalAlpha = (1 - progress) * 0.3;
+        ctx.fillStyle = '#8B5CF6';
+        ctx.beginPath();
+        ctx.arc(this.telepathyX, this.telepathyY, currentRadius, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Border ring
+        ctx.globalAlpha = (1 - progress) * 0.8;
+        ctx.strokeStyle = '#A78BFA';
+        ctx.lineWidth = 4;
+        ctx.beginPath();
+        ctx.arc(this.telepathyX, this.telepathyY, currentRadius, 0, Math.PI * 2);
+        ctx.stroke();
 
         ctx.restore();
     }
