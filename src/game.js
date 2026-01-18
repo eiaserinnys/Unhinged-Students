@@ -234,6 +234,22 @@ function update(deltaTime) {
     if (gameState.skillManager) {
         gameState.skillManager.update();
     }
+
+    // Handle skill input (Q, W, E) - only when not chatting and player is alive
+    if (gameState.skillManager && !isChatting && !isPlayerDead) {
+        // Check for skill key presses
+        const skillKeys = ['q', 'w', 'e'];
+        skillKeys.forEach(key => {
+            if (isKeyJustPressed(key)) {
+                const skill = gameState.skillManager.useSkill(key);
+                if (skill) {
+                    console.log(`Used skill: ${skill.name}`);
+                    // TODO: Implement actual skill effects
+                    // For now, just trigger the cooldown
+                }
+            }
+        });
+    }
 }
 
 // Game loop
@@ -251,6 +267,9 @@ function gameLoop(currentTime) {
     if (gameState.deltaTime > 0.1) {
         gameState.deltaTime = 0.1;
     }
+
+    // Update input state (must be called before checking inputs)
+    updateInput();
 
     // Clear canvas
     ctx.fillStyle = '#1a1a1a';

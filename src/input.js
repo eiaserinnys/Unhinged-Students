@@ -2,6 +2,8 @@
 
 const Input = {
     keys: {},
+    keysJustPressed: {}, // Track keys that were just pressed this frame
+    keysPrevious: {}, // Previous frame's key state
     mouse: {
         x: 0,
         y: 0,
@@ -72,9 +74,24 @@ function initInput(canvas) {
     console.log('Input system initialized');
 }
 
+// Update input state (call once per frame before checking inputs)
+function updateInput() {
+    // Calculate which keys were just pressed this frame
+    for (const key in Input.keys) {
+        Input.keysJustPressed[key] = Input.keys[key] && !Input.keysPrevious[key];
+    }
+    // Store current state as previous for next frame
+    Input.keysPrevious = { ...Input.keys };
+}
+
 // Helper functions
 function isKeyPressed(key) {
     return Input.keys[key.toLowerCase()] === true;
+}
+
+// Check if key was just pressed this frame (not held)
+function isKeyJustPressed(key) {
+    return Input.keysJustPressed[key.toLowerCase()] === true;
 }
 
 function isMousePressed() {
