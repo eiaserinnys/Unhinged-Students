@@ -142,6 +142,11 @@ class NetworkManager {
                     this.localPlayer.currentHP = hit.currentHP;
                     this.localPlayer.hitFlashTime = Date.now(); // Trigger hit flash
 
+                    // Trigger screen vignette effect
+                    if (typeof triggerHitVignette === 'function') {
+                        triggerHitVignette();
+                    }
+
                     // Start knockback if knockback info is provided
                     if (hit.knockbackEndX !== undefined && hit.knockbackEndY !== undefined) {
                         this.localPlayer.startKnockback(

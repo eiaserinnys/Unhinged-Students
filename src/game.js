@@ -26,7 +26,10 @@ const gameState = {
     },
     lastFrameTime: 0,
     deltaTime: 0,
-    lastAttackSentTime: 0 // Track last attack sent to server
+    lastAttackSentTime: 0, // Track last attack sent to server
+    // Hit vignette effect
+    hitVignetteTime: 0,
+    hitVignetteDuration: 300 // 300ms vignette effect
 };
 
 // Resize canvas to fill window while maintaining 16:9 aspect ratio
@@ -246,6 +249,39 @@ function gameLoop(currentTime) {
     requestAnimationFrame(gameLoop);
 }
 
+// Render hit vignette effect (red screen edges when damaged)
+function renderHitVignette(ctx) {
+    if (gameState.hitVignetteTime === 0) return;
+
+    const elapsed = Date.now() - gameState.hitVignetteTime;
+    if (elapsed >= gameState.hitVignetteDuration) {
+        gameState.hitVignetteTime = 0;
+        return;
+    }
+
+    // Calculate opacity (starts strong, fades out)
+    const progress = elapsed / gameState.hitVignetteDuration;
+    const opacity = (1 - progress) * 0.6;
+
+    ctx.save();
+
+    // Create radial gradient from center (transparent) to edges (red)
+    const centerX = GAME_WIDTH / 2;
+    const centerY = GAME_HEIGHT / 2;
+    const innerRadius = Math.min(GAME_WIDTH, GAME_HEIGHT) * 0.3;
+    const outerRadius = Math.max(GAME_WIDTH, GAME_HEIGHT) * 0.8;
+
+    const gradient = ctx.createRadialGradient(centerX, centerY, innerRadius, centerX, centerY, outerRadius);
+    gradient.addColorStop(0, 'rgba(255, 0, 0, 0)');
+    gradient.addColorStop(0.5, `rgba(255, 0, 0, ${opacity * 0.3})`);
+    gradient.addColorStop(1, `rgba(255, 0, 0, ${opacity})`);
+
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
+
+    ctx.restore();
+}
+
 // Render death screen with respawn timer
 function renderDeathScreen(ctx) {
     // Dark overlay
@@ -356,6 +392,14 @@ function render() {
         ctx.fillText(`Shards Collected: ${gameState.stats.shardsCollected}`, 10, 60);
         ctx.fillText(`Active Shards: ${gameState.shardManager.getActiveShardCount()}/${gameState.shardManager.maxActiveShards}`, 10, 80);
     }
+
+    // Draw hit vignette effect (on top of everything)
+    renderHitVignette(ctx);
+}
+
+// Trigger hit vignette effect (called from network.js when local player takes damage)
+function triggerHitVignette() {
+    gameState.hitVignetteTime = Date.now();
 }
 
 // Start game when page loads
