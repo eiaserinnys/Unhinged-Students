@@ -226,7 +226,7 @@ io.on('connection', (socket) => {
     socket.on('playerMove', (data) => {
         const existingPlayer = players.get(socket.id);
 
-        // Update player data, preserving HP
+        // Update player data, preserving HP and death state
         players.set(socket.id, {
             playerId: socket.id,
             x: data.x,
@@ -235,7 +235,9 @@ io.on('connection', (socket) => {
             level: data.level || 1,
             experience: data.experience || 0,
             currentHP: existingPlayer ? existingPlayer.currentHP : 100,
-            maxHP: existingPlayer ? existingPlayer.maxHP : 100
+            maxHP: existingPlayer ? existingPlayer.maxHP : 100,
+            deathTime: existingPlayer ? existingPlayer.deathTime : 0,
+            isDead: existingPlayer ? existingPlayer.isDead : false
         });
 
         // Broadcast to other players
