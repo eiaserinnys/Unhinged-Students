@@ -15,6 +15,7 @@ class Character {
         // Player info
         this.playerName = playerName;
         this.isDummy = isDummy; // Enemy/dummy flag
+        this.isDead = false; // Death state for players
 
         // Level system
         this.level = 1;
@@ -185,6 +186,26 @@ class Character {
         ctx.strokeStyle = '#ffffff';
         ctx.lineWidth = 1;
         ctx.strokeRect(hpBarX, hpBarY, hpBarWidth, hpBarHeight);
+
+        // Experience Bar (below HP bar) - only for non-dummies
+        if (!this.isDummy) {
+            const expBarHeight = 4;
+            const expBarY = hpBarY + hpBarHeight + 2;
+
+            // EXP Bar background
+            ctx.fillStyle = '#333333';
+            ctx.fillRect(hpBarX, expBarY, hpBarWidth, expBarHeight);
+
+            // EXP Bar fill
+            const requiredExp = this.getRequiredExperience();
+            const expPercentage = this.level >= this.maxLevel ? 1 : (requiredExp > 0 ? this.experience / requiredExp : 0);
+            ctx.fillStyle = '#00D9FF'; // Cyan for experience
+            ctx.fillRect(hpBarX, expBarY, hpBarWidth * expPercentage, expBarHeight);
+
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 1;
+            ctx.strokeRect(hpBarX, expBarY, hpBarWidth, expBarHeight);
+        }
 
         // Player name and level
         const nameY = hpBarY - 5;

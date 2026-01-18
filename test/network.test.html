@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Network Test - Unhinged Students</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f0f0f0;
+        }
+        .test-section {
+            background: white;
+            padding: 20px;
+            margin: 10px 0;
+            border-radius: 5px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        .test-result {
+            padding: 10px;
+            margin: 5px 0;
+            border-radius: 3px;
+        }
+        .pass {
+            background-color: #d4edda;
+            color: #155724;
+        }
+        .fail {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+        canvas {
+            border: 2px solid #333;
+            margin: 10px 0;
+            background-color: #1a1a1a;
+        }
+        .controls {
+            margin: 10px 0;
+            padding: 10px;
+            background-color: #e9ecef;
+            border-radius: 5px;
+        }
+        .controls button {
+            margin: 5px;
+            padding: 10px 20px;
+            font-size: 14px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <h1>Network System Test</h1>
+
+    <div class="test-section">
+        <h2>Unit Test Results</h2>
+        <div id="results"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>Visual Test - Remote Player Interpolation</h2>
+        <div class="controls">
+            <p><strong>Controls:</strong></p>
+            <p>Click on canvas to move remote player target position</p>
+            <p>Watch smooth interpolation between positions</p>
+            <button id="resetBtn">Reset Position</button>
+            <button id="chatBtn">Send Test Chat</button>
+            <button id="damageBtn">Take Damage</button>
+        </div>
+        <canvas id="testCanvas" width="800" height="600"></canvas>
+    </div>
+
+    <script src="../src/network.js"></script>
+    <script>
+        const canvas = document.getElementById('testCanvas');
+        const ctx = canvas.getContext('2d');
+        const resultsDiv = document.getElementById('results');
+
+        let testResults = [];
+        let testRemotePlayer;
+
+        function addTestResult(name, passed, message) {
+            testResults.push({ name, passed, message });
+            updateResults();
+        }
+
+        function updateResults() {
+            resultsDiv.innerHTML = testResults.map(result =>
+                `<div class="test-result ${result.passed ? 'pass' : 'fail'}">
+                    ${result.passed ? '✓' : '✗'} ${result.name}: ${result.message}
+                </div>`
+            ).join('');
+        }
+
+        // ==================== Unit Tests ====================
+
+        // Test 1: NetworkManager class exists
+        addTestResult(
+            'NetworkManager Class',
+            typeof NetworkManager === 'function',
+            typeof NetworkManager === 'function' ? 'Class is defined' : 'Class not found'
+        );
+
+        // Test 2: RemotePlayer class exists
+        addTestResult(
+            'RemotePlayer Class',
+            typeof RemotePlayer === 'function',
+            typeof RemotePlayer === 'function' ? 'Class is defined' : 'Class not found'
+        );
+
+        // Test 3: Create NetworkManager instance
+        let networkManager;
+        try {
+            networkManager = new NetworkManager();
+            addTestResult(
+                'NetworkManager Creation',
+                networkManager instanceof NetworkManager,
+                'Instance created successfully'
+            );
+        } catch (e) {
+            addTestResult('NetworkManager Creation', false, `Error: ${e.message}`);
+        }
+
+        // Test 4: NetworkManager has required properties
+        if (networkManager) {
+            const props = ['socket', 'playerId', 'connected', 'remotePlayers', 'updateRate'];
+            props.forEach(prop => {
+                addTestResult(
+                    `NetworkManager.${prop}`,
+                    networkManager.hasOwnProperty(prop),
+                    networkManager.hasOwnProperty(prop) ? `Exists` : 'Not found'
+                );
+            });
+        }
+
+        // Test 5: NetworkManager has required methods
+        if (networkManager) {
+            const methods = ['connect', 'sendPlayerPosition', 'sendAttack', 'sendShardCollection', 'update', 'render'];
+            methods.forEach(method => {
+                addTestResult(
+                    `NetworkManager.${method}()`,
+                    typeof networkManager[method] === 'function',
+                    typeof networkManager[method] === 'function' ? 'Method exists' : 'Method not found'
+                );
+            });
+        }
+
+        // Test 6: Create RemotePlayer instance
+        try {
+            testRemotePlayer = new RemotePlayer('test-player-id', 400, 300, 'TestPlayer', 5);
+            addTestResult(
+                'RemotePlayer Creation',
+                testRemotePlayer instanceof RemotePlayer,
+                'Instance created successfully'
+            );
+        } catch (e) {
+            addTestResult('RemotePlayer Creation', false, `Error: ${e.message}`);
+        }
+
+        // Test 7: RemotePlayer has required properties
+        if (testRemotePlayer) {
+            const props = ['playerId', 'x', 'y', 'targetX', 'targetY', 'playerName', 'level', 'interpolationSpeed', 'currentHP', 'maxHP'];
+            props.forEach(prop => {
+                const value = testRemotePlayer[prop];
+                addTestResult(
+                    `RemotePlayer.${prop}`,
+                    testRemotePlayer.hasOwnProperty(prop),
+                    testRemotePlayer.hasOwnProperty(prop) ? `Value: ${value}` : 'Not found'
+                );
+            });
+        }
+
+        // Test 8: RemotePlayer has required methods
+        if (testRemotePlayer) {
+            const methods = ['updatePosition', 'update', 'render', 'setChatMessage', 'takeDamage', 'isAlive', 'getBounds', 'getPosition'];
+            methods.forEach(method => {
+                addTestResult(
+                    `RemotePlayer.${method}()`,
+                    typeof testRemotePlayer[method] === 'function',
+                    typeof testRemotePlayer[method] === 'function' ? 'Method exists' : 'Method not found'
+                );
+            });
+        }
+
+        // Test 9: Position interpolation
+        if (testRemotePlayer) {
+            const initialX = testRemotePlayer.x;
+            testRemotePlayer.updatePosition(500, 400);
+            testRemotePlayer.update();
+
+            const movedTowardsTarget = testRemotePlayer.x > initialX;
+            addTestResult(
+                'Position Interpolation',
+                movedTowardsTarget,
+                movedTowardsTarget ? `Moved from ${initialX} towards 500` : 'Did not interpolate'
+            );
+        }
+
+        // Test 10: Chat bubble system
+        if (testRemotePlayer) {
+            testRemotePlayer.setChatMessage('Hello!');
+            addTestResult(
+                'Chat Bubble Set',
+                testRemotePlayer.chatMessage === 'Hello!',
+                testRemotePlayer.chatMessage === 'Hello!' ? 'Message set correctly' : 'Message not set'
+            );
+        }
+
+        // Test 11: HP system - takeDamage
+        if (testRemotePlayer) {
+            const initialHP = testRemotePlayer.currentHP;
+            testRemotePlayer.takeDamage(30);
+            addTestResult(
+                'Take Damage',
+                testRemotePlayer.currentHP === initialHP - 30,
+                `HP reduced from ${initialHP} to ${testRemotePlayer.currentHP}`
+            );
+        }
+
+        // Test 12: HP system - isAlive
+        if (testRemotePlayer) {
+            testRemotePlayer.currentHP = 50;
+            addTestResult(
+                'isAlive() when HP > 0',
+                testRemotePlayer.isAlive() === true,
+                'Returns true when HP > 0'
+            );
+
+            testRemotePlayer.currentHP = 0;
+            addTestResult(
+                'isAlive() when HP = 0',
+                testRemotePlayer.isAlive() === false,
+                'Returns false when HP = 0'
+            );
+
+            // Reset for visual test
+            testRemotePlayer.currentHP = testRemotePlayer.maxHP;
+        }
+
+        // Test 13: getBounds returns correct format
+        if (testRemotePlayer) {
+            const bounds = testRemotePlayer.getBounds();
+            const hasAllProps = bounds && 'left' in bounds && 'right' in bounds && 'top' in bounds && 'bottom' in bounds;
+            addTestResult(
+                'getBounds()',
+                hasAllProps,
+                hasAllProps ? 'Returns correct bounds object' : 'Missing bounds properties'
+            );
+        }
+
+        // Test 14: getPosition returns correct format
+        if (testRemotePlayer) {
+            const pos = testRemotePlayer.getPosition();
+            const hasAllProps = pos && typeof pos.x === 'number' && typeof pos.y === 'number';
+            addTestResult(
+                'getPosition()',
+                hasAllProps,
+                hasAllProps ? `Returns: {x: ${pos.x}, y: ${pos.y}}` : 'Invalid position format'
+            );
+        }
+
+        // Reset testRemotePlayer for visual test
+        testRemotePlayer = new RemotePlayer('visual-test-player', 400, 300, 'VisualTestPlayer', 10);
+
+        // ==================== Visual Test ====================
+
+        // Click handler for moving remote player target
+        canvas.addEventListener('click', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            testRemotePlayer.updatePosition(x, y);
+            console.log(`Target position set to (${x}, ${y})`);
+        });
+
+        // Button handlers
+        document.getElementById('resetBtn').addEventListener('click', () => {
+            testRemotePlayer.x = 400;
+            testRemotePlayer.y = 300;
+            testRemotePlayer.targetX = 400;
+            testRemotePlayer.targetY = 300;
+            testRemotePlayer.currentHP = testRemotePlayer.maxHP;
+            console.log('Position reset');
+        });
+
+        document.getElementById('chatBtn').addEventListener('click', () => {
+            testRemotePlayer.setChatMessage('Hello World!');
+            console.log('Chat message set');
+        });
+
+        document.getElementById('damageBtn').addEventListener('click', () => {
+            testRemotePlayer.takeDamage(25);
+            console.log(`Damage taken, HP: ${testRemotePlayer.currentHP}/${testRemotePlayer.maxHP}`);
+        });
+
+        // Visual test loop
+        function testLoop() {
+            // Clear canvas
+            ctx.fillStyle = '#1a1a1a';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Update and render remote player
+            if (testRemotePlayer) {
+                testRemotePlayer.update();
+                testRemotePlayer.render(ctx);
+            }
+
+            // Draw target position indicator
+            ctx.strokeStyle = '#ffff00';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.arc(testRemotePlayer.targetX, testRemotePlayer.targetY, 10, 0, Math.PI * 2);
+            ctx.stroke();
+
+            // Draw stats
+            ctx.fillStyle = '#ffffff';
+            ctx.font = '14px Arial';
+            ctx.textAlign = 'left';
+            ctx.fillText(`Current Position: (${Math.round(testRemotePlayer.x)}, ${Math.round(testRemotePlayer.y)})`, 10, 20);
+            ctx.fillText(`Target Position: (${Math.round(testRemotePlayer.targetX)}, ${Math.round(testRemotePlayer.targetY)})`, 10, 40);
+            ctx.fillText(`HP: ${testRemotePlayer.currentHP}/${testRemotePlayer.maxHP}`, 10, 60);
+            ctx.fillText(`Interpolation Speed: ${testRemotePlayer.interpolationSpeed}`, 10, 80);
+
+            // Calculate distance to target
+            const dx = testRemotePlayer.targetX - testRemotePlayer.x;
+            const dy = testRemotePlayer.targetY - testRemotePlayer.y;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+            ctx.fillText(`Distance to Target: ${Math.round(distance)}px`, 10, 100);
+
+            requestAnimationFrame(testLoop);
+        }
+
+        requestAnimationFrame(testLoop);
+    </script>
+</body>
+</html>

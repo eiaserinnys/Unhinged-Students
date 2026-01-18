@@ -137,10 +137,11 @@ function init() {
 
 // Update game logic
 function update(deltaTime) {
-    // Don't update player movement if chat is focused
+    // Don't update player movement if chat is focused or player is dead
     const isChatting = gameState.chatManager && gameState.chatManager.isChatInputFocused();
+    const isPlayerDead = gameState.player && gameState.player.isDead;
 
-    if (gameState.player && !isChatting) {
+    if (gameState.player && !isChatting && !isPlayerDead) {
         // Pass game world dimensions and delta time
         gameState.player.update({ width: GAME_WIDTH, height: GAME_HEIGHT }, deltaTime);
 
@@ -151,7 +152,8 @@ function update(deltaTime) {
                 pos.x,
                 pos.y,
                 gameState.player.playerName,
-                gameState.player.level
+                gameState.player.level,
+                gameState.player.experience
             );
         }
     }
@@ -185,7 +187,8 @@ function update(deltaTime) {
     });
 
     // Send attack to server (server handles all damage calculations)
-    if (gameState.player && gameState.player.isAttacking) {
+    // Only allow attacks if player is alive
+    if (gameState.player && gameState.player.isAttacking && !gameState.player.isDead) {
         const attackArea = gameState.player.getAttackArea();
 
         // Send attack to server once per attack (when attack just started)
@@ -243,6 +246,41 @@ function gameLoop(currentTime) {
     requestAnimationFrame(gameLoop);
 }
 
+// Render death screen with respawn timer
+function renderDeathScreen(ctx) {
+    // Dark overlay
+    ctx.save();
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+    ctx.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
+
+    // Calculate remaining respawn time
+    const player = gameState.player;
+    const elapsedTime = Date.now() - player.deathTime;
+    const remainingTime = Math.max(0, (player.respawnDelay - elapsedTime) / 1000);
+
+    // Death message
+    ctx.fillStyle = '#FF6B6B';
+    ctx.font = '600 72px Inter, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+
+    ctx.shadowColor = '#000000';
+    ctx.shadowBlur = 10;
+    ctx.shadowOffsetX = 2;
+    ctx.shadowOffsetY = 2;
+
+    ctx.fillText('YOU DIED', GAME_WIDTH / 2, GAME_HEIGHT / 2 - 50);
+
+    // Respawn timer
+    ctx.fillStyle = '#ffffff';
+    ctx.font = '600 36px Inter, sans-serif';
+    ctx.fillText(`Respawning in ${remainingTime.toFixed(1)}s`, GAME_WIDTH / 2, GAME_HEIGHT / 2 + 30);
+
+    ctx.shadowColor = 'transparent';
+    ctx.shadowBlur = 0;
+    ctx.restore();
+}
+
 // Render function
 function render() {
     // Draw title (in game world coordinates)
@@ -277,7 +315,20 @@ function render() {
 
     // Draw local player (on top of remote players and dummies)
     if (gameState.player) {
-        gameState.player.render(ctx);
+        if (gameState.player.isDead) {
+            // Render dead player as ghost (semi-transparent)
+            ctx.save();
+            ctx.globalAlpha = 0.3;
+            gameState.player.render(ctx);
+            ctx.restore();
+        } else {
+            gameState.player.render(ctx);
+        }
+    }
+
+    // Draw death screen overlay if player is dead
+    if (gameState.player && gameState.player.isDead) {
+        renderDeathScreen(ctx);
     }
 
     // Draw UI

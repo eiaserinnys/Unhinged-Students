@@ -32,6 +32,9 @@ let shardIdCounter = 0;
 const dummies = new Map(); // Map of dummyId -> {id, x, y, name, currentHP, maxHP, deathTime, respawnDelay}
 const DUMMY_RESPAWN_DELAY = 5000; // 5 seconds
 
+// Player respawn settings
+const PLAYER_RESPAWN_DELAY = 3000; // 3 seconds
+
 function initializeDummies() {
     const dummyPositions = [
         { x: GAME_WIDTH / 2 + 300, y: GAME_HEIGHT / 2, name: 'Dummy 1' },
@@ -80,6 +83,36 @@ function checkDummyRespawn() {
                     y: dummy.y,
                     currentHP: dummy.currentHP,
                     maxHP: dummy.maxHP
+                });
+            }
+        }
+    });
+}
+
+function checkPlayerRespawn() {
+    const currentTime = Date.now();
+
+    players.forEach((player, playerId) => {
+        if (player.isDead && player.deathTime > 0) {
+            const elapsedTime = currentTime - player.deathTime;
+
+            if (elapsedTime >= PLAYER_RESPAWN_DELAY) {
+                // Respawn player
+                player.currentHP = player.maxHP;
+                player.x = 960; // Center of game world
+                player.y = 540;
+                player.deathTime = 0;
+                player.isDead = false;
+
+                console.log(`Player ${playerId} respawned`);
+
+                // Broadcast respawn to all clients
+                io.emit('playerRespawned', {
+                    playerId: playerId,
+                    x: player.x,
+                    y: player.y,
+                    currentHP: player.currentHP,
+                    maxHP: player.maxHP
                 });
             }
         }
@@ -135,11 +168,12 @@ function checkShardRespawn() {
     }
 }
 
-// Start shard and dummy systems
+// Start shard, dummy, and player respawn systems
 initializeShards();
 initializeDummies();
 setInterval(checkShardRespawn, 1000); // Check every second
 setInterval(checkDummyRespawn, 1000); // Check dummy respawn every second
+setInterval(checkPlayerRespawn, 500); // Check player respawn more frequently
 
 io.on('connection', (socket) => {
     console.log(`Player connected: ${socket.id}`);
@@ -168,8 +202,11 @@ io.on('connection', (socket) => {
         y: 540,
         playerName: 'Player',
         level: 1,
+        experience: 0,
         currentHP: 100,
-        maxHP: 100
+        maxHP: 100,
+        deathTime: 0,
+        isDead: false
     });
 
     // Notify others about new player
@@ -179,8 +216,10 @@ io.on('connection', (socket) => {
         y: 540,
         playerName: 'Player',
         level: 1,
+        experience: 0,
         currentHP: 100,
-        maxHP: 100
+        maxHP: 100,
+        isDead: false
     });
 
     // Handle player position updates
@@ -194,6 +233,7 @@ io.on('connection', (socket) => {
             y: data.y,
             playerName: data.playerName || 'Player',
             level: data.level || 1,
+            experience: data.experience || 0,
             currentHP: existingPlayer ? existingPlayer.currentHP : 100,
             maxHP: existingPlayer ? existingPlayer.maxHP : 100
         });
@@ -204,7 +244,8 @@ io.on('connection', (socket) => {
             x: data.x,
             y: data.y,
             playerName: data.playerName,
-            level: data.level
+            level: data.level,
+            experience: data.experience
         });
     });
 
@@ -255,8 +296,10 @@ io.on('connection', (socket) => {
 
         // Check all players in range
         const hitPlayers = [];
+        const killedPlayers = [];
         players.forEach((player, playerId) => {
             if (playerId === socket.id) return; // Don't hit yourself
+            if (player.isDead) return; // Skip dead players
 
             // Calculate distance
             const dx = player.x - attackX;
@@ -274,6 +317,18 @@ io.on('connection', (socket) => {
                 });
 
                 console.log(`${socket.id} hit ${playerId} for ${attackPower} damage (HP: ${player.currentHP}/${player.maxHP})`);
+
+                // Check if player died
+                if (player.currentHP <= 0 && !player.isDead) {
+                    player.isDead = true;
+                    player.deathTime = Date.now();
+                    killedPlayers.push({
+                        playerId: playerId,
+                        killedBy: socket.id,
+                        respawnDelay: PLAYER_RESPAWN_DELAY
+                    });
+                    console.log(`${playerId} has been killed by ${socket.id}!`);
+                }
             }
         });
 
@@ -282,6 +337,17 @@ io.on('connection', (socket) => {
             io.emit('playerDamaged', {
                 attackerId: socket.id,
                 hitPlayers: hitPlayers
+            });
+        }
+
+        // Broadcast deaths to all players
+        if (killedPlayers.length > 0) {
+            killedPlayers.forEach(killed => {
+                io.emit('playerDied', {
+                    playerId: killed.playerId,
+                    killedBy: killed.killedBy,
+                    respawnDelay: killed.respawnDelay
+                });
             });
         }
 

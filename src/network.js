@@ -64,6 +64,7 @@ class NetworkManager {
             if (remotePlayer) {
                 remotePlayer.updatePosition(data.x, data.y);
                 remotePlayer.level = data.level || 1;
+                remotePlayer.experience = data.experience || 0;
                 remotePlayer.playerName = data.playerName || 'Player';
             }
         });
@@ -189,6 +190,52 @@ class NetworkManager {
                 }
             }
         });
+
+        // Player death event
+        this.socket.on('playerDied', (data) => {
+            console.log(`Player ${data.playerId} died, killed by ${data.killedBy}`);
+
+            // Check if it's the local player
+            if (data.playerId === this.playerId && this.localPlayer) {
+                this.localPlayer.isDead = true;
+                this.localPlayer.deathTime = Date.now();
+                this.localPlayer.respawnDelay = data.respawnDelay;
+                console.log(`You died! Respawning in ${data.respawnDelay / 1000} seconds...`);
+            } else {
+                // Update remote player
+                const remotePlayer = this.remotePlayers.get(data.playerId);
+                if (remotePlayer) {
+                    remotePlayer.isDead = true;
+                }
+            }
+        });
+
+        // Player respawn event
+        this.socket.on('playerRespawned', (data) => {
+            console.log(`Player ${data.playerId} respawned`);
+
+            // Check if it's the local player
+            if (data.playerId === this.playerId && this.localPlayer) {
+                this.localPlayer.isDead = false;
+                this.localPlayer.deathTime = 0;
+                this.localPlayer.x = data.x;
+                this.localPlayer.y = data.y;
+                this.localPlayer.currentHP = data.currentHP;
+                console.log('You respawned!');
+            } else {
+                // Update remote player
+                const remotePlayer = this.remotePlayers.get(data.playerId);
+                if (remotePlayer) {
+                    remotePlayer.isDead = false;
+                    remotePlayer.x = data.x;
+                    remotePlayer.y = data.y;
+                    remotePlayer.targetX = data.x;
+                    remotePlayer.targetY = data.y;
+                    remotePlayer.currentHP = data.currentHP;
+                    remotePlayer.maxHP = data.maxHP;
+                }
+            }
+        });
     }
 
     // Send attack to server
@@ -214,7 +261,8 @@ class NetworkManager {
             playerData.x || 0,
             playerData.y || 0,
             playerData.playerName || 'Player',
-            playerData.level || 1
+            playerData.level || 1,
+            playerData.experience || 0
         );
         // Set HP if provided
         if (playerData.currentHP !== undefined) {
@@ -231,7 +279,7 @@ class NetworkManager {
     }
 
     // Send local player position to server
-    sendPlayerPosition(x, y, playerName, level) {
+    sendPlayerPosition(x, y, playerName, level, experience) {
         if (!this.connected || !this.socket) return;
 
         const currentTime = Date.now();
@@ -245,7 +293,8 @@ class NetworkManager {
             x: x,
             y: y,
             playerName: playerName,
-            level: level
+            level: level,
+            experience: experience
         });
     }
 
@@ -272,7 +321,7 @@ class NetworkManager {
 
 // Remote player class (represents other players)
 class RemotePlayer {
-    constructor(playerId, x, y, playerName, level) {
+    constructor(playerId, x, y, playerName, level, experience = 0) {
         this.playerId = playerId;
         this.x = x;
         this.y = y;
@@ -280,6 +329,8 @@ class RemotePlayer {
         this.targetY = y;
         this.playerName = playerName;
         this.level = level;
+        this.experience = experience;
+        this.maxLevel = 30;
 
         // Visual properties
         // Use same display size calculation as Character
@@ -303,6 +354,9 @@ class RemotePlayer {
         // HP system
         this.maxHP = 100;
         this.currentHP = 100;
+
+        // Death state
+        this.isDead = false;
 
         // Load alien image
         this.loadImage('asset/image/alien.png');
@@ -351,6 +405,12 @@ class RemotePlayer {
     }
 
     render(ctx) {
+        // Skip rendering if player is dead (or render as ghost)
+        if (this.isDead) {
+            ctx.save();
+            ctx.globalAlpha = 0.3;
+        }
+
         if (this.imageLoaded && this.image) {
             // Draw remote player image
             ctx.drawImage(
@@ -382,6 +442,16 @@ class RemotePlayer {
 
         // Draw chat bubble if active
         this.renderChatBubble(ctx);
+
+        if (this.isDead) {
+            ctx.restore();
+        }
+    }
+
+    // Calculate required experience for next level (same formula as Character)
+    getRequiredExperience() {
+        if (this.level >= this.maxLevel) return 0;
+        return 10 + (this.level - 1) * 2;
     }
 
     renderInfoAbove(ctx) {
@@ -405,6 +475,24 @@ class RemotePlayer {
         ctx.strokeStyle = '#ffffff';
         ctx.lineWidth = 1;
         ctx.strokeRect(hpBarX, hpBarY, hpBarWidth, hpBarHeight);
+
+        // Experience Bar (below HP bar)
+        const expBarHeight = 4;
+        const expBarY = hpBarY + hpBarHeight + 2;
+
+        // EXP Bar background
+        ctx.fillStyle = '#333333';
+        ctx.fillRect(hpBarX, expBarY, hpBarWidth, expBarHeight);
+
+        // EXP Bar fill
+        const requiredExp = this.getRequiredExperience();
+        const expPercentage = this.level >= this.maxLevel ? 1 : (requiredExp > 0 ? this.experience / requiredExp : 0);
+        ctx.fillStyle = '#00D9FF'; // Cyan for experience
+        ctx.fillRect(hpBarX, expBarY, hpBarWidth * expPercentage, expBarHeight);
+
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(hpBarX, expBarY, hpBarWidth, expBarHeight);
 
         // Player name and level
         const nameY = hpBarY - 5;

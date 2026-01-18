@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chat Test - Unhinged Students</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f0f0f0;
+        }
+        .test-section {
+            background: white;
+            padding: 20px;
+            margin: 10px 0;
+            border-radius: 5px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        .test-result {
+            padding: 10px;
+            margin: 5px 0;
+            border-radius: 3px;
+        }
+        .pass {
+            background-color: #d4edda;
+            color: #155724;
+        }
+        .fail {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+        .controls {
+            margin: 10px 0;
+            padding: 10px;
+            background-color: #e9ecef;
+            border-radius: 5px;
+        }
+        .controls button {
+            margin: 5px;
+            padding: 10px 20px;
+            font-size: 14px;
+            cursor: pointer;
+        }
+        #chatContainer {
+            position: relative;
+            width: 400px;
+            height: 300px;
+            border: 2px solid #333;
+            background-color: #1a1a1a;
+        }
+        #chatMessages {
+            height: 250px;
+            overflow-y: auto;
+            padding: 10px;
+            color: white;
+        }
+        #chatInput {
+            width: calc(100% - 20px);
+            padding: 10px;
+            border: none;
+            background-color: #333;
+            color: white;
+            font-size: 14px;
+        }
+        #chatInput:focus {
+            outline: 2px solid #00D9FF;
+        }
+        .chatMessage {
+            margin: 5px 0;
+            word-wrap: break-word;
+        }
+        .playerName {
+            color: #00D9FF;
+            font-weight: bold;
+        }
+        .messageText {
+            color: #ffffff;
+        }
+    </style>
+</head>
+<body>
+    <h1>Chat System Test</h1>
+
+    <div class="test-section">
+        <h2>Unit Test Results</h2>
+        <div id="results"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>Visual Test - Chat UI</h2>
+        <div class="controls">
+            <p><strong>Instructions:</strong></p>
+            <p>1. Press Enter to focus chat input</p>
+            <p>2. Type a message and press Enter to send</p>
+            <p>3. Press ESC or click outside to unfocus</p>
+            <button id="addMsgBtn">Add Test Message</button>
+            <button id="addSystemBtn">Add System Message</button>
+            <button id="clearBtn">Clear Messages</button>
+        </div>
+        <div id="chatContainer">
+            <div id="chatMessages"></div>
+            <input type="text" id="chatInput" placeholder="Press Enter to chat...">
+        </div>
+        <div id="focusStatus" style="margin-top: 10px; padding: 10px; background: #333; color: white;">
+            Chat Input Focused: <span id="focusIndicator">No</span>
+        </div>
+    </div>
+
+    <script src="../src/chat.js"></script>
+    <script>
+        const resultsDiv = document.getElementById('results');
+
+        let testResults = [];
+        let chatManager;
+        let mockSocket;
+
+        function addTestResult(name, passed, message) {
+            testResults.push({ name, passed, message });
+            updateResults();
+        }
+
+        function updateResults() {
+            resultsDiv.innerHTML = testResults.map(result =>
+                `<div class="test-result ${result.passed ? 'pass' : 'fail'}">
+                    ${result.passed ? '✓' : '✗'} ${result.name}: ${result.message}
+                </div>`
+            ).join('');
+        }
+
+        // Create mock socket for testing
+        function createMockSocket() {
+            const listeners = {};
+            return {
+                on: (event, callback) => {
+                    listeners[event] = callback;
+                },
+                emit: (event, data) => {
+                    console.log(`Socket emit: ${event}`, data);
+                },
+                trigger: (event, data) => {
+                    if (listeners[event]) {
+                        listeners[event](data);
+                    }
+                }
+            };
+        }
+
+        // ==================== Unit Tests ====================
+
+        // Test 1: ChatManager class exists
+        addTestResult(
+            'ChatManager Class',
+            typeof ChatManager === 'function',
+            typeof ChatManager === 'function' ? 'Class is defined' : 'Class not found'
+        );
+
+        // Test 2: Create ChatManager instance
+        try {
+            chatManager = new ChatManager();
+            addTestResult(
+                'ChatManager Creation',
+                chatManager instanceof ChatManager,
+                'Instance created successfully'
+            );
+        } catch (e) {
+            addTestResult('ChatManager Creation', false, `Error: ${e.message}`);
+        }
+
+        // Test 3: ChatManager has required properties
+        if (chatManager) {
+            const props = ['chatInput', 'chatMessages', 'socket', 'isInputFocused', 'maxMessages'];
+            props.forEach(prop => {
+                addTestResult(
+                    `ChatManager.${prop}`,
+                    chatManager.hasOwnProperty(prop),
+                    chatManager.hasOwnProperty(prop) ? 'Exists' : 'Not found'
+                );
+            });
+        }
+
+        // Test 4: ChatManager has required methods
+        if (chatManager) {
+            const methods = ['setSocket', 'setPlayer', 'focusInput', 'sendMessage', 'displayMessage', 'addSystemMessage', 'isChatInputFocused'];
+            methods.forEach(method => {
+                addTestResult(
+                    `ChatManager.${method}()`,
+                    typeof chatManager[method] === 'function',
+                    typeof chatManager[method] === 'function' ? 'Method exists' : 'Method not found'
+                );
+            });
+        }
+
+        // Test 5: Set socket
+        if (chatManager) {
+            mockSocket = createMockSocket();
+            try {
+                chatManager.setSocket(mockSocket);
+                addTestResult(
+                    'setSocket()',
+                    chatManager.socket === mockSocket,
+                    'Socket set correctly'
+                );
+            } catch (e) {
+                addTestResult('setSocket()', false, `Error: ${e.message}`);
+            }
+        }
+
+        // Test 6: Display message
+        if (chatManager) {
+            const initialCount = chatManager.chatMessages.children.length;
+            chatManager.displayMessage({
+                playerName: 'TestPlayer',
+                message: 'Hello World!'
+            });
+            const afterCount = chatManager.chatMessages.children.length;
+            addTestResult(
+                'displayMessage()',
+                afterCount === initialCount + 1,
+                afterCount === initialCount + 1 ? 'Message added to DOM' : 'Message not added'
+            );
+        }
+
+        // Test 7: Add system message
+        if (chatManager) {
+            const initialCount = chatManager.chatMessages.children.length;
+            chatManager.addSystemMessage('System notification');
+            const afterCount = chatManager.chatMessages.children.length;
+            addTestResult(
+                'addSystemMessage()',
+                afterCount === initialCount + 1,
+                afterCount === initialCount + 1 ? 'System message added' : 'System message not added'
+            );
+        }
+
+        // Test 8: isChatInputFocused initial state
+        if (chatManager) {
+            addTestResult(
+                'isChatInputFocused() initial',
+                chatManager.isChatInputFocused() === false,
+                chatManager.isChatInputFocused() === false ? 'Initially unfocused' : 'Unexpected initial state'
+            );
+        }
+
+        // Test 9: Focus input
+        if (chatManager) {
+            chatManager.focusInput();
+            // Need to wait for focus event
+            setTimeout(() => {
+                addTestResult(
+                    'focusInput()',
+                    chatManager.isChatInputFocused() === true,
+                    chatManager.isChatInputFocused() === true ? 'Input focused' : 'Input not focused'
+                );
+                chatManager.chatInput.blur();
+            }, 100);
+        }
+
+        // Test 10: Socket chatMessage event handling
+        if (chatManager && mockSocket) {
+            const initialCount = chatManager.chatMessages.children.length;
+            mockSocket.trigger('chatMessage', {
+                playerName: 'RemotePlayer',
+                message: 'Message from socket event'
+            });
+            const afterCount = chatManager.chatMessages.children.length;
+            addTestResult(
+                'Socket chatMessage event',
+                afterCount === initialCount + 1,
+                afterCount === initialCount + 1 ? 'Message received and displayed' : 'Message not displayed'
+            );
+        }
+
+        // Test 11: Max messages limit
+        if (chatManager) {
+            // Clear existing messages
+            chatManager.chatMessages.innerHTML = '';
+
+            // Add more than maxMessages
+            for (let i = 0; i < chatManager.maxMessages + 10; i++) {
+                chatManager.displayMessage({
+                    playerName: 'Spammer',
+                    message: `Message ${i}`
+                });
+            }
+
+            const count = chatManager.chatMessages.children.length;
+            addTestResult(
+                'Max Messages Limit',
+                count <= chatManager.maxMessages,
+                count <= chatManager.maxMessages
+                    ? `Messages capped at ${count}/${chatManager.maxMessages}`
+                    : `Too many messages: ${count}`
+            );
+        }
+
+        // ==================== Visual Test ====================
+
+        // Clear messages for visual testing
+        chatManager.chatMessages.innerHTML = '';
+        chatManager.addSystemMessage('Chat system initialized. Press Enter to chat.');
+
+        // Update focus status indicator
+        setInterval(() => {
+            document.getElementById('focusIndicator').textContent =
+                chatManager.isChatInputFocused() ? 'Yes' : 'No';
+            document.getElementById('focusIndicator').style.color =
+                chatManager.isChatInputFocused() ? '#00ff00' : '#ff6b6b';
+        }, 100);
+
+        // Button handlers
+        document.getElementById('addMsgBtn').addEventListener('click', () => {
+            const names = ['Alice', 'Bob', 'Charlie', 'Diana'];
+            const messages = ['Hello!', 'How are you?', 'Nice to meet you!', 'GG!', 'Let\'s go!'];
+            const randomName = names[Math.floor(Math.random() * names.length)];
+            const randomMsg = messages[Math.floor(Math.random() * messages.length)];
+
+            chatManager.displayMessage({
+                playerName: randomName,
+                message: randomMsg
+            });
+        });
+
+        document.getElementById('addSystemBtn').addEventListener('click', () => {
+            const systemMessages = [
+                'Player joined the game',
+                'Player left the game',
+                'Server restarting in 5 minutes',
+                'New update available!'
+            ];
+            const randomMsg = systemMessages[Math.floor(Math.random() * systemMessages.length)];
+            chatManager.addSystemMessage(randomMsg);
+        });
+
+        document.getElementById('clearBtn').addEventListener('click', () => {
+            chatManager.chatMessages.innerHTML = '';
+            chatManager.addSystemMessage('Messages cleared');
+        });
+    </script>
+</body>
+</html>
