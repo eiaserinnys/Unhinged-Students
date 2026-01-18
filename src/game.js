@@ -23,6 +23,7 @@ const gameState = {
     skillManager: null, // Skill system
     skillUI: null, // Skill UI renderer
     laserBeamEffect: null, // Laser beam (Q skill) effect
+    teleportEffect: null, // Teleport (W skill) effect
     dummies: [], // Test dummies for combat practice
     stats: {
         shardsCollected: 0
@@ -117,7 +118,7 @@ function init() {
     gameState.skillManager = new SkillManager();
 
     // Add skills: Q = Laser Beam, W = Teleport, E = Telepathy
-    gameState.skillManager.addSkill(new Skill('레이저', 'q', 3000, '#FF4444')); // Red - 3sec cooldown
+    gameState.skillManager.addSkill(new Skill('레이저', 'q', 2000, '#FF4444')); // Red - 2sec cooldown
     gameState.skillManager.addSkill(new Skill('순간이동', 'w', 10000, '#44FF44')); // Green - 10sec cooldown
     gameState.skillManager.addSkill(new Skill('텔레파시', 'e', 15000, '#8B5CF6')); // Purple - 15sec cooldown
 
@@ -126,6 +127,9 @@ function init() {
 
     // Initialize laser beam effect
     gameState.laserBeamEffect = new LaserBeamEffect();
+
+    // Initialize teleport effect
+    gameState.teleportEffect = new TeleportEffect();
 
     console.log('Skill system initialized');
 
@@ -264,12 +268,23 @@ function update(deltaTime) {
             }
         }
 
-        // W - Teleport (TODO)
-        if (isKeyJustPressed('w')) {
+        // W - Teleport
+        if (isKeyJustPressed('w') && !gameState.teleportEffect.active) {
             const skill = gameState.skillManager.useSkill('w');
             if (skill) {
+                const playerPos = gameState.player.getPosition();
+                gameState.teleportEffect.start(playerPos.x, playerPos.y, GAME_WIDTH, GAME_HEIGHT);
                 console.log(`Used skill: ${skill.name}`);
-                // TODO: Implement teleport
+
+                // Send teleport event to server for sync
+                if (gameState.networkManager) {
+                    gameState.networkManager.sendTeleport(
+                        gameState.teleportEffect.startX,
+                        gameState.teleportEffect.startY,
+                        gameState.teleportEffect.endX,
+                        gameState.teleportEffect.endY
+                    );
+                }
             }
         }
 
@@ -297,6 +312,30 @@ function update(deltaTime) {
                     line.x1, line.y1,
                     line.x2, line.y2,
                     gameState.laserBeamEffect.damage
+                );
+            }
+        }
+    }
+
+    // Update teleport effect
+    if (gameState.teleportEffect && gameState.teleportEffect.active) {
+        const teleportResult = gameState.teleportEffect.update();
+
+        // Move player when teleport completes
+        if (teleportResult && teleportResult.teleported) {
+            gameState.player.x = teleportResult.x;
+            gameState.player.y = teleportResult.y;
+        }
+
+        // Check if teleport should deal damage
+        if (gameState.teleportEffect.shouldDealDamage()) {
+            const area = gameState.teleportEffect.getDamageArea();
+            if (gameState.networkManager) {
+                gameState.networkManager.sendTeleportDamage(
+                    area.x,
+                    area.y,
+                    area.radius,
+                    area.damage
                 );
             }
         }
@@ -486,6 +525,11 @@ function render() {
     // Draw laser beam effect (above players)
     if (gameState.laserBeamEffect) {
         gameState.laserBeamEffect.render(ctx);
+    }
+
+    // Draw teleport effect
+    if (gameState.teleportEffect) {
+        gameState.teleportEffect.render(ctx);
     }
 
     // Draw skill UI (above game elements, below vignette)

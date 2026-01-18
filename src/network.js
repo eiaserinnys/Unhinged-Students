@@ -127,6 +127,14 @@ class NetworkManager {
             }
         });
 
+        // Teleport event (for showing other players' teleport)
+        this.socket.on('playerTeleport', (data) => {
+            const remotePlayer = this.remotePlayers.get(data.playerId);
+            if (remotePlayer) {
+                remotePlayer.startTeleport(data.startX, data.startY, data.endX, data.endY);
+            }
+        });
+
         // Shard events
         this.socket.on('existingShards', (shards) => {
             console.log(`Received ${shards.length} existing shards`);
@@ -336,6 +344,28 @@ class NetworkManager {
         });
     }
 
+    // Send teleport event to server (for sync with other players)
+    sendTeleport(startX, startY, endX, endY) {
+        if (!this.connected || !this.socket) return;
+        this.socket.emit('teleport', {
+            startX: startX,
+            startY: startY,
+            endX: endX,
+            endY: endY
+        });
+    }
+
+    // Send teleport damage to server
+    sendTeleportDamage(x, y, radius, damage) {
+        if (!this.connected || !this.socket) return;
+        this.socket.emit('teleportDamage', {
+            x: x,
+            y: y,
+            radius: radius,
+            damage: damage
+        });
+    }
+
     // Send shard collection to server
     sendShardCollection(shardId) {
         if (!this.connected || !this.socket) return;
@@ -475,6 +505,18 @@ class RemotePlayer {
         this.laserDirX = 0;
         this.laserDirY = 0;
 
+        // Teleport effect system
+        this.teleportActive = false;
+        this.teleportPhase = 'none'; // 'disappear', 'appear', 'none'
+        this.teleportStartTime = 0;
+        this.teleportDisappearDuration = 150;
+        this.teleportAppearDuration = 200;
+        this.teleportStartX = 0;
+        this.teleportStartY = 0;
+        this.teleportEndX = 0;
+        this.teleportEndY = 0;
+        this.teleportDamageRadius = 100;
+
         // Load alien image
         this.loadImage('asset/image/alien.png');
     }
@@ -548,6 +590,9 @@ class RemotePlayer {
 
         // Update laser effect
         this.updateLaser();
+
+        // Update teleport effect
+        this.updateTeleport();
     }
 
     render(ctx) {
@@ -625,6 +670,9 @@ class RemotePlayer {
 
         // Draw laser effect
         this.renderLaser(ctx);
+
+        // Draw teleport effect
+        this.renderTeleport(ctx);
 
         // Draw info above remote player
         this.renderInfoAbove(ctx);
@@ -940,6 +988,100 @@ class RemotePlayer {
             ctx.moveTo(this.x, this.y);
             ctx.lineTo(endX, endY);
             ctx.stroke();
+        }
+
+        ctx.restore();
+    }
+
+    // Start teleport effect
+    startTeleport(startX, startY, endX, endY) {
+        this.teleportActive = true;
+        this.teleportPhase = 'disappear';
+        this.teleportStartTime = Date.now();
+        this.teleportStartX = startX;
+        this.teleportStartY = startY;
+        this.teleportEndX = endX;
+        this.teleportEndY = endY;
+    }
+
+    // Update teleport effect state
+    updateTeleport() {
+        if (!this.teleportActive) return;
+
+        const currentTime = Date.now();
+        const elapsed = currentTime - this.teleportStartTime;
+
+        if (this.teleportPhase === 'disappear') {
+            if (elapsed >= this.teleportDisappearDuration) {
+                this.teleportPhase = 'appear';
+                this.teleportStartTime = currentTime;
+                // Move player to teleport destination
+                this.x = this.teleportEndX;
+                this.y = this.teleportEndY;
+                this.targetX = this.teleportEndX;
+                this.targetY = this.teleportEndY;
+            }
+        } else if (this.teleportPhase === 'appear') {
+            if (elapsed >= this.teleportAppearDuration) {
+                this.teleportActive = false;
+                this.teleportPhase = 'none';
+            }
+        }
+    }
+
+    // Render teleport effect
+    renderTeleport(ctx) {
+        if (!this.teleportActive) return;
+
+        const elapsed = Date.now() - this.teleportStartTime;
+
+        ctx.save();
+
+        if (this.teleportPhase === 'disappear') {
+            const progress = elapsed / this.teleportDisappearDuration;
+            const opacity = 1 - progress;
+            const scale = 1 + progress * 0.5;
+
+            // Green glow at start position
+            ctx.globalAlpha = opacity * 0.6;
+            ctx.fillStyle = '#44FF44';
+            ctx.beginPath();
+            ctx.arc(this.teleportStartX, this.teleportStartY, 40 * scale, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Inner white flash
+            ctx.globalAlpha = opacity;
+            ctx.fillStyle = '#ffffff';
+            ctx.beginPath();
+            ctx.arc(this.teleportStartX, this.teleportStartY, 20 * scale, 0, Math.PI * 2);
+            ctx.fill();
+
+        } else if (this.teleportPhase === 'appear') {
+            const progress = elapsed / this.teleportAppearDuration;
+            const opacity = progress < 0.5 ? progress * 2 : 2 - progress * 2;
+            const damageOpacity = (1 - progress) * 0.4;
+
+            // Damage radius indicator
+            ctx.globalAlpha = damageOpacity;
+            ctx.fillStyle = '#44FF44';
+            ctx.beginPath();
+            ctx.arc(this.teleportEndX, this.teleportEndY, this.teleportDamageRadius, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Damage radius border
+            ctx.globalAlpha = damageOpacity * 2;
+            ctx.strokeStyle = '#00FF00';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.arc(this.teleportEndX, this.teleportEndY, this.teleportDamageRadius, 0, Math.PI * 2);
+            ctx.stroke();
+
+            // Appear flash
+            ctx.globalAlpha = opacity * 0.8;
+            ctx.fillStyle = '#ffffff';
+            ctx.beginPath();
+            ctx.arc(this.teleportEndX, this.teleportEndY, 30 * (1 - progress * 0.5), 0, Math.PI * 2);
+            ctx.fill();
         }
 
         ctx.restore();

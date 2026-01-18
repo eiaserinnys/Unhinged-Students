@@ -495,6 +495,133 @@ io.on('connection', (socket) => {
         }
     });
 
+    // Handle teleport (sync with other players)
+    socket.on('teleport', (data) => {
+        // Broadcast teleport to all other players
+        socket.broadcast.emit('playerTeleport', {
+            playerId: socket.id,
+            startX: data.startX,
+            startY: data.startY,
+            endX: data.endX,
+            endY: data.endY
+        });
+
+        // Update player position on server
+        const player = players.get(socket.id);
+        if (player) {
+            player.x = data.endX;
+            player.y = data.endY;
+        }
+    });
+
+    // Handle teleport damage
+    socket.on('teleportDamage', (data) => {
+        const attacker = players.get(socket.id);
+        if (!attacker) return;
+
+        const { x, y, radius, damage } = data;
+
+        // Check all players in range
+        const hitPlayers = [];
+        const killedPlayers = [];
+        players.forEach((player, playerId) => {
+            if (playerId === socket.id) return;
+            if (player.isDead) return;
+
+            const dx = player.x - x;
+            const dy = player.y - y;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+
+            if (distance <= radius) {
+                player.currentHP = Math.max(0, player.currentHP - damage);
+
+                const knockbackDist = calculateKnockbackDistance(radius, distance);
+                const knockbackEnd = calculateKnockbackEndPosition(x, y, player.x, player.y, knockbackDist);
+
+                player.x = knockbackEnd.x;
+                player.y = knockbackEnd.y;
+
+                hitPlayers.push({
+                    playerId: playerId,
+                    currentHP: player.currentHP,
+                    maxHP: player.maxHP,
+                    knockbackEndX: knockbackEnd.x,
+                    knockbackEndY: knockbackEnd.y,
+                    attackerX: x,
+                    attackerY: y
+                });
+
+                if (player.currentHP <= 0 && !player.isDead) {
+                    player.isDead = true;
+                    player.deathTime = Date.now();
+                    killedPlayers.push({
+                        playerId: playerId,
+                        killedBy: socket.id,
+                        respawnDelay: PLAYER_RESPAWN_DELAY
+                    });
+                }
+            }
+        });
+
+        if (hitPlayers.length > 0) {
+            io.emit('playerDamaged', {
+                attackerId: socket.id,
+                hitPlayers: hitPlayers
+            });
+        }
+
+        if (killedPlayers.length > 0) {
+            killedPlayers.forEach(killed => {
+                io.emit('playerDied', {
+                    playerId: killed.playerId,
+                    killedBy: killed.killedBy,
+                    respawnDelay: killed.respawnDelay
+                });
+            });
+        }
+
+        // Check dummies
+        const hitDummies = [];
+        dummies.forEach((dummy) => {
+            if (dummy.currentHP <= 0) return;
+
+            const dx = dummy.x - x;
+            const dy = dummy.y - y;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+
+            if (distance <= radius + 67.5) {
+                dummy.currentHP = Math.max(0, dummy.currentHP - damage);
+
+                const knockbackDist = calculateKnockbackDistance(radius, distance);
+                const knockbackEnd = calculateKnockbackEndPosition(x, y, dummy.x, dummy.y, knockbackDist);
+
+                dummy.x = knockbackEnd.x;
+                dummy.y = knockbackEnd.y;
+
+                hitDummies.push({
+                    dummyId: dummy.id,
+                    currentHP: dummy.currentHP,
+                    maxHP: dummy.maxHP,
+                    knockbackEndX: knockbackEnd.x,
+                    knockbackEndY: knockbackEnd.y,
+                    attackerX: x,
+                    attackerY: y
+                });
+
+                if (dummy.currentHP <= 0) {
+                    dummy.deathTime = Date.now();
+                }
+            }
+        });
+
+        if (hitDummies.length > 0) {
+            io.emit('dummyDamaged', {
+                attackerId: socket.id,
+                hitDummies: hitDummies
+            });
+        }
+    });
+
     // Handle laser aiming (sync with other players)
     socket.on('laserAiming', (data) => {
         // Broadcast laser aiming to all other players

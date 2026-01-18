@@ -116,7 +116,7 @@ class LaserBeamEffect {
         this.dirY = 0;
 
         // Damage
-        this.damage = 15;
+        this.damage = 22; // 1.5x of original 15
         this.hasDealtDamage = false;
     }
 
@@ -244,6 +244,159 @@ class LaserBeamEffect {
                 ctx.lineTo(line.x2, line.y2);
             }
             ctx.stroke();
+        }
+
+        ctx.restore();
+    }
+}
+
+// Teleport Effect - handles the W skill visual and logic
+class TeleportEffect {
+    constructor() {
+        this.active = false;
+        this.phase = 'none'; // 'disappear', 'appear', 'none'
+        this.startTime = 0;
+        this.disappearDuration = 150; // 0.15 second disappear
+        this.appearDuration = 200; // 0.2 second appear + damage
+
+        // Positions
+        this.startX = 0;
+        this.startY = 0;
+        this.endX = 0;
+        this.endY = 0;
+
+        // Teleport settings
+        this.minDistance = 200;
+        this.maxDistance = 400;
+        this.damageRadius = 100;
+        this.damage = 12;
+
+        // Flags
+        this.hasDealtDamage = false;
+        this.hasTeleported = false;
+    }
+
+    start(playerX, playerY, gameWidth, gameHeight) {
+        this.active = true;
+        this.phase = 'disappear';
+        this.startTime = Date.now();
+        this.startX = playerX;
+        this.startY = playerY;
+        this.hasDealtDamage = false;
+        this.hasTeleported = false;
+
+        // Calculate random teleport destination
+        const angle = Math.random() * Math.PI * 2;
+        const distance = this.minDistance + Math.random() * (this.maxDistance - this.minDistance);
+
+        let newX = playerX + Math.cos(angle) * distance;
+        let newY = playerY + Math.sin(angle) * distance;
+
+        // Clamp to game bounds
+        const margin = 50;
+        newX = Math.max(margin, Math.min(gameWidth - margin, newX));
+        newY = Math.max(margin, Math.min(gameHeight - margin, newY));
+
+        this.endX = newX;
+        this.endY = newY;
+    }
+
+    update() {
+        if (!this.active) return null;
+
+        const elapsed = Date.now() - this.startTime;
+
+        if (this.phase === 'disappear') {
+            if (elapsed >= this.disappearDuration) {
+                this.phase = 'appear';
+                this.startTime = Date.now();
+                this.hasTeleported = true;
+                // Return new position to move player
+                return { x: this.endX, y: this.endY, teleported: true };
+            }
+        } else if (this.phase === 'appear') {
+            if (elapsed >= this.appearDuration) {
+                this.active = false;
+                this.phase = 'none';
+            }
+        }
+
+        return null;
+    }
+
+    // Check if should deal damage
+    shouldDealDamage() {
+        if (this.phase === 'appear' && !this.hasDealtDamage) {
+            this.hasDealtDamage = true;
+            return true;
+        }
+        return false;
+    }
+
+    // Get damage area
+    getDamageArea() {
+        return {
+            x: this.endX,
+            y: this.endY,
+            radius: this.damageRadius,
+            damage: this.damage
+        };
+    }
+
+    render(ctx) {
+        if (!this.active) return;
+
+        const elapsed = Date.now() - this.startTime;
+
+        ctx.save();
+
+        if (this.phase === 'disappear') {
+            // Disappearing effect at start position
+            const progress = elapsed / this.disappearDuration;
+            const opacity = 1 - progress;
+            const scale = 1 + progress * 0.5; // Expand slightly
+
+            // Green particles/glow effect
+            ctx.globalAlpha = opacity * 0.6;
+            ctx.fillStyle = '#44FF44';
+            ctx.beginPath();
+            ctx.arc(this.startX, this.startY, 40 * scale, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Inner white flash
+            ctx.globalAlpha = opacity;
+            ctx.fillStyle = '#ffffff';
+            ctx.beginPath();
+            ctx.arc(this.startX, this.startY, 20 * scale, 0, Math.PI * 2);
+            ctx.fill();
+
+        } else if (this.phase === 'appear') {
+            // Appearing effect at end position
+            const progress = elapsed / this.appearDuration;
+            const opacity = progress < 0.5 ? progress * 2 : 2 - progress * 2;
+            const damageOpacity = (1 - progress) * 0.4;
+
+            // Damage radius indicator
+            ctx.globalAlpha = damageOpacity;
+            ctx.fillStyle = '#44FF44';
+            ctx.beginPath();
+            ctx.arc(this.endX, this.endY, this.damageRadius, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Damage radius border
+            ctx.globalAlpha = damageOpacity * 2;
+            ctx.strokeStyle = '#00FF00';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.arc(this.endX, this.endY, this.damageRadius, 0, Math.PI * 2);
+            ctx.stroke();
+
+            // Appear flash
+            ctx.globalAlpha = opacity * 0.8;
+            ctx.fillStyle = '#ffffff';
+            ctx.beginPath();
+            ctx.arc(this.endX, this.endY, 30 * (1 - progress * 0.5), 0, Math.PI * 2);
+            ctx.fill();
         }
 
         ctx.restore();
