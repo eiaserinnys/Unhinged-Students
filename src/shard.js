@@ -157,12 +157,18 @@ class ShardManager {
         console.log(`Loaded ${this.shards.length} shards from server`);
     }
 
-    // Add shards from server spawn event
+    // Add shards from server spawn event (respawn)
     addShardsFromServer(shardData) {
         shardData.forEach(data => {
             // Check if shard already exists
-            const exists = this.shards.find(s => s.id === data.id);
-            if (!exists) {
+            const existingIndex = this.shards.findIndex(s => s.id === data.id);
+            if (existingIndex !== -1) {
+                // Shard exists - reactivate it (respawn)
+                this.shards[existingIndex].collected = false;
+                this.shards[existingIndex].x = data.x;
+                this.shards[existingIndex].y = data.y;
+            } else {
+                // New shard
                 this.shards.push(new Shard(data.x, data.y, 20, data.id));
             }
         });
