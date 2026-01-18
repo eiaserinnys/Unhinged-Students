@@ -114,6 +114,46 @@ Unhinged-Students/
 - **멀티플레이어**: Socket.io (WebSocket)
 - **버전 관리**: Git/GitHub
 
+## 🚀 배포
+
+### 프로덕션 환경
+
+- **접속 URL**: `http://[domain]/game/`
+- **서버**: Linode (Node.js v18 + nginx)
+- **배포 트리거**: `master` 브랜치 push → GitHub Actions 자동 배포
+
+### 프로덕션 디렉토리 구조
+
+```
+/home/eias/unhinged-students/
+├── current -> releases/xxx/    # 현재 활성 릴리즈 (심볼릭 링크)
+├── releases/                   # 릴리즈 히스토리 (최근 5개 유지)
+└── shared/                     # 공유 자원
+```
+
+### nginx 구성
+
+- `/game/*` (정적 파일) → nginx가 직접 서빙
+- `/game/socket.io/*` (WebSocket) → Node.js(3000)로 프록시
+
+### systemd 서비스
+
+```bash
+# 상태 확인
+sudo systemctl status unhinged-students.service
+
+# 재시작 (배포 시 자동 실행됨)
+sudo systemctl restart unhinged-students.service
+```
+
+### 롤백
+
+```bash
+ls -lt ~/unhinged-students/releases/ | head -5
+sudo ln -sfn ~/unhinged-students/releases/<release_name> ~/unhinged-students/current
+sudo systemctl restart unhinged-students.service
+```
+
 ## 📊 작업 현황
 
 작업 진행 상태는 **`backlog/`** 디렉토리의 최신 파일을 참고하세요.

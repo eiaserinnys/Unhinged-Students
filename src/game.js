@@ -120,6 +120,7 @@ function init() {
     gameState.networkManager = new NetworkManager();
     gameState.networkManager.setShardManager(gameState.shardManager);
     gameState.networkManager.setLocalPlayer(gameState.player);
+    gameState.networkManager.setDummies(gameState.dummies);
     gameState.networkManager.connect();
 
     // Connect chat to network after socket is ready
@@ -178,17 +179,12 @@ function update(deltaTime) {
         }
     }
 
-    // Update dummies
+    // Update dummies (respawn is handled by server)
     gameState.dummies.forEach(dummy => {
         dummy.update({ width: GAME_WIDTH, height: GAME_HEIGHT }, deltaTime);
-
-        // Check for respawn
-        if (!dummy.isAlive() && dummy.canRespawn()) {
-            dummy.respawn();
-        }
     });
 
-    // Check for attack collisions with dummies (local only) and send attack to server
+    // Send attack to server (server handles all damage calculations)
     if (gameState.player && gameState.player.isAttacking) {
         const attackArea = gameState.player.getAttackArea();
 
@@ -205,21 +201,7 @@ function update(deltaTime) {
                 gameState.lastAttackSentTime = currentTime;
             }
         }
-
-        // Check dummies (local only)
-        gameState.dummies.forEach(dummy => {
-            if (!dummy.isAlive()) return;
-
-            // Calculate distance between player and dummy
-            const dx = dummy.x - attackArea.x;
-            const dy = dummy.y - attackArea.y;
-            const distance = Math.sqrt(dx * dx + dy * dy);
-
-            // Check if dummy is within attack range
-            if (distance <= attackArea.radius) {
-                dummy.takeDamage(gameState.player.attackPower);
-            }
-        });
+        // Dummy damage is now handled by server via dummyDamaged event
     }
 
     // Update remote players

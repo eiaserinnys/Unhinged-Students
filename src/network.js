@@ -9,6 +9,7 @@ class NetworkManager {
         this.lastUpdateTime = 0;
         this.shardManager = null; // Reference to shard manager for sync
         this.localPlayer = null; // Reference to local player for HP sync
+        this.dummies = null; // Reference to dummies array for sync
     }
 
     setShardManager(shardManager) {
@@ -17,6 +18,10 @@ class NetworkManager {
 
     setLocalPlayer(player) {
         this.localPlayer = player;
+    }
+
+    setDummies(dummies) {
+        this.dummies = dummies;
     }
 
     connect(serverUrl = null) {
@@ -136,6 +141,53 @@ class NetworkManager {
                     }
                 }
             });
+        });
+
+        // Dummy events
+        this.socket.on('existingDummies', (serverDummies) => {
+            console.log(`Received ${serverDummies.length} existing dummies`);
+            if (this.dummies) {
+                // Sync dummies with server state
+                serverDummies.forEach(serverDummy => {
+                    const dummy = this.dummies[serverDummy.id];
+                    if (dummy) {
+                        dummy.x = serverDummy.x;
+                        dummy.y = serverDummy.y;
+                        dummy.currentHP = serverDummy.currentHP;
+                        dummy.maxHP = serverDummy.maxHP;
+                    }
+                });
+            }
+        });
+
+        this.socket.on('dummyDamaged', (data) => {
+            console.log(`Dummies damaged by ${data.attackerId}:`, data.hitDummies);
+            if (this.dummies) {
+                data.hitDummies.forEach(hit => {
+                    const dummy = this.dummies[hit.dummyId];
+                    if (dummy) {
+                        dummy.currentHP = hit.currentHP;
+                        dummy.maxHP = hit.maxHP;
+                        if (dummy.currentHP <= 0) {
+                            dummy.deathTime = Date.now();
+                        }
+                    }
+                });
+            }
+        });
+
+        this.socket.on('dummyRespawned', (data) => {
+            console.log(`Dummy ${data.dummyId} respawned`);
+            if (this.dummies) {
+                const dummy = this.dummies[data.dummyId];
+                if (dummy) {
+                    dummy.x = data.x;
+                    dummy.y = data.y;
+                    dummy.currentHP = data.currentHP;
+                    dummy.maxHP = data.maxHP;
+                    dummy.deathTime = 0;
+                }
+            }
         });
     }
 
@@ -333,11 +385,11 @@ class RemotePlayer {
     }
 
     renderInfoAbove(ctx) {
-        const infoY = this.y - this.height / 2 - 10;
+        const infoY = this.y - this.height / 2 - 15;
 
-        // HP Bar
-        const hpBarWidth = this.width;
-        const hpBarHeight = 6;
+        // HP Bar (1.5x size)
+        const hpBarWidth = this.width * 1.5;
+        const hpBarHeight = 9;
         const hpBarX = this.x - hpBarWidth / 2;
         const hpBarY = infoY - hpBarHeight;
 
@@ -379,17 +431,22 @@ class RemotePlayer {
     renderChatBubble(ctx) {
         if (!this.chatMessage) return;
 
-        // Position bubble above player info
-        const bubbleY = this.y - this.height / 2 - 50; // Above HP bar and name
+        // Calculate where the name text ends (above HP bar)
+        const nameY = this.y - this.height / 2 - 15 - 9 - 5; // infoY - hpBarHeight - 5
 
-        // Measure text to determine bubble size
-        ctx.font = '20px Inter, sans-serif';
+        // Position bubble above player name with padding (1.5x size)
+        const bubbleHeight = 48; // 32 * 1.5
+        const pointerSize = 8; // 5 * 1.5 (rounded)
+        const bubbleBottomY = nameY - 10; // 10px gap above name
+        const bubbleY = bubbleBottomY - bubbleHeight - pointerSize;
+
+        // Measure text to determine bubble size (1.5x font)
+        ctx.font = '30px Inter, sans-serif';
         const textMetrics = ctx.measureText(this.chatMessage);
         const textWidth = textMetrics.width;
 
-        const padding = 14;
+        const padding = 21; // 14 * 1.5
         const bubbleWidth = textWidth + padding * 2;
-        const bubbleHeight = 32;
         const bubbleX = this.x - bubbleWidth / 2;
 
         // Draw bubble background
@@ -398,7 +455,7 @@ class RemotePlayer {
         ctx.lineWidth = 2;
 
         // Rounded rectangle for bubble
-        const radius = 5;
+        const radius = 8; // 5 * 1.5 (rounded)
         ctx.beginPath();
         ctx.moveTo(bubbleX + radius, bubbleY);
         ctx.lineTo(bubbleX + bubbleWidth - radius, bubbleY);
@@ -414,7 +471,6 @@ class RemotePlayer {
         ctx.stroke();
 
         // Draw small triangle pointer
-        const pointerSize = 5;
         ctx.beginPath();
         ctx.moveTo(this.x - pointerSize, bubbleY + bubbleHeight);
         ctx.lineTo(this.x, bubbleY + bubbleHeight + pointerSize);
@@ -426,7 +482,7 @@ class RemotePlayer {
 
         // Draw text
         ctx.fillStyle = '#000000';
-        ctx.font = '20px Inter, sans-serif';
+        ctx.font = '30px Inter, sans-serif';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         ctx.fillText(this.chatMessage, this.x, bubbleY + bubbleHeight / 2);

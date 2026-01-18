@@ -19,12 +19,72 @@ app.use(express.static(path.join(__dirname)));
 // Store connected players
 const players = new Map();
 
-// Shard system
+// Game world constants
 const GAME_WIDTH = 1920;
 const GAME_HEIGHT = 1080;
+
+// Shard system
 const MAX_SHARDS = 40;
 const shards = new Map(); // Map of shardId -> {id, x, y, collected, collectedTime, respawnDelay}
 let shardIdCounter = 0;
+
+// Dummy system (server-authoritative)
+const dummies = new Map(); // Map of dummyId -> {id, x, y, name, currentHP, maxHP, deathTime, respawnDelay}
+const DUMMY_RESPAWN_DELAY = 5000; // 5 seconds
+
+function initializeDummies() {
+    const dummyPositions = [
+        { x: GAME_WIDTH / 2 + 300, y: GAME_HEIGHT / 2, name: 'Dummy 1' },
+        { x: GAME_WIDTH / 2 - 300, y: GAME_HEIGHT / 2, name: 'Dummy 2' },
+        { x: GAME_WIDTH / 2, y: GAME_HEIGHT / 2 + 300, name: 'Dummy 3' },
+    ];
+
+    dummyPositions.forEach((pos, index) => {
+        dummies.set(index, {
+            id: index,
+            x: pos.x,
+            y: pos.y,
+            initialX: pos.x,
+            initialY: pos.y,
+            name: pos.name,
+            currentHP: 30, // 3 hits to kill (10 damage x 3)
+            maxHP: 30,
+            deathTime: 0,
+            respawnDelay: DUMMY_RESPAWN_DELAY
+        });
+    });
+
+    console.log(`Initialized ${dummies.size} dummies`);
+}
+
+function checkDummyRespawn() {
+    const currentTime = Date.now();
+
+    dummies.forEach((dummy) => {
+        if (dummy.currentHP <= 0 && dummy.deathTime > 0) {
+            const elapsedTime = currentTime - dummy.deathTime;
+
+            if (elapsedTime >= dummy.respawnDelay) {
+                // Respawn dummy
+                dummy.currentHP = dummy.maxHP;
+                dummy.x = dummy.initialX;
+                dummy.y = dummy.initialY;
+                dummy.deathTime = 0;
+
+                console.log(`${dummy.name} respawned`);
+
+                // Broadcast respawn to all clients
+                io.emit('dummyRespawned', {
+                    dummyId: dummy.id,
+                    x: dummy.x,
+                    y: dummy.y,
+                    currentHP: dummy.currentHP,
+                    maxHP: dummy.maxHP
+                });
+            }
+        }
+    });
+}
 
 // Initialize shards
 function initializeShards() {
@@ -75,9 +135,11 @@ function checkShardRespawn() {
     }
 }
 
-// Start shard system
+// Start shard and dummy systems
 initializeShards();
+initializeDummies();
 setInterval(checkShardRespawn, 1000); // Check every second
+setInterval(checkDummyRespawn, 1000); // Check dummy respawn every second
 
 io.on('connection', (socket) => {
     console.log(`Player connected: ${socket.id}`);
@@ -94,6 +156,10 @@ io.on('connection', (socket) => {
     // Send existing shards to new player
     const activeShards = Array.from(shards.values()).filter(s => !s.collected);
     socket.emit('existingShards', activeShards);
+
+    // Send existing dummies to new player
+    const aliveDummies = Array.from(dummies.values()).filter(d => d.currentHP > 0);
+    socket.emit('existingDummies', aliveDummies);
 
     // Initialize player data
     players.set(socket.id, {
@@ -216,6 +282,44 @@ io.on('connection', (socket) => {
             io.emit('playerDamaged', {
                 attackerId: socket.id,
                 hitPlayers: hitPlayers
+            });
+        }
+
+        // Check all dummies in range
+        const hitDummies = [];
+        dummies.forEach((dummy) => {
+            if (dummy.currentHP <= 0) return; // Skip dead dummies
+
+            // Calculate distance
+            const dx = dummy.x - attackX;
+            const dy = dummy.y - attackY;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+
+            // Check if in range (consider dummy size ~135px, half = 67.5)
+            if (distance <= attackRange + 67.5) {
+                // Apply damage
+                dummy.currentHP = Math.max(0, dummy.currentHP - attackPower);
+                hitDummies.push({
+                    dummyId: dummy.id,
+                    currentHP: dummy.currentHP,
+                    maxHP: dummy.maxHP
+                });
+
+                console.log(`${socket.id} hit ${dummy.name} for ${attackPower} damage (HP: ${dummy.currentHP}/${dummy.maxHP})`);
+
+                // Mark death time if killed
+                if (dummy.currentHP <= 0) {
+                    dummy.deathTime = Date.now();
+                    console.log(`${dummy.name} has been defeated!`);
+                }
+            }
+        });
+
+        // Broadcast dummy damage to all players
+        if (hitDummies.length > 0) {
+            io.emit('dummyDamaged', {
+                attackerId: socket.id,
+                hitDummies: hitDummies
             });
         }
     });

@@ -33,6 +33,7 @@ class Character {
         this.isAttacking = false;
         this.attackAnimationTime = 200; // Attack animation duration in ms
         this.attackStartTime = 0;
+        this.lastDamagedTime = 0; // Track when last damaged (for invincibility frame)
 
         // Respawn system (for dummies)
         this.deathTime = 0;
@@ -163,11 +164,11 @@ class Character {
     }
 
     renderInfoAbove(ctx) {
-        const infoY = this.y - this.height / 2 - 10; // Start 10px above character
+        const infoY = this.y - this.height / 2 - 15; // Start 15px above character
 
-        // HP Bar
-        const hpBarWidth = this.width;
-        const hpBarHeight = 6;
+        // HP Bar (1.5x size)
+        const hpBarWidth = this.width * 1.5;
+        const hpBarHeight = 9;
         const hpBarX = this.x - hpBarWidth / 2;
         const hpBarY = infoY - hpBarHeight;
 
@@ -234,17 +235,22 @@ class Character {
     renderChatBubble(ctx) {
         if (!this.chatMessage) return;
 
-        // Position bubble above player info
-        const bubbleY = this.y - this.height / 2 - 50; // Above HP bar and name
+        // Calculate where the name text ends (above HP bar)
+        const nameY = this.y - this.height / 2 - 15 - 9 - 5; // infoY - hpBarHeight - 5
 
-        // Measure text to determine bubble size
-        ctx.font = '20px Inter, sans-serif';
+        // Position bubble above player name with padding (1.5x size)
+        const bubbleHeight = 48; // 32 * 1.5
+        const pointerSize = 8; // 5 * 1.5 (rounded)
+        const bubbleBottomY = nameY - 10; // 10px gap above name
+        const bubbleY = bubbleBottomY - bubbleHeight - pointerSize;
+
+        // Measure text to determine bubble size (1.5x font)
+        ctx.font = '30px Inter, sans-serif';
         const textMetrics = ctx.measureText(this.chatMessage);
         const textWidth = textMetrics.width;
 
-        const padding = 14;
+        const padding = 21; // 14 * 1.5
         const bubbleWidth = textWidth + padding * 2;
-        const bubbleHeight = 32;
         const bubbleX = this.x - bubbleWidth / 2;
 
         // Draw bubble background
@@ -253,7 +259,7 @@ class Character {
         ctx.lineWidth = 2;
 
         // Rounded rectangle for bubble
-        const radius = 5;
+        const radius = 8; // 5 * 1.5 (rounded)
         ctx.beginPath();
         ctx.moveTo(bubbleX + radius, bubbleY);
         ctx.lineTo(bubbleX + bubbleWidth - radius, bubbleY);
@@ -269,7 +275,6 @@ class Character {
         ctx.stroke();
 
         // Draw small triangle pointer
-        const pointerSize = 5;
         ctx.beginPath();
         ctx.moveTo(this.x - pointerSize, bubbleY + bubbleHeight);
         ctx.lineTo(this.x, bubbleY + bubbleHeight + pointerSize);
@@ -281,7 +286,7 @@ class Character {
 
         // Draw text
         ctx.fillStyle = '#000000';
-        ctx.font = '20px Inter, sans-serif';
+        ctx.font = '30px Inter, sans-serif';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         ctx.fillText(this.chatMessage, this.x, bubbleY + bubbleHeight / 2);
@@ -363,8 +368,17 @@ class Character {
         };
     }
 
-    // Take damage
+    // Take damage (with invincibility frame to prevent multi-hit)
     takeDamage(amount) {
+        const currentTime = Date.now();
+        const invincibilityDuration = 300; // 300ms invincibility after being hit
+
+        // Check if still in invincibility period
+        if (currentTime - this.lastDamagedTime < invincibilityDuration) {
+            return false; // Still invincible, no damage taken
+        }
+
+        this.lastDamagedTime = currentTime;
         this.currentHP = Math.max(0, this.currentHP - amount);
         console.log(`${this.playerName} took ${amount} damage! HP: ${this.currentHP}/${this.maxHP}`);
 
