@@ -250,6 +250,16 @@ function update(deltaTime) {
                 if (target) {
                     gameState.laserBeamEffect.start(playerPos.x, playerPos.y, target.x, target.y);
                     console.log(`Used skill: ${skill.name} - targeting (${target.x}, ${target.y})`);
+
+                    // Send laser aiming to server for sync with other players
+                    if (gameState.networkManager) {
+                        gameState.networkManager.sendLaserAiming(
+                            playerPos.x,
+                            playerPos.y,
+                            gameState.laserBeamEffect.dirX,
+                            gameState.laserBeamEffect.dirY
+                        );
+                    }
                 }
             }
         }

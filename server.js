@@ -495,6 +495,18 @@ io.on('connection', (socket) => {
         }
     });
 
+    // Handle laser aiming (sync with other players)
+    socket.on('laserAiming', (data) => {
+        // Broadcast laser aiming to all other players
+        socket.broadcast.emit('laserAiming', {
+            playerId: socket.id,
+            x: data.x,
+            y: data.y,
+            dirX: data.dirX,
+            dirY: data.dirY
+        });
+    });
+
     // Handle laser attack (Q skill)
     socket.on('laserAttack', (data) => {
         const attacker = players.get(socket.id);
