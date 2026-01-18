@@ -36,13 +36,18 @@ const DUMMY_RESPAWN_DELAY = 5000; // 5 seconds
 const PLAYER_RESPAWN_DELAY = 3000; // 3 seconds
 
 // Knockback settings
-const KNOCKBACK_MIN = 30; // Minimum knockback distance (at max attack range)
-const KNOCKBACK_MAX = 100; // Maximum knockback distance (at 0 distance)
+const KNOCKBACK_MIN = 30; // Base minimum knockback distance (at max attack range)
+const KNOCKBACK_MAX = 100; // Base maximum knockback distance (at 0 distance)
+const KNOCKBACK_MULTIPLIER_MIN = 5; // Minimum random multiplier
+const KNOCKBACK_MULTIPLIER_MAX = 10; // Maximum random multiplier
 
 // Calculate knockback distance based on distance from attacker (closer = more knockback)
+// Applies random multiplier (5x ~ 10x) for more impactful knockback
 function calculateKnockbackDistance(attackRange, distance) {
     const ratio = Math.min(1, distance / attackRange);
-    return KNOCKBACK_MAX - ratio * (KNOCKBACK_MAX - KNOCKBACK_MIN);
+    const baseKnockback = KNOCKBACK_MAX - ratio * (KNOCKBACK_MAX - KNOCKBACK_MIN);
+    const multiplier = KNOCKBACK_MULTIPLIER_MIN + Math.random() * (KNOCKBACK_MULTIPLIER_MAX - KNOCKBACK_MULTIPLIER_MIN);
+    return baseKnockback * multiplier;
 }
 
 // Calculate knockback end position
