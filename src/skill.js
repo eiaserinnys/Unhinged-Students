@@ -110,8 +110,10 @@ class LaserBeamEffect {
         // Positions
         this.startX = 0;
         this.startY = 0;
-        this.targetX = 0;
-        this.targetY = 0;
+
+        // Fixed direction (set once when skill starts)
+        this.dirX = 0;
+        this.dirY = 0;
 
         // Damage
         this.damage = 15;
@@ -124,15 +126,27 @@ class LaserBeamEffect {
         this.startTime = Date.now();
         this.startX = playerX;
         this.startY = playerY;
-        this.targetX = targetX;
-        this.targetY = targetY;
+
+        // Calculate and LOCK the direction at start
+        const dx = targetX - playerX;
+        const dy = targetY - playerY;
+        const length = Math.sqrt(dx * dx + dy * dy);
+        if (length > 0) {
+            this.dirX = dx / length;
+            this.dirY = dy / length;
+        } else {
+            // Default to right if no target
+            this.dirX = 1;
+            this.dirY = 0;
+        }
+
         this.hasDealtDamage = false;
     }
 
     update(playerX, playerY) {
         if (!this.active) return;
 
-        // Update start position to follow player
+        // Update start position to follow player (direction stays fixed)
         this.startX = playerX;
         this.startY = playerY;
 
@@ -162,18 +176,12 @@ class LaserBeamEffect {
 
     // Get laser line for collision detection
     getLaserLine() {
-        // Extend the line far beyond the target
-        const dx = this.targetX - this.startX;
-        const dy = this.targetY - this.startY;
-        const length = Math.sqrt(dx * dx + dy * dy);
-        if (length === 0) return null;
-
-        const dirX = dx / length;
-        const dirY = dy / length;
+        // Use fixed direction (set at skill start)
+        if (this.dirX === 0 && this.dirY === 0) return null;
 
         // Extend to 2000 pixels (beyond screen)
-        const endX = this.startX + dirX * 2000;
-        const endY = this.startY + dirY * 2000;
+        const endX = this.startX + this.dirX * 2000;
+        const endY = this.startY + this.dirY * 2000;
 
         return {
             x1: this.startX,
