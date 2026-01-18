@@ -20,16 +20,15 @@ class NetworkManager {
     }
 
     connect(serverUrl = null) {
-        // Auto-detect server URL if not provided
-        if (!serverUrl) {
-            const hostname = window.location.hostname;
-            const port = 3000;
-            serverUrl = `http://${hostname}:${port}`;
-        }
+        // Use relative path for socket.io (works with nginx reverse proxy)
+        // Socket.io will connect to /game/socket.io/ when served from /game/
+        const options = {
+            path: '/game/socket.io'
+        };
 
-        console.log(`Connecting to server: ${serverUrl}`);
+        console.log('Connecting to server via /game/socket.io');
 
-        this.socket = io(serverUrl);
+        this.socket = io(options);
 
         // Connection established
         this.socket.on('connected', (data) => {
