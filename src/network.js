@@ -151,6 +151,39 @@ class NetworkManager {
             }
         });
 
+        // Telepathy tick damage (no knockback, no vignette - just HP update)
+        this.socket.on('telepathyTick', (data) => {
+            data.hitPlayers.forEach(hit => {
+                if (hit.playerId === this.playerId && this.localPlayer) {
+                    // Update local player HP only (no knockback, no vignette)
+                    this.localPlayer.currentHP = hit.currentHP;
+                } else {
+                    // Update remote player HP only
+                    const player = this.remotePlayers.get(hit.playerId);
+                    if (player) {
+                        player.currentHP = hit.currentHP;
+                        player.maxHP = hit.maxHP;
+                    }
+                }
+            });
+        });
+
+        // Telepathy tick damage for dummies (no knockback)
+        this.socket.on('telepathyTickDummy', (data) => {
+            if (this.dummies) {
+                data.hitDummies.forEach(hit => {
+                    const dummy = this.dummies[hit.dummyId];
+                    if (dummy) {
+                        dummy.currentHP = hit.currentHP;
+                        dummy.maxHP = hit.maxHP;
+                        if (dummy.currentHP <= 0) {
+                            dummy.deathTime = Date.now();
+                        }
+                    }
+                });
+            }
+        });
+
         // Shard events
         this.socket.on('existingShards', (shards) => {
             console.log(`Received ${shards.length} existing shards`);

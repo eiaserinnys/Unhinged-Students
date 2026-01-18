@@ -844,9 +844,9 @@ io.on('connection', (socket) => {
             }
         });
 
-        // Broadcast damage to all players
+        // Broadcast telepathy tick damage (no knockback, no vignette)
         if (hitPlayers.length > 0) {
-            io.emit('playerDamaged', {
+            io.emit('telepathyTick', {
                 attackerId: socket.id,
                 hitPlayers: hitPlayers
             });
@@ -863,7 +863,7 @@ io.on('connection', (socket) => {
         }
 
         if (hitDummies.length > 0) {
-            io.emit('dummyDamaged', {
+            io.emit('telepathyTickDummy', {
                 attackerId: socket.id,
                 hitDummies: hitDummies
             });
@@ -881,8 +881,6 @@ io.on('connection', (socket) => {
                 healAmount: healAmount,
                 newHP: attacker.currentHP
             });
-
-            console.log(`${socket.id} telepathy healed ${healAmount} HP (hit ${hitPlayers.length + hitDummies.length} targets)`);
         }
     });
 

@@ -249,15 +249,15 @@ function update(deltaTime) {
 
     // Handle skill input (Q, W, E) - only when not chatting and player is alive
     if (gameState.skillManager && !isChatting && !isPlayerDead) {
-        // Q - Laser Beam
+        // Q - Laser Beam (targets players only, not dummies)
         if (isKeyJustPressed('q') && !gameState.laserBeamEffect.active) {
             const skill = gameState.skillManager.useSkill('q');
             if (skill) {
                 const playerPos = gameState.player.getPosition();
-                const target = findNearestEnemy();
+                const target = findNearestEnemy(true); // playersOnly = true
                 if (target) {
                     gameState.laserBeamEffect.start(playerPos.x, playerPos.y, target.x, target.y);
-                    console.log(`Used skill: ${skill.name} - targeting (${target.x}, ${target.y})`);
+                    console.log(`Used skill: ${skill.name} - targeting ${target.type} at (${target.x.toFixed(0)}, ${target.y.toFixed(0)})`);
 
                     // Send laser aiming to server for sync with other players
                     if (gameState.networkManager) {
@@ -594,8 +594,9 @@ function triggerHitVignette() {
     gameState.hitVignetteTime = Date.now();
 }
 
-// Find the nearest enemy (dummy or remote player) to the player
-function findNearestEnemy() {
+// Find the nearest enemy to the player
+// playersOnly: if true, only target other players (not dummies)
+function findNearestEnemy(playersOnly = false) {
     const player = gameState.player;
     if (!player) return null;
 
@@ -603,18 +604,20 @@ function findNearestEnemy() {
     let nearestEnemy = null;
     let nearestDistance = Infinity;
 
-    // Check dummies
-    gameState.dummies.forEach(dummy => {
-        if (dummy.isAlive()) {
-            const dx = dummy.x - playerPos.x;
-            const dy = dummy.y - playerPos.y;
-            const distance = Math.sqrt(dx * dx + dy * dy);
-            if (distance < nearestDistance) {
-                nearestDistance = distance;
-                nearestEnemy = { x: dummy.x, y: dummy.y, type: 'dummy' };
+    // Check dummies (skip if playersOnly)
+    if (!playersOnly) {
+        gameState.dummies.forEach(dummy => {
+            if (dummy.isAlive()) {
+                const dx = dummy.x - playerPos.x;
+                const dy = dummy.y - playerPos.y;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+                if (distance < nearestDistance) {
+                    nearestDistance = distance;
+                    nearestEnemy = { x: dummy.x, y: dummy.y, type: 'dummy' };
+                }
             }
-        }
-    });
+        });
+    }
 
     // Check remote players
     if (gameState.networkManager) {
