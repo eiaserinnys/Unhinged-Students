@@ -50,6 +50,31 @@ function calculateKnockbackDistance(attackRange, distance) {
     return baseKnockback * multiplier;
 }
 
+// Line-circle collision detection for laser beam
+// Returns true if the line segment intersects the circle
+function lineCircleIntersect(x1, y1, x2, y2, cx, cy, r) {
+    // Vector from line start to circle center
+    const dx = x2 - x1;
+    const dy = y2 - y1;
+    const fx = x1 - cx;
+    const fy = y1 - cy;
+
+    const a = dx * dx + dy * dy;
+    const b = 2 * (fx * dx + fy * dy);
+    const c = fx * fx + fy * fy - r * r;
+
+    const discriminant = b * b - 4 * a * c;
+    if (discriminant < 0) return false;
+
+    // Check if intersection is within the line segment
+    const sqrtD = Math.sqrt(discriminant);
+    const t1 = (-b - sqrtD) / (2 * a);
+    const t2 = (-b + sqrtD) / (2 * a);
+
+    // Check if either intersection point is within the segment (0 <= t <= 1)
+    return (t1 >= 0 && t1 <= 1) || (t2 >= 0 && t2 <= 1);
+}
+
 // Calculate knockback end position
 function calculateKnockbackEndPosition(attackerX, attackerY, targetX, targetY, knockbackDistance) {
     let dirX = targetX - attackerX;
@@ -462,6 +487,131 @@ io.on('connection', (socket) => {
         });
 
         // Broadcast dummy damage to all players
+        if (hitDummies.length > 0) {
+            io.emit('dummyDamaged', {
+                attackerId: socket.id,
+                hitDummies: hitDummies
+            });
+        }
+    });
+
+    // Handle laser attack (Q skill)
+    socket.on('laserAttack', (data) => {
+        const attacker = players.get(socket.id);
+        if (!attacker) return;
+
+        const { x1, y1, x2, y2, damage } = data;
+        const hitRadius = 67.5; // Half of character size for collision
+
+        console.log(`Laser attack from ${socket.id}: (${x1.toFixed(0)}, ${y1.toFixed(0)}) -> (${x2.toFixed(0)}, ${y2.toFixed(0)})`);
+
+        // Broadcast laser effect to all other players
+        socket.broadcast.emit('laserFired', {
+            playerId: socket.id,
+            x1, y1, x2, y2
+        });
+
+        // Check all players in laser path
+        const hitPlayers = [];
+        const killedPlayers = [];
+        players.forEach((player, playerId) => {
+            if (playerId === socket.id) return; // Don't hit yourself
+            if (player.isDead) return; // Skip dead players
+
+            // Check line-circle collision
+            if (lineCircleIntersect(x1, y1, x2, y2, player.x, player.y, hitRadius)) {
+                // Apply damage
+                player.currentHP = Math.max(0, player.currentHP - damage);
+
+                // Calculate knockback direction from laser origin
+                const knockbackDist = 50; // Fixed knockback for laser
+                const knockbackEnd = calculateKnockbackEndPosition(x1, y1, player.x, player.y, knockbackDist);
+
+                player.x = knockbackEnd.x;
+                player.y = knockbackEnd.y;
+
+                hitPlayers.push({
+                    playerId: playerId,
+                    currentHP: player.currentHP,
+                    maxHP: player.maxHP,
+                    knockbackEndX: knockbackEnd.x,
+                    knockbackEndY: knockbackEnd.y,
+                    attackerX: x1,
+                    attackerY: y1
+                });
+
+                console.log(`Laser hit ${playerId} for ${damage} damage (HP: ${player.currentHP}/${player.maxHP})`);
+
+                // Check if player died
+                if (player.currentHP <= 0 && !player.isDead) {
+                    player.isDead = true;
+                    player.deathTime = Date.now();
+                    killedPlayers.push({
+                        playerId: playerId,
+                        killedBy: socket.id,
+                        respawnDelay: PLAYER_RESPAWN_DELAY
+                    });
+                    console.log(`${playerId} has been killed by laser from ${socket.id}!`);
+                }
+            }
+        });
+
+        // Broadcast damage to all players
+        if (hitPlayers.length > 0) {
+            io.emit('playerDamaged', {
+                attackerId: socket.id,
+                hitPlayers: hitPlayers
+            });
+        }
+
+        // Broadcast deaths
+        if (killedPlayers.length > 0) {
+            killedPlayers.forEach(killed => {
+                io.emit('playerDied', {
+                    playerId: killed.playerId,
+                    killedBy: killed.killedBy,
+                    respawnDelay: killed.respawnDelay
+                });
+            });
+        }
+
+        // Check all dummies in laser path
+        const hitDummies = [];
+        dummies.forEach((dummy) => {
+            if (dummy.currentHP <= 0) return; // Skip dead dummies
+
+            // Check line-circle collision
+            if (lineCircleIntersect(x1, y1, x2, y2, dummy.x, dummy.y, hitRadius)) {
+                // Apply damage
+                dummy.currentHP = Math.max(0, dummy.currentHP - damage);
+
+                // Calculate knockback
+                const knockbackDist = 50;
+                const knockbackEnd = calculateKnockbackEndPosition(x1, y1, dummy.x, dummy.y, knockbackDist);
+
+                dummy.x = knockbackEnd.x;
+                dummy.y = knockbackEnd.y;
+
+                hitDummies.push({
+                    dummyId: dummy.id,
+                    currentHP: dummy.currentHP,
+                    maxHP: dummy.maxHP,
+                    knockbackEndX: knockbackEnd.x,
+                    knockbackEndY: knockbackEnd.y,
+                    attackerX: x1,
+                    attackerY: y1
+                });
+
+                console.log(`Laser hit ${dummy.name} for ${damage} damage (HP: ${dummy.currentHP}/${dummy.maxHP})`);
+
+                if (dummy.currentHP <= 0) {
+                    dummy.deathTime = Date.now();
+                    console.log(`${dummy.name} has been defeated by laser!`);
+                }
+            }
+        });
+
+        // Broadcast dummy damage
         if (hitDummies.length > 0) {
             io.emit('dummyDamaged', {
                 attackerId: socket.id,

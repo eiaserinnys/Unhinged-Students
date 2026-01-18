@@ -98,6 +98,150 @@ class SkillManager {
     }
 }
 
+// Laser Beam Effect - handles the Q skill visual and logic
+class LaserBeamEffect {
+    constructor() {
+        this.active = false;
+        this.phase = 'none'; // 'aiming', 'firing', 'none'
+        this.startTime = 0;
+        this.aimDuration = 1000; // 1 second aiming
+        this.fireDuration = 200; // 0.2 second firing flash
+
+        // Positions
+        this.startX = 0;
+        this.startY = 0;
+        this.targetX = 0;
+        this.targetY = 0;
+
+        // Damage
+        this.damage = 15;
+        this.hasDealtDamage = false;
+    }
+
+    start(playerX, playerY, targetX, targetY) {
+        this.active = true;
+        this.phase = 'aiming';
+        this.startTime = Date.now();
+        this.startX = playerX;
+        this.startY = playerY;
+        this.targetX = targetX;
+        this.targetY = targetY;
+        this.hasDealtDamage = false;
+    }
+
+    update(playerX, playerY) {
+        if (!this.active) return;
+
+        // Update start position to follow player
+        this.startX = playerX;
+        this.startY = playerY;
+
+        const elapsed = Date.now() - this.startTime;
+
+        if (this.phase === 'aiming') {
+            if (elapsed >= this.aimDuration) {
+                this.phase = 'firing';
+                this.startTime = Date.now();
+            }
+        } else if (this.phase === 'firing') {
+            if (elapsed >= this.fireDuration) {
+                this.active = false;
+                this.phase = 'none';
+            }
+        }
+    }
+
+    // Check if laser should deal damage this frame
+    shouldDealDamage() {
+        if (this.phase === 'firing' && !this.hasDealtDamage) {
+            this.hasDealtDamage = true;
+            return true;
+        }
+        return false;
+    }
+
+    // Get laser line for collision detection
+    getLaserLine() {
+        // Extend the line far beyond the target
+        const dx = this.targetX - this.startX;
+        const dy = this.targetY - this.startY;
+        const length = Math.sqrt(dx * dx + dy * dy);
+        if (length === 0) return null;
+
+        const dirX = dx / length;
+        const dirY = dy / length;
+
+        // Extend to 2000 pixels (beyond screen)
+        const endX = this.startX + dirX * 2000;
+        const endY = this.startY + dirY * 2000;
+
+        return {
+            x1: this.startX,
+            y1: this.startY,
+            x2: endX,
+            y2: endY
+        };
+    }
+
+    render(ctx) {
+        if (!this.active) return;
+
+        const elapsed = Date.now() - this.startTime;
+
+        ctx.save();
+
+        if (this.phase === 'aiming') {
+            // Aiming line - gets more opaque over time
+            const progress = elapsed / this.aimDuration;
+            const opacity = 0.3 + progress * 0.5; // 0.3 to 0.8
+
+            ctx.strokeStyle = `rgba(255, 68, 68, ${opacity})`;
+            ctx.lineWidth = 2 + progress * 2; // 2 to 4 pixels
+
+            // Draw dashed line during aiming
+            ctx.setLineDash([10, 10]);
+
+            ctx.beginPath();
+            ctx.moveTo(this.startX, this.startY);
+
+            // Extend to edge of screen
+            const line = this.getLaserLine();
+            if (line) {
+                ctx.lineTo(line.x2, line.y2);
+            }
+            ctx.stroke();
+
+        } else if (this.phase === 'firing') {
+            // Firing flash - bright white/red beam
+            const progress = elapsed / this.fireDuration;
+            const opacity = 1 - progress * 0.5; // Fade slightly
+
+            // Glow effect (outer)
+            ctx.strokeStyle = `rgba(255, 100, 100, ${opacity * 0.5})`;
+            ctx.lineWidth = 20;
+            ctx.beginPath();
+            ctx.moveTo(this.startX, this.startY);
+            const line = this.getLaserLine();
+            if (line) {
+                ctx.lineTo(line.x2, line.y2);
+            }
+            ctx.stroke();
+
+            // Core beam (inner)
+            ctx.strokeStyle = `rgba(255, 255, 255, ${opacity})`;
+            ctx.lineWidth = 6;
+            ctx.beginPath();
+            ctx.moveTo(this.startX, this.startY);
+            if (line) {
+                ctx.lineTo(line.x2, line.y2);
+            }
+            ctx.stroke();
+        }
+
+        ctx.restore();
+    }
+}
+
 // Skill UI Renderer
 class SkillUI {
     constructor(skillManager) {

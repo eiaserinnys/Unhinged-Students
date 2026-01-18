@@ -297,6 +297,18 @@ class NetworkManager {
         });
     }
 
+    // Send laser attack to server
+    sendLaserAttack(x1, y1, x2, y2, damage) {
+        if (!this.connected || !this.socket) return;
+        this.socket.emit('laserAttack', {
+            x1: x1,
+            y1: y1,
+            x2: x2,
+            y2: y2,
+            damage: damage
+        });
+    }
+
     // Send shard collection to server
     sendShardCollection(shardId) {
         if (!this.connected || !this.socket) return;

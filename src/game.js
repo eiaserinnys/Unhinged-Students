@@ -22,6 +22,7 @@ const gameState = {
     chatManager: null,
     skillManager: null, // Skill system
     skillUI: null, // Skill UI renderer
+    laserBeamEffect: null, // Laser beam (Q skill) effect
     dummies: [], // Test dummies for combat practice
     stats: {
         shardsCollected: 0
@@ -122,6 +123,9 @@ function init() {
 
     // Initialize skill UI
     gameState.skillUI = new SkillUI(gameState.skillManager);
+
+    // Initialize laser beam effect
+    gameState.laserBeamEffect = new LaserBeamEffect();
 
     console.log('Skill system initialized');
 
@@ -237,18 +241,55 @@ function update(deltaTime) {
 
     // Handle skill input (Q, W, E) - only when not chatting and player is alive
     if (gameState.skillManager && !isChatting && !isPlayerDead) {
-        // Check for skill key presses
-        const skillKeys = ['q', 'w', 'e'];
-        skillKeys.forEach(key => {
-            if (isKeyJustPressed(key)) {
-                const skill = gameState.skillManager.useSkill(key);
-                if (skill) {
-                    console.log(`Used skill: ${skill.name}`);
-                    // TODO: Implement actual skill effects
-                    // For now, just trigger the cooldown
+        // Q - Laser Beam
+        if (isKeyJustPressed('q') && !gameState.laserBeamEffect.active) {
+            const skill = gameState.skillManager.useSkill('q');
+            if (skill) {
+                const playerPos = gameState.player.getPosition();
+                const target = findNearestEnemy();
+                if (target) {
+                    gameState.laserBeamEffect.start(playerPos.x, playerPos.y, target.x, target.y);
+                    console.log(`Used skill: ${skill.name} - targeting (${target.x}, ${target.y})`);
                 }
             }
-        });
+        }
+
+        // W - Teleport (TODO)
+        if (isKeyJustPressed('w')) {
+            const skill = gameState.skillManager.useSkill('w');
+            if (skill) {
+                console.log(`Used skill: ${skill.name}`);
+                // TODO: Implement teleport
+            }
+        }
+
+        // E - Telepathy (TODO)
+        if (isKeyJustPressed('e')) {
+            const skill = gameState.skillManager.useSkill('e');
+            if (skill) {
+                console.log(`Used skill: ${skill.name}`);
+                // TODO: Implement telepathy
+            }
+        }
+    }
+
+    // Update laser beam effect
+    if (gameState.laserBeamEffect && gameState.laserBeamEffect.active) {
+        const playerPos = gameState.player.getPosition();
+        gameState.laserBeamEffect.update(playerPos.x, playerPos.y);
+
+        // Check if laser should deal damage (when firing phase starts)
+        if (gameState.laserBeamEffect.shouldDealDamage()) {
+            // Send laser attack to server
+            const line = gameState.laserBeamEffect.getLaserLine();
+            if (line && gameState.networkManager) {
+                gameState.networkManager.sendLaserAttack(
+                    line.x1, line.y1,
+                    line.x2, line.y2,
+                    gameState.laserBeamEffect.damage
+                );
+            }
+        }
     }
 }
 
@@ -432,6 +473,11 @@ function render() {
         ctx.fillText(`Active Shards: ${gameState.shardManager.getActiveShardCount()}/${gameState.shardManager.maxActiveShards}`, 10, 80);
     }
 
+    // Draw laser beam effect (above players)
+    if (gameState.laserBeamEffect) {
+        gameState.laserBeamEffect.render(ctx);
+    }
+
     // Draw skill UI (above game elements, below vignette)
     if (gameState.skillUI) {
         gameState.skillUI.render(ctx, GAME_WIDTH, GAME_HEIGHT);
@@ -444,6 +490,52 @@ function render() {
 // Trigger hit vignette effect (called from network.js when local player takes damage)
 function triggerHitVignette() {
     gameState.hitVignetteTime = Date.now();
+}
+
+// Find the nearest enemy (dummy or remote player) to the player
+function findNearestEnemy() {
+    const player = gameState.player;
+    if (!player) return null;
+
+    const playerPos = player.getPosition();
+    let nearestEnemy = null;
+    let nearestDistance = Infinity;
+
+    // Check dummies
+    gameState.dummies.forEach(dummy => {
+        if (dummy.isAlive()) {
+            const dx = dummy.x - playerPos.x;
+            const dy = dummy.y - playerPos.y;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+            if (distance < nearestDistance) {
+                nearestDistance = distance;
+                nearestEnemy = { x: dummy.x, y: dummy.y, type: 'dummy' };
+            }
+        }
+    });
+
+    // Check remote players
+    if (gameState.networkManager) {
+        gameState.networkManager.remotePlayers.forEach(remotePlayer => {
+            if (remotePlayer.isAlive()) {
+                const dx = remotePlayer.x - playerPos.x;
+                const dy = remotePlayer.y - playerPos.y;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+                if (distance < nearestDistance) {
+                    nearestDistance = distance;
+                    nearestEnemy = { x: remotePlayer.x, y: remotePlayer.y, type: 'player' };
+                }
+            }
+        });
+    }
+
+    // If no enemy found, return a point in front of the player (based on facing direction)
+    if (!nearestEnemy) {
+        // Default to right direction
+        return { x: playerPos.x + 500, y: playerPos.y, type: 'none' };
+    }
+
+    return nearestEnemy;
 }
 
 // Start game when page loads

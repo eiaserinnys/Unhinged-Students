@@ -113,20 +113,20 @@ class Character {
             }
             // Skip normal movement during knockback
         } else {
-            // Keyboard movement (WASD and Arrow keys)
+            // Keyboard movement (Arrow keys only - WASD reserved for skills)
             // Movement is now frame-rate independent: distance = speed * deltaTime
             const moveDistance = this.speed * deltaTime;
 
-            if (isKeyPressed('w') || isKeyPressed('arrowup')) {
+            if (isKeyPressed('arrowup')) {
                 this.y -= moveDistance;
             }
-            if (isKeyPressed('s') || isKeyPressed('arrowdown')) {
+            if (isKeyPressed('arrowdown')) {
                 this.y += moveDistance;
             }
-            if (isKeyPressed('a') || isKeyPressed('arrowleft')) {
+            if (isKeyPressed('arrowleft')) {
                 this.x -= moveDistance;
             }
-            if (isKeyPressed('d') || isKeyPressed('arrowright')) {
+            if (isKeyPressed('arrowright')) {
                 this.x += moveDistance;
             }
         }
