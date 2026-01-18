@@ -70,7 +70,7 @@ Unhinged-Students/
 ├── server.js               # 멀티플레이어 서버 (Node.js + Socket.io)
 ├── package.json            # Node.js 프로젝트 설정
 ├── CLAUDE.md              # 개발 가이드라인 (본 문서)
-├── TODO.md                # 작업 목록 및 진행 상황
+├── backlog/               # 작업 백로그 (타임스탬프별 파일)
 ├── README.md              # 프로젝트 설명
 │
 ├── .claude/               # Claude Code 설정
@@ -116,7 +116,8 @@ Unhinged-Students/
 
 ## 📊 작업 현황
 
-작업 진행 상태 및 완료 항목은 **`TODO.md`**를 참고하세요.
+작업 진행 상태는 **`backlog/`** 디렉토리의 최신 파일을 참고하세요.
+현재 활성 백로그: `backlog/20260118-154211.md`
 
 ## 📖 개발 규칙
 
