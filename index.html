@@ -82,7 +82,10 @@
             display: flex;
             flex-direction: column;
             align-items: center;
-            justify-content: center;
+            justify-content: flex-start;
+            padding: clamp(20px, 5vh, 60px) 20px;
+            box-sizing: border-box;
+            overflow-y: auto;
             background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
             z-index: 100;
             transition: opacity 0.5s ease;
@@ -91,40 +94,51 @@
             opacity: 0;
             pointer-events: none;
         }
+        .lobby-content {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100%;
+            width: 100%;
+            max-width: 800px;
+        }
         .lobby-title {
             font-family: 'Jua', sans-serif;
-            font-size: 72px;
+            font-size: clamp(36px, 8vw, 72px);
             color: #00D9FF;
             text-shadow: 0 0 20px rgba(0, 217, 255, 0.5), 0 4px 8px rgba(0, 0, 0, 0.5);
-            margin-bottom: 10px;
+            margin-bottom: clamp(5px, 1vh, 10px);
             text-align: center;
         }
         .lobby-subtitle {
             font-family: 'Jua', sans-serif;
-            font-size: 28px;
+            font-size: clamp(18px, 4vw, 28px);
             color: #A78BFA;
             text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
-            margin-bottom: 50px;
+            margin-bottom: clamp(20px, 4vh, 50px);
         }
         .character-select {
             display: flex;
             flex-direction: column;
             align-items: center;
-            margin-bottom: 30px;
+            margin-bottom: clamp(15px, 3vh, 30px);
         }
         .character-select-label {
             font-family: 'Jua', sans-serif;
-            font-size: 24px;
+            font-size: clamp(18px, 3vw, 24px);
             color: #E0E0E0;
-            margin-bottom: 15px;
+            margin-bottom: clamp(8px, 1.5vh, 15px);
         }
         .character-list {
             display: flex;
-            gap: 20px;
+            gap: clamp(10px, 2vw, 20px);
+            flex-wrap: wrap;
+            justify-content: center;
         }
         .character-option {
-            width: 120px;
-            height: 140px;
+            width: clamp(80px, 15vw, 120px);
+            height: clamp(100px, 18vw, 140px);
             border: 3px solid #4ECDC4;
             border-radius: 15px;
             background: rgba(0, 0, 0, 0.3);
@@ -134,7 +148,7 @@
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            padding: 10px;
+            padding: clamp(5px, 1vw, 10px);
         }
         .character-option:hover {
             transform: scale(1.05);
@@ -147,48 +161,49 @@
             background: rgba(255, 215, 0, 0.1);
         }
         .character-option img {
-            width: 80px;
-            height: 80px;
+            width: clamp(50px, 10vw, 80px);
+            height: clamp(50px, 10vw, 80px);
             object-fit: contain;
         }
         .character-name {
             font-family: 'Jua', sans-serif;
-            font-size: 18px;
+            font-size: clamp(14px, 2vw, 18px);
             color: #ffffff;
-            margin-top: 8px;
+            margin-top: clamp(4px, 0.5vh, 8px);
         }
         .character-info {
-            margin-top: 15px;
+            margin-top: clamp(8px, 1.5vh, 15px);
             text-align: center;
         }
         .character-stats {
             font-family: 'Jua', sans-serif;
-            font-size: 16px;
+            font-size: clamp(12px, 2vw, 16px);
             color: #4ECDC4;
-            margin-bottom: 8px;
+            margin-bottom: clamp(4px, 0.5vh, 8px);
         }
         .character-skills {
             font-family: 'Jua', sans-serif;
-            font-size: 14px;
+            font-size: clamp(11px, 1.8vw, 14px);
             color: #A78BFA;
         }
         .name-input-section {
             display: flex;
             flex-direction: column;
             align-items: center;
-            margin-bottom: 40px;
+            margin-bottom: clamp(20px, 4vh, 40px);
+            width: 100%;
         }
         .name-input-label {
             font-family: 'Jua', sans-serif;
-            font-size: 24px;
+            font-size: clamp(18px, 3vw, 24px);
             color: #E0E0E0;
-            margin-bottom: 15px;
+            margin-bottom: clamp(8px, 1.5vh, 15px);
         }
         #playerNameInput {
-            width: 280px;
-            padding: 15px 20px;
+            width: min(280px, 80vw);
+            padding: clamp(10px, 2vh, 15px) clamp(15px, 3vw, 20px);
             font-family: 'Jua', sans-serif;
-            font-size: 22px;
+            font-size: clamp(18px, 3vw, 22px);
             border: 3px solid #4ECDC4;
             border-radius: 10px;
             background: rgba(0, 0, 0, 0.5);
@@ -196,6 +211,7 @@
             text-align: center;
             outline: none;
             transition: all 0.3s ease;
+            box-sizing: border-box;
         }
         #playerNameInput::placeholder {
             color: #888;
@@ -206,8 +222,8 @@
         }
         #startGameBtn {
             font-family: 'Jua', sans-serif;
-            font-size: 28px;
-            padding: 18px 60px;
+            font-size: clamp(20px, 4vw, 28px);
+            padding: clamp(12px, 2vh, 18px) clamp(40px, 8vw, 60px);
             border: none;
             border-radius: 15px;
             background: linear-gradient(135deg, #4ECDC4 0%, #00D9FF 100%);
@@ -228,6 +244,25 @@
             cursor: not-allowed;
             opacity: 0.6;
         }
+
+        /* Small screen adjustments */
+        @media (max-height: 600px) {
+            #lobbyContainer {
+                padding: 15px;
+            }
+            .lobby-subtitle {
+                margin-bottom: 15px;
+            }
+            .character-select {
+                margin-bottom: 10px;
+            }
+            .character-info {
+                margin-top: 5px;
+            }
+            .name-input-section {
+                margin-bottom: 15px;
+            }
+        }
     </style>
 </head>
 <body>
@@ -235,29 +270,31 @@
 
     <!-- Lobby UI -->
     <div id="lobbyContainer">
-        <div class="lobby-title">미친 제자들</div>
-        <div class="lobby-subtitle">Unhinged Students</div>
+        <div class="lobby-content">
+            <div class="lobby-title">미친 제자들</div>
+            <div class="lobby-subtitle">Unhinged Students</div>
 
-        <div class="character-select">
-            <div class="character-select-label">캐릭터 선택</div>
-            <div class="character-list">
-                <div class="character-option selected" data-character="alien">
-                    <img src="asset/image/alien.png" alt="외계인">
-                    <div class="character-name">외계인</div>
+            <div class="character-select">
+                <div class="character-select-label">캐릭터 선택</div>
+                <div class="character-list">
+                    <div class="character-option selected" data-character="alien">
+                        <img src="asset/image/alien.png" alt="외계인">
+                        <div class="character-name">외계인</div>
+                    </div>
+                </div>
+                <div class="character-info">
+                    <div class="character-stats">❤️ 체력: 보통 | ⚡ 속도: 빠름</div>
+                    <div class="character-skills">✨ 순간이동 | 🧠 텔레파시 | 👁️ 초능력</div>
                 </div>
             </div>
-            <div class="character-info">
-                <div class="character-stats">❤️ 체력: 보통 | ⚡ 속도: 빠름</div>
-                <div class="character-skills">✨ 순간이동 | 🧠 텔레파시 | 👁️ 초능력</div>
+
+            <div class="name-input-section">
+                <div class="name-input-label">플레이어 이름</div>
+                <input type="text" id="playerNameInput" placeholder="이름을 입력하세요" maxlength="12">
             </div>
-        </div>
 
-        <div class="name-input-section">
-            <div class="name-input-label">플레이어 이름</div>
-            <input type="text" id="playerNameInput" placeholder="이름을 입력하세요" maxlength="12">
+            <button id="startGameBtn" disabled>게임 시작</button>
         </div>
-
-        <button id="startGameBtn" disabled>게임 시작</button>
     </div>
 
     <!-- Chat UI -->
