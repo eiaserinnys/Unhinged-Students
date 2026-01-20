@@ -141,7 +141,7 @@ class LobbyManager {
             'curry-bear': 'asset/image/curry-bear.png',
             'big-sis-hulk': 'asset/image/big-sis-hulk.png',
             'teacher': 'asset/image/teacher.png',
-            'squek-squeak': 'asset/image/squek-squeak.png'
+            'squeak-squeak': 'asset/image/squeak-squeak.png'
         };
         return characterImages[characterId] || characterImages['alien'];
     }
@@ -150,11 +150,11 @@ class LobbyManager {
     static getCharacterName(characterId) {
         const characterNames = {
             'alien': '외계인',
-            'crazy-eyes': '눈 돌아간 애',
+            'crazy-eyes': '눈 돌아가는 사람',
             'curry-bear': '카레 곰돌이',
             'big-sis-hulk': '헐크 언니',
             'teacher': '선생님',
-            'squek-squeak': '찍찍이'
+            'squeak-squeak': '찍찍찍찍찍'
         };
         return characterNames[characterId] || '외계인';
     }
