@@ -7,7 +7,7 @@
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Jua&display=swap" rel="stylesheet">
     <style>
         body {
             margin: 0;
@@ -71,10 +71,175 @@
         #chatInput:focus {
             background: rgba(255, 255, 255, 0.2);
         }
+
+        /* Lobby UI */
+        #lobbyContainer {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            z-index: 100;
+            transition: opacity 0.5s ease;
+        }
+        #lobbyContainer.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+        .lobby-title {
+            font-family: 'Jua', sans-serif;
+            font-size: 72px;
+            color: #00D9FF;
+            text-shadow: 0 0 20px rgba(0, 217, 255, 0.5), 0 4px 8px rgba(0, 0, 0, 0.5);
+            margin-bottom: 10px;
+            text-align: center;
+        }
+        .lobby-subtitle {
+            font-family: 'Jua', sans-serif;
+            font-size: 28px;
+            color: #A78BFA;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+            margin-bottom: 50px;
+        }
+        .character-select {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-bottom: 30px;
+        }
+        .character-select-label {
+            font-family: 'Jua', sans-serif;
+            font-size: 24px;
+            color: #E0E0E0;
+            margin-bottom: 15px;
+        }
+        .character-list {
+            display: flex;
+            gap: 20px;
+        }
+        .character-option {
+            width: 120px;
+            height: 140px;
+            border: 3px solid #4ECDC4;
+            border-radius: 15px;
+            background: rgba(0, 0, 0, 0.3);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 10px;
+        }
+        .character-option:hover {
+            transform: scale(1.05);
+            border-color: #00D9FF;
+            box-shadow: 0 0 20px rgba(0, 217, 255, 0.3);
+        }
+        .character-option.selected {
+            border-color: #FFD700;
+            box-shadow: 0 0 25px rgba(255, 215, 0, 0.5);
+            background: rgba(255, 215, 0, 0.1);
+        }
+        .character-option img {
+            width: 80px;
+            height: 80px;
+            object-fit: contain;
+        }
+        .character-name {
+            font-family: 'Jua', sans-serif;
+            font-size: 18px;
+            color: #ffffff;
+            margin-top: 8px;
+        }
+        .name-input-section {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-bottom: 40px;
+        }
+        .name-input-label {
+            font-family: 'Jua', sans-serif;
+            font-size: 24px;
+            color: #E0E0E0;
+            margin-bottom: 15px;
+        }
+        #playerNameInput {
+            width: 280px;
+            padding: 15px 20px;
+            font-family: 'Jua', sans-serif;
+            font-size: 22px;
+            border: 3px solid #4ECDC4;
+            border-radius: 10px;
+            background: rgba(0, 0, 0, 0.5);
+            color: #ffffff;
+            text-align: center;
+            outline: none;
+            transition: all 0.3s ease;
+        }
+        #playerNameInput::placeholder {
+            color: #888;
+        }
+        #playerNameInput:focus {
+            border-color: #00D9FF;
+            box-shadow: 0 0 15px rgba(0, 217, 255, 0.3);
+        }
+        #startGameBtn {
+            font-family: 'Jua', sans-serif;
+            font-size: 28px;
+            padding: 18px 60px;
+            border: none;
+            border-radius: 15px;
+            background: linear-gradient(135deg, #4ECDC4 0%, #00D9FF 100%);
+            color: #1a1a2e;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(0, 217, 255, 0.3);
+        }
+        #startGameBtn:hover:not(:disabled) {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(0, 217, 255, 0.5);
+        }
+        #startGameBtn:active:not(:disabled) {
+            transform: translateY(0);
+        }
+        #startGameBtn:disabled {
+            background: linear-gradient(135deg, #666 0%, #888 100%);
+            cursor: not-allowed;
+            opacity: 0.6;
+        }
     </style>
 </head>
 <body>
     <canvas id="gameCanvas"></canvas>
+
+    <!-- Lobby UI -->
+    <div id="lobbyContainer">
+        <div class="lobby-title">미친 제자들</div>
+        <div class="lobby-subtitle">Unhinged Students</div>
+
+        <div class="character-select">
+            <div class="character-select-label">캐릭터 선택</div>
+            <div class="character-list">
+                <div class="character-option selected" data-character="alien">
+                    <img src="asset/image/alien.png" alt="외계인">
+                    <div class="character-name">외계인</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="name-input-section">
+            <div class="name-input-label">플레이어 이름</div>
+            <input type="text" id="playerNameInput" placeholder="이름을 입력하세요" maxlength="12">
+        </div>
+
+        <button id="startGameBtn" disabled>게임 시작</button>
+    </div>
 
     <!-- Chat UI -->
     <div id="chatContainer">
@@ -87,6 +252,7 @@
     <!-- Socket.io client -->
     <script src="/game/socket.io/socket.io.js"></script>
     <!-- Game scripts -->
+    <script src="src/lobby.js"></script>
     <script src="src/input.js"></script>
     <script src="src/character.js"></script>
     <script src="src/shard.js"></script>

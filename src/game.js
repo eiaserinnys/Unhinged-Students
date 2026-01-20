@@ -15,8 +15,10 @@ let offsetY = 0;
 
 // Game state
 const gameState = {
+    screen: 'lobby', // 'lobby' | 'playing'
     running: false,
     player: null,
+    lobbyManager: null, // Lobby UI manager
     shardManager: null,
     networkManager: null,
     chatManager: null,
@@ -34,7 +36,10 @@ const gameState = {
     lastAttackSentTime: 0, // Track last attack sent to server
     // Hit vignette effect
     hitVignetteTime: 0,
-    hitVignetteDuration: 300 // 300ms vignette effect
+    hitVignetteDuration: 300, // 300ms vignette effect
+    // Player selection from lobby
+    selectedCharacter: 'alien',
+    playerName: 'Player'
 };
 
 // Resize canvas to fill window while maintaining 16:9 aspect ratio
@@ -69,24 +74,49 @@ function resizeCanvas() {
     console.log(`Canvas resized to ${canvas.width}x${canvas.height}, scale: ${scale.toFixed(2)}`);
 }
 
-// Initialize game
+// Initialize game (called on page load)
 function init() {
-    console.log('Game initialized');
+    console.log('Initializing...');
 
     // Setup canvas size
     resizeCanvas();
     window.addEventListener('resize', resizeCanvas);
 
+    // Initialize input system
     initInput(canvas);
 
-    // Create player character (Alien) with player name
+    // Initialize lobby manager
+    gameState.lobbyManager = new LobbyManager();
+    gameState.lobbyManager.setOnGameStart((selection) => {
+        // Store player selection
+        gameState.selectedCharacter = selection.character;
+        gameState.playerName = selection.playerName;
+
+        // Start the actual game
+        startGame();
+    });
+
+    console.log('Lobby initialized - waiting for player input');
+}
+
+// Start game after lobby selection
+function startGame() {
+    console.log(`Starting game with character: ${gameState.selectedCharacter}, name: ${gameState.playerName}`);
+
+    // Update screen state
+    gameState.screen = 'playing';
+
+    // Get character image path
+    const characterImage = LobbyManager.getCharacterImagePath(gameState.selectedCharacter);
+
+    // Create player character with selected name
     // Position in center of game world (not canvas)
     gameState.player = new Character(
         GAME_WIDTH / 2,
         GAME_HEIGHT / 2,
-        'asset/image/alien.png',
+        characterImage,
         GAME_HEIGHT,
-        '마나리' // Player name
+        gameState.playerName
     );
 
     // Create test dummies for combat practice
