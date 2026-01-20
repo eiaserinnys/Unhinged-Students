@@ -1,0 +1,494 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lobby Test - Unhinged Students</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Jua&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #1a1a2e;
+            color: #ffffff;
+        }
+        h1 {
+            color: #00D9FF;
+        }
+        .test-section {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 20px;
+            margin: 10px 0;
+            border-radius: 5px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+        }
+        .test-result {
+            padding: 10px;
+            margin: 5px 0;
+            border-radius: 3px;
+        }
+        .pass {
+            background-color: #2d6a4f;
+            color: #d4edda;
+        }
+        .fail {
+            background-color: #7c2d2d;
+            color: #f8d7da;
+        }
+        .pending {
+            background-color: #4a4a4a;
+            color: #cccccc;
+        }
+        #log {
+            background: #0a0a0a;
+            color: #00ff00;
+            font-family: monospace;
+            padding: 10px;
+            height: 150px;
+            overflow-y: auto;
+            border-radius: 3px;
+        }
+        .run-btn {
+            background: linear-gradient(135deg, #4ECDC4 0%, #00D9FF 100%);
+            color: #1a1a2e;
+            border: none;
+            padding: 12px 24px;
+            font-size: 16px;
+            font-family: 'Jua', sans-serif;
+            border-radius: 8px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        .run-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(0, 217, 255, 0.3);
+        }
+
+        /* Lobby UI styles (copied from index.html) */
+        #lobbyContainer {
+            position: relative;
+            width: 100%;
+            max-width: 600px;
+            margin: 20px auto;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            padding: 30px;
+            border-radius: 15px;
+            transition: opacity 0.5s ease;
+        }
+        #lobbyContainer.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+        .lobby-title {
+            font-family: 'Jua', sans-serif;
+            font-size: 48px;
+            color: #00D9FF;
+            text-shadow: 0 0 20px rgba(0, 217, 255, 0.5), 0 4px 8px rgba(0, 0, 0, 0.5);
+            margin-bottom: 10px;
+            text-align: center;
+        }
+        .lobby-subtitle {
+            font-family: 'Jua', sans-serif;
+            font-size: 20px;
+            color: #A78BFA;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+            margin-bottom: 30px;
+        }
+        .character-select {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        .character-select-label {
+            font-family: 'Jua', sans-serif;
+            font-size: 18px;
+            color: #E0E0E0;
+            margin-bottom: 10px;
+        }
+        .character-list {
+            display: flex;
+            gap: 15px;
+        }
+        .character-option {
+            width: 100px;
+            height: 120px;
+            border: 3px solid #4ECDC4;
+            border-radius: 15px;
+            background: rgba(0, 0, 0, 0.3);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 8px;
+        }
+        .character-option:hover {
+            transform: scale(1.05);
+            border-color: #00D9FF;
+            box-shadow: 0 0 20px rgba(0, 217, 255, 0.3);
+        }
+        .character-option.selected {
+            border-color: #FFD700;
+            box-shadow: 0 0 25px rgba(255, 215, 0, 0.5);
+            background: rgba(255, 215, 0, 0.1);
+        }
+        .character-option img {
+            width: 60px;
+            height: 60px;
+            object-fit: contain;
+        }
+        .character-name {
+            font-family: 'Jua', sans-serif;
+            font-size: 14px;
+            color: #ffffff;
+            margin-top: 6px;
+        }
+        .name-input-section {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-bottom: 25px;
+        }
+        .name-input-label {
+            font-family: 'Jua', sans-serif;
+            font-size: 18px;
+            color: #E0E0E0;
+            margin-bottom: 10px;
+        }
+        #playerNameInput {
+            width: 220px;
+            padding: 12px 16px;
+            font-family: 'Jua', sans-serif;
+            font-size: 18px;
+            border: 3px solid #4ECDC4;
+            border-radius: 10px;
+            background: rgba(0, 0, 0, 0.5);
+            color: #ffffff;
+            text-align: center;
+            outline: none;
+            transition: all 0.3s ease;
+        }
+        #playerNameInput::placeholder {
+            color: #888;
+        }
+        #playerNameInput:focus {
+            border-color: #00D9FF;
+            box-shadow: 0 0 15px rgba(0, 217, 255, 0.3);
+        }
+        #startGameBtn {
+            font-family: 'Jua', sans-serif;
+            font-size: 22px;
+            padding: 14px 45px;
+            border: none;
+            border-radius: 15px;
+            background: linear-gradient(135deg, #4ECDC4 0%, #00D9FF 100%);
+            color: #1a1a2e;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(0, 217, 255, 0.3);
+        }
+        #startGameBtn:hover:not(:disabled) {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(0, 217, 255, 0.5);
+        }
+        #startGameBtn:disabled {
+            background: linear-gradient(135deg, #666 0%, #888 100%);
+            cursor: not-allowed;
+            opacity: 0.6;
+        }
+    </style>
+</head>
+<body>
+    <h1>Lobby System Test</h1>
+
+    <div class="test-section">
+        <h2>Test Controls</h2>
+        <button class="run-btn" onclick="runAllTests()">Run All Tests</button>
+        <button class="run-btn" onclick="resetLobby()">Reset Lobby</button>
+    </div>
+
+    <div class="test-section">
+        <h2>Test Lobby UI</h2>
+
+        <!-- Lobby UI (copied from index.html for testing) -->
+        <div id="lobbyContainer">
+            <div class="lobby-title">미친 제자들</div>
+            <div class="lobby-subtitle">Unhinged Students</div>
+
+            <div class="character-select">
+                <div class="character-select-label">캐릭터 선택</div>
+                <div class="character-list">
+                    <div class="character-option selected" data-character="alien">
+                        <img src="../asset/image/alien.png" alt="외계인">
+                        <div class="character-name">외계인</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="name-input-section">
+                <div class="name-input-label">플레이어 이름</div>
+                <input type="text" id="playerNameInput" placeholder="이름을 입력하세요" maxlength="12">
+            </div>
+
+            <button id="startGameBtn" disabled>게임 시작</button>
+        </div>
+    </div>
+
+    <div class="test-section">
+        <h2>Test Results</h2>
+        <div id="results"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>Event Log</h2>
+        <div id="log"></div>
+    </div>
+
+    <script src="../src/lobby.js"></script>
+    <script>
+        const resultsDiv = document.getElementById('results');
+        const logDiv = document.getElementById('log');
+
+        let testResults = [];
+        let logMessages = [];
+        let lobbyManager = null;
+        let gameStartData = null;
+
+        function log(message) {
+            const timestamp = new Date().toLocaleTimeString();
+            logMessages.unshift(`[${timestamp}] ${message}`);
+            if (logMessages.length > 50) logMessages.pop();
+            logDiv.innerHTML = logMessages.join('<br>');
+        }
+
+        function addTestResult(name, passed, message) {
+            // Update existing result if exists
+            const existingIndex = testResults.findIndex(r => r.name === name);
+            if (existingIndex >= 0) {
+                testResults[existingIndex] = { name, passed, message };
+            } else {
+                testResults.push({ name, passed, message });
+            }
+            updateResults();
+        }
+
+        function updateResults() {
+            resultsDiv.innerHTML = testResults.map(result =>
+                `<div class="test-result ${result.passed === null ? 'pending' : (result.passed ? 'pass' : 'fail')}">
+                    ${result.passed === null ? '○' : (result.passed ? '✓' : '✗')} ${result.name}: ${result.message}
+                </div>`
+            ).join('');
+        }
+
+        function resetLobby() {
+            // Reset DOM state
+            document.getElementById('playerNameInput').value = '';
+            document.getElementById('startGameBtn').disabled = true;
+
+            // Reset character selection
+            document.querySelectorAll('.character-option').forEach(opt => {
+                opt.classList.remove('selected');
+            });
+            document.querySelector('.character-option[data-character="alien"]').classList.add('selected');
+
+            // Show lobby container
+            const container = document.getElementById('lobbyContainer');
+            container.classList.remove('hidden');
+            container.style.display = 'flex';
+
+            // Re-initialize
+            gameStartData = null;
+            lobbyManager = new LobbyManager();
+            lobbyManager.setOnGameStart((data) => {
+                gameStartData = data;
+                log(`Game started with: character=${data.character}, name=${data.playerName}`);
+            });
+
+            log('Lobby reset');
+            testResults = [];
+            updateResults();
+        }
+
+        function runAllTests() {
+            log('Running all tests...');
+            testResults = [];
+
+            // Reset first
+            resetLobby();
+
+            // Give DOM time to update
+            setTimeout(() => {
+                // Test 1: LobbyManager class exists
+                testLobbyManagerExists();
+
+                // Test 2: Initial character selection from DOM
+                testInitialCharacterSelection();
+
+                // Test 3: Initial button state (disabled because name is empty)
+                testInitialButtonState();
+
+                // Test 4: Name input enables button
+                testNameInputEnablesButton();
+
+                // Test 5: Empty name disables button
+                testEmptyNameDisablesButton();
+
+                // Test 6: Character deselection disables button
+                testCharacterDeselectionDisablesButton();
+
+                // Test 7: Game start callback
+                testGameStartCallback();
+            }, 100);
+        }
+
+        // Test 1: LobbyManager class exists
+        function testLobbyManagerExists() {
+            const passed = typeof LobbyManager === 'function';
+            addTestResult(
+                'LobbyManager Class Exists',
+                passed,
+                passed ? 'LobbyManager class is defined' : 'LobbyManager class not found'
+            );
+            log('Test 1: LobbyManager class ' + (passed ? 'exists' : 'NOT FOUND'));
+        }
+
+        // Test 2: Initial character selection synced from DOM
+        function testInitialCharacterSelection() {
+            const passed = lobbyManager.selectedCharacter === 'alien';
+            addTestResult(
+                'Initial Character Selection',
+                passed,
+                passed
+                    ? `Initial character correctly synced from DOM: "${lobbyManager.selectedCharacter}"`
+                    : `Expected "alien" but got "${lobbyManager.selectedCharacter}"`
+            );
+            log('Test 2: Initial character = ' + lobbyManager.selectedCharacter);
+        }
+
+        // Test 3: Button should be disabled when name is empty (even with character selected)
+        function testInitialButtonState() {
+            const button = document.getElementById('startGameBtn');
+            const passed = button.disabled === true;
+            addTestResult(
+                'Initial Button State (Disabled)',
+                passed,
+                passed
+                    ? 'Button is correctly disabled when name is empty'
+                    : 'Button should be disabled when name is empty'
+            );
+            log('Test 3: Initial button disabled = ' + button.disabled);
+        }
+
+        // Test 4: Entering a name should enable the button
+        function testNameInputEnablesButton() {
+            const input = document.getElementById('playerNameInput');
+            const button = document.getElementById('startGameBtn');
+
+            // Enter a name
+            input.value = 'TestPlayer';
+            input.dispatchEvent(new Event('input'));
+
+            // Check button state
+            const passed = button.disabled === false;
+            addTestResult(
+                'Name Input Enables Button',
+                passed,
+                passed
+                    ? 'Button enabled after entering name'
+                    : 'Button should be enabled when name is entered'
+            );
+            log('Test 4: Button disabled after name input = ' + button.disabled);
+        }
+
+        // Test 5: Clearing name should disable button
+        function testEmptyNameDisablesButton() {
+            const input = document.getElementById('playerNameInput');
+            const button = document.getElementById('startGameBtn');
+
+            // Clear name
+            input.value = '';
+            input.dispatchEvent(new Event('input'));
+
+            const passed = button.disabled === true;
+            addTestResult(
+                'Empty Name Disables Button',
+                passed,
+                passed
+                    ? 'Button disabled after clearing name'
+                    : 'Button should be disabled when name is empty'
+            );
+            log('Test 5: Button disabled after clearing name = ' + button.disabled);
+        }
+
+        // Test 6: Deselecting character should disable button (simulated)
+        function testCharacterDeselectionDisablesButton() {
+            const input = document.getElementById('playerNameInput');
+            const button = document.getElementById('startGameBtn');
+
+            // Re-enter name first
+            input.value = 'TestPlayer';
+            input.dispatchEvent(new Event('input'));
+
+            // Simulate character deselection
+            lobbyManager.selectedCharacter = null;
+            lobbyManager.validateInput();
+
+            const passed = button.disabled === true;
+            addTestResult(
+                'Character Deselection Disables Button',
+                passed,
+                passed
+                    ? 'Button disabled when character is deselected'
+                    : 'Button should be disabled when no character selected'
+            );
+            log('Test 6: Button disabled after character deselection = ' + button.disabled);
+
+            // Re-select character for next test
+            document.querySelector('.character-option[data-character="alien"]').click();
+        }
+
+        // Test 7: Game start callback should receive correct data
+        function testGameStartCallback() {
+            const input = document.getElementById('playerNameInput');
+
+            // Setup: Enter name
+            input.value = 'CallbackTest';
+            input.dispatchEvent(new Event('input'));
+
+            // Click start button
+            const button = document.getElementById('startGameBtn');
+            button.click();
+
+            // Check callback data
+            const passed = gameStartData !== null &&
+                           gameStartData.character === 'alien' &&
+                           gameStartData.playerName === 'CallbackTest';
+
+            addTestResult(
+                'Game Start Callback',
+                passed,
+                passed
+                    ? `Callback received: character="${gameStartData.character}", name="${gameStartData.playerName}"`
+                    : 'Callback data incorrect or not received'
+            );
+            log('Test 7: Game start callback data = ' + JSON.stringify(gameStartData));
+        }
+
+        // Initialize lobby on page load
+        window.addEventListener('load', () => {
+            resetLobby();
+            log('Lobby test page loaded');
+            log('Click "Run All Tests" to start testing');
+        });
+    </script>
+</body>
+</html>

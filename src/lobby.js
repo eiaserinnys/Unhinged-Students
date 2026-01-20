@@ -8,8 +8,8 @@ class LobbyManager {
         this.startButton = document.getElementById('startGameBtn');
         this.characterOptions = document.querySelectorAll('.character-option');
 
-        // State
-        this.selectedCharacter = 'alien'; // Default character
+        // State - sync with DOM's initial selected character
+        this.selectedCharacter = this.getInitialSelectedCharacter();
         this.playerName = '';
         this.isActive = true;
 
@@ -18,6 +18,18 @@ class LobbyManager {
 
         // Initialize
         this.setupEventListeners();
+
+        // Validate input to set initial button state
+        this.validateInput();
+    }
+
+    // Get the initially selected character from DOM
+    getInitialSelectedCharacter() {
+        const selectedOption = document.querySelector('.character-option.selected');
+        if (selectedOption && selectedOption.dataset.character) {
+            return selectedOption.dataset.character;
+        }
+        return null; // No character selected
     }
 
     setupEventListeners() {

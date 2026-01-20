@@ -498,7 +498,7 @@ function renderDeathScreen(ctx) {
 
     // Death message
     ctx.fillStyle = '#FF6B6B';
-    ctx.font = '600 72px Inter, sans-serif';
+    ctx.font = '600 72px Jua, sans-serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
 
@@ -511,7 +511,7 @@ function renderDeathScreen(ctx) {
 
     // Respawn timer
     ctx.fillStyle = '#ffffff';
-    ctx.font = '600 36px Inter, sans-serif';
+    ctx.font = '600 36px Jua, sans-serif';
     ctx.fillText(`Respawning in ${remainingTime.toFixed(1)}s`, GAME_WIDTH / 2, GAME_HEIGHT / 2 + 30);
 
     ctx.shadowColor = 'transparent';
@@ -523,13 +523,13 @@ function renderDeathScreen(ctx) {
 function render() {
     // Draw title (in game world coordinates)
     ctx.fillStyle = '#00D9FF';
-    ctx.font = '600 28px Inter, sans-serif';
+    ctx.font = '600 28px Jua, sans-serif';
     ctx.textAlign = 'center';
     ctx.fillText('미친 제자들', GAME_WIDTH / 2, 40);
 
     // Draw instructions
     ctx.fillStyle = '#E0E0E0';
-    ctx.font = '16px Inter, sans-serif';
+    ctx.font = '16px Jua, sans-serif';
     const connectionStatus = gameState.networkManager && gameState.networkManager.connected ? 'Connected' : 'Connecting...';
     const playerCount = gameState.networkManager ? gameState.networkManager.remotePlayers.size + 1 : 1;
     ctx.fillText(`${connectionStatus} | Players: ${playerCount}`, GAME_WIDTH / 2, 70);
@@ -571,7 +571,7 @@ function render() {
 
     // Draw UI
     ctx.fillStyle = '#A78BFA';
-    ctx.font = '14px Inter, sans-serif';
+    ctx.font = '14px Jua, sans-serif';
     ctx.textAlign = 'left';
 
     if (gameState.player) {
