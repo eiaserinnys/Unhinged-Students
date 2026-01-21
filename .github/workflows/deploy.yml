@@ -6,8 +6,8 @@ on:
   workflow_dispatch:  # 수동 실행 가능
 
 env:
-  DEPLOY_DIR: /home/eias/unhinged-students
-  RELEASES_DIR: /home/eias/unhinged-students/releases
+  DEPLOY_DIR: /home/eias/services/unhinged-students
+  RELEASES_DIR: /home/eias/services/unhinged-students/releases
   KEEP_RELEASES: 5
 
 jobs:
