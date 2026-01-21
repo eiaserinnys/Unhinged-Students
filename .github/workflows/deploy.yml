@@ -18,6 +18,12 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: 📢 Discord 알림 (배포 시작)
+        run: |
+          curl -s -H "Content-Type: application/json" \
+            -d "{\"embeds\": [{\"title\": \"🚀 배포 시작\", \"description\": \"**unhinged-students** 배포가 시작되었습니다.\", \"color\": 3447003, \"fields\": [{\"name\": \"브랜치\", \"value\": \"\`${{ github.ref_name }}\`\", \"inline\": true}, {\"name\": \"커밋\", \"value\": \"[\`${GITHUB_SHA::7}\`](${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }})\", \"inline\": true}, {\"name\": \"실행자\", \"value\": \"${{ github.actor }}\", \"inline\": true}], \"timestamp\": \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"}]}" \
+            ${{ secrets.DISCORD_WEBHOOK_URL }} || true
+
       - name: Setup SSH
         run: |
           mkdir -p ~/.ssh
@@ -87,3 +93,17 @@ jobs:
             echo 'Remaining releases:'
             ls -t
           "
+
+      - name: 📢 Discord 알림 (배포 성공)
+        if: success()
+        run: |
+          curl -s -H "Content-Type: application/json" \
+            -d "{\"embeds\": [{\"title\": \"✅ 배포 완료\", \"description\": \"**unhinged-students** 배포가 성공적으로 완료되었습니다.\", \"color\": 5763719, \"fields\": [{\"name\": \"브랜치\", \"value\": \"\`${{ github.ref_name }}\`\", \"inline\": true}, {\"name\": \"커밋\", \"value\": \"[\`${GITHUB_SHA::7}\`](${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }})\", \"inline\": true}], \"timestamp\": \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"}]}" \
+            ${{ secrets.DISCORD_WEBHOOK_URL }} || true
+
+      - name: 📢 Discord 알림 (배포 실패)
+        if: failure()
+        run: |
+          curl -s -H "Content-Type: application/json" \
+            -d "{\"embeds\": [{\"title\": \"❌ 배포 실패\", \"description\": \"**unhinged-students** 배포가 실패했습니다.\", \"color\": 15548997, \"fields\": [{\"name\": \"브랜치\", \"value\": \"\`${{ github.ref_name }}\`\", \"inline\": true}, {\"name\": \"커밋\", \"value\": \"[\`${GITHUB_SHA::7}\`](${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }})\", \"inline\": true}, {\"name\": \"워크플로우\", \"value\": \"[로그 보기](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})\", \"inline\": true}], \"timestamp\": \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"}]}" \
+            ${{ secrets.DISCORD_WEBHOOK_URL }} || true
