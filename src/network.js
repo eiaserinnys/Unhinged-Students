@@ -852,33 +852,21 @@ class RemotePlayer {
     update() {
         const currentTime = Date.now();
 
-        // Handle knockback animation
-        if (this.isKnockedBack) {
-            const elapsed = currentTime - this.knockbackStartTime;
-            if (elapsed >= this.knockbackDuration) {
-                // Knockback finished - snap to end position
-                this.x = this.knockbackEndX;
-                this.y = this.knockbackEndY;
-                this.targetX = this.knockbackEndX;
-                this.targetY = this.knockbackEndY;
-                this.isKnockedBack = false;
-            } else {
-                // Interpolate position during knockback (easeOut for smooth deceleration)
-                const progress = elapsed / this.knockbackDuration;
-                const easeOut = 1 - Math.pow(1 - progress, 3); // Cubic ease out
-                this.x = this.knockbackStartX + (this.knockbackEndX - this.knockbackStartX) * easeOut;
-                this.y = this.knockbackStartY + (this.knockbackEndY - this.knockbackStartY) * easeOut;
-            }
+        // Handle knockback animation using utility
+        const isInKnockback = CharacterUtils.updateKnockback(this);
+
+        if (isInKnockback) {
+            // Also update target position during knockback for smooth transition after
+            this.targetX = this.knockbackEndX;
+            this.targetY = this.knockbackEndY;
         } else {
             // Smooth interpolation to target position
             this.x += (this.targetX - this.x) * this.interpolationSpeed;
             this.y += (this.targetY - this.y) * this.interpolationSpeed;
         }
 
-        // Update chat bubble - remove message after duration
-        if (this.chatMessage && Date.now() - this.chatMessageTime > this.chatMessageDuration) {
-            this.chatMessage = null;
-        }
+        // Update chat bubble using utility
+        CharacterUtils.updateChatBubble(this);
 
         // Update attack animation
         if (this.isAttacking && currentTime - this.attackStartTime >= this.attackAnimationTime) {
@@ -902,14 +890,8 @@ class RemotePlayer {
             ctx.globalAlpha = 0.3;
         }
 
-        // Calculate hit flash intensity (1.0 at hit, fades to 0 over hitFlashDuration)
-        let hitFlashIntensity = 0;
-        if (this.hitFlashTime > 0) {
-            const elapsed = Date.now() - this.hitFlashTime;
-            if (elapsed < this.hitFlashDuration) {
-                hitFlashIntensity = 1 - (elapsed / this.hitFlashDuration);
-            }
-        }
+        // Calculate hit flash intensity using utility
+        const hitFlashIntensity = CharacterUtils.calculateHitFlashIntensity(this.hitFlashTime, this.hitFlashDuration);
 
         if (this.imageLoaded && this.image) {
             // Draw remote player image
@@ -921,19 +903,8 @@ class RemotePlayer {
                 this.height
             );
 
-            // Apply hit flash overlay
-            if (hitFlashIntensity > 0) {
-                ctx.save();
-                ctx.globalAlpha = hitFlashIntensity * 0.6;
-                ctx.fillStyle = '#ff0000'; // Red flash
-                ctx.fillRect(
-                    this.x - this.width / 2,
-                    this.y - this.height / 2,
-                    this.width,
-                    this.height
-                );
-                ctx.restore();
-            }
+            // Apply hit flash overlay using utility
+            CharacterUtils.renderHitFlash(ctx, this.x, this.y, this.width, this.height, hitFlashIntensity);
         } else {
             // Fallback: draw colored rectangle if image not loaded
             ctx.fillStyle = '#ff6b6b'; // Red color for remote players
@@ -950,19 +921,8 @@ class RemotePlayer {
             ctx.textAlign = 'center';
             ctx.fillText('Loading...', this.x, this.y);
 
-            // Apply hit flash overlay for fallback
-            if (hitFlashIntensity > 0) {
-                ctx.save();
-                ctx.globalAlpha = hitFlashIntensity * 0.6;
-                ctx.fillStyle = '#ff0000';
-                ctx.fillRect(
-                    this.x - this.width / 2,
-                    this.y - this.height / 2,
-                    this.width,
-                    this.height
-                );
-                ctx.restore();
-            }
+            // Apply hit flash overlay for fallback using utility
+            CharacterUtils.renderHitFlash(ctx, this.x, this.y, this.width, this.height, hitFlashIntensity);
         }
 
         // Draw attack effect if attacking
@@ -977,11 +937,11 @@ class RemotePlayer {
         // Draw telepathy effect
         this.renderTelepathy(ctx);
 
-        // Draw info above remote player
-        this.renderInfoAbove(ctx);
+        // Draw info above remote player using utility
+        CharacterUtils.renderInfoAbove(ctx, this);
 
-        // Draw chat bubble if active
-        this.renderChatBubble(ctx);
+        // Draw chat bubble using utility
+        CharacterUtils.renderChatBubble(ctx, this);
 
         if (this.isDead) {
             ctx.restore();
@@ -1017,141 +977,11 @@ class RemotePlayer {
         ctx.restore();
     }
 
-    // Calculate required experience for next level (same formula as Character)
-    getRequiredExperience() {
-        if (this.level >= this.maxLevel) return 0;
-        return 10 + (this.level - 1) * 2;
-    }
-
-    renderInfoAbove(ctx) {
-        const infoY = this.y - this.height / 2 - 15;
-
-        // HP Bar (1.5x size)
-        const hpBarWidth = this.width * 1.5;
-        const hpBarHeight = 9;
-        const hpBarX = this.x - hpBarWidth / 2;
-        const hpBarY = infoY - hpBarHeight;
-
-        // HP Bar background
-        ctx.fillStyle = '#333333';
-        ctx.fillRect(hpBarX, hpBarY, hpBarWidth, hpBarHeight);
-
-        // HP Bar fill
-        const hpPercentage = this.currentHP / this.maxHP;
-        ctx.fillStyle = '#00ff00';
-        ctx.fillRect(hpBarX, hpBarY, hpBarWidth * hpPercentage, hpBarHeight);
-
-        ctx.strokeStyle = '#ffffff';
-        ctx.lineWidth = 1;
-        ctx.strokeRect(hpBarX, hpBarY, hpBarWidth, hpBarHeight);
-
-        // Experience Bar (below HP bar)
-        const expBarHeight = 4;
-        const expBarY = hpBarY + hpBarHeight + 2;
-
-        // EXP Bar background
-        ctx.fillStyle = '#333333';
-        ctx.fillRect(hpBarX, expBarY, hpBarWidth, expBarHeight);
-
-        // EXP Bar fill
-        const requiredExp = this.getRequiredExperience();
-        const expPercentage = this.level >= this.maxLevel ? 1 : (requiredExp > 0 ? this.experience / requiredExp : 0);
-        ctx.fillStyle = '#00D9FF'; // Cyan for experience
-        ctx.fillRect(hpBarX, expBarY, hpBarWidth * expPercentage, expBarHeight);
-
-        ctx.strokeStyle = '#ffffff';
-        ctx.lineWidth = 1;
-        ctx.strokeRect(hpBarX, expBarY, hpBarWidth, expBarHeight);
-
-        // Player name and level
-        const nameY = hpBarY - 5;
-        ctx.fillStyle = '#ffffff';
-        ctx.font = '600 16px Inter, sans-serif';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'bottom';
-
-        ctx.shadowColor = '#000000';
-        ctx.shadowBlur = 3;
-        ctx.shadowOffsetX = 1;
-        ctx.shadowOffsetY = 1;
-
-        ctx.fillText(`${this.playerName} Lv.${this.level}`, this.x, nameY);
-
-        ctx.shadowColor = 'transparent';
-        ctx.shadowBlur = 0;
-        ctx.shadowOffsetX = 0;
-        ctx.shadowOffsetY = 0;
-
-        ctx.textBaseline = 'alphabetic';
-    }
-
-    renderChatBubble(ctx) {
-        if (!this.chatMessage) return;
-
-        // Calculate where the name text ends (above HP bar)
-        const nameY = this.y - this.height / 2 - 15 - 9 - 5; // infoY - hpBarHeight - 5
-
-        // Position bubble above player name with padding (1.5x size)
-        const bubbleHeight = 48; // 32 * 1.5
-        const pointerSize = 8; // 5 * 1.5 (rounded)
-        const bubbleBottomY = nameY - 10; // 10px gap above name
-        const bubbleY = bubbleBottomY - bubbleHeight - pointerSize;
-
-        // Measure text to determine bubble size (1.5x font)
-        ctx.font = '30px Inter, sans-serif';
-        const textMetrics = ctx.measureText(this.chatMessage);
-        const textWidth = textMetrics.width;
-
-        const padding = 21; // 14 * 1.5
-        const bubbleWidth = textWidth + padding * 2;
-        const bubbleX = this.x - bubbleWidth / 2;
-
-        // Draw bubble background
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
-        ctx.strokeStyle = '#333333';
-        ctx.lineWidth = 2;
-
-        // Rounded rectangle for bubble
-        const radius = 8; // 5 * 1.5 (rounded)
-        ctx.beginPath();
-        ctx.moveTo(bubbleX + radius, bubbleY);
-        ctx.lineTo(bubbleX + bubbleWidth - radius, bubbleY);
-        ctx.quadraticCurveTo(bubbleX + bubbleWidth, bubbleY, bubbleX + bubbleWidth, bubbleY + radius);
-        ctx.lineTo(bubbleX + bubbleWidth, bubbleY + bubbleHeight - radius);
-        ctx.quadraticCurveTo(bubbleX + bubbleWidth, bubbleY + bubbleHeight, bubbleX + bubbleWidth - radius, bubbleY + bubbleHeight);
-        ctx.lineTo(bubbleX + radius, bubbleY + bubbleHeight);
-        ctx.quadraticCurveTo(bubbleX, bubbleY + bubbleHeight, bubbleX, bubbleY + bubbleHeight - radius);
-        ctx.lineTo(bubbleX, bubbleY + radius);
-        ctx.quadraticCurveTo(bubbleX, bubbleY, bubbleX + radius, bubbleY);
-        ctx.closePath();
-        ctx.fill();
-        ctx.stroke();
-
-        // Draw small triangle pointer
-        ctx.beginPath();
-        ctx.moveTo(this.x - pointerSize, bubbleY + bubbleHeight);
-        ctx.lineTo(this.x, bubbleY + bubbleHeight + pointerSize);
-        ctx.lineTo(this.x + pointerSize, bubbleY + bubbleHeight);
-        ctx.closePath();
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
-        ctx.fill();
-        ctx.stroke();
-
-        // Draw text
-        ctx.fillStyle = '#000000';
-        ctx.font = '30px Inter, sans-serif';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText(this.chatMessage, this.x, bubbleY + bubbleHeight / 2);
-
-        // Reset text baseline
-        ctx.textBaseline = 'alphabetic';
-    }
+    // getRequiredExperience, renderInfoAbove, renderChatBubble are now handled by CharacterUtils
 
     // Set chat message to display in bubble
     setChatMessage(message) {
-        this.chatMessage = message;
-        this.chatMessageTime = Date.now();
+        CharacterUtils.setChatMessage(this, message);
     }
 
     // Take damage
@@ -1188,15 +1018,7 @@ class RemotePlayer {
 
     // Start knockback from an attacker position
     startKnockback(attackerX, attackerY, endX, endY) {
-        // Start knockback animation
-        this.isKnockedBack = true;
-        this.knockbackStartTime = Date.now();
-        this.knockbackStartX = this.x; // Start from current local position
-        this.knockbackStartY = this.y;
-        this.knockbackEndX = endX; // End at server-specified position
-        this.knockbackEndY = endY;
-
-        console.log(`${this.playerName} knocked back from (${this.x.toFixed(1)}, ${this.y.toFixed(1)}) to (${endX.toFixed(1)}, ${endY.toFixed(1)})`);
+        CharacterUtils.startKnockback(this, attackerX, attackerY, endX, endY);
     }
 
     // Start attack effect for visual display
