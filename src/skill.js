@@ -11,7 +11,7 @@ class Skill {
 
         // Ready flash effect
         this.readyFlashTime = 0;
-        this.readyFlashDuration = 300; // 300ms flash when ready
+        this.readyFlashDuration = GAME_CONFIG.SKILL_LASER.READY_FLASH_DURATION_MS;
         this.wasOnCooldown = false;
     }
 
@@ -104,8 +104,8 @@ class LaserBeamEffect {
         this.active = false;
         this.phase = 'none'; // 'aiming', 'firing', 'none'
         this.startTime = 0;
-        this.aimDuration = 1000; // 1 second aiming
-        this.fireDuration = 200; // 0.2 second firing flash
+        this.aimDuration = GAME_CONFIG.SKILL_LASER.AIM_DURATION_MS;
+        this.fireDuration = GAME_CONFIG.SKILL_LASER.FIRE_DURATION_MS;
 
         // Positions
         this.startX = 0;
@@ -116,7 +116,7 @@ class LaserBeamEffect {
         this.dirY = 0;
 
         // Damage
-        this.damage = 44; // 2x damage
+        this.damage = GAME_CONFIG.SKILL_LASER.DAMAGE;
         this.hasDealtDamage = false;
     }
 
@@ -179,9 +179,9 @@ class LaserBeamEffect {
         // Use fixed direction (set at skill start)
         if (this.dirX === 0 && this.dirY === 0) return null;
 
-        // Extend to 2000 pixels (beyond screen)
-        const endX = this.startX + this.dirX * 2000;
-        const endY = this.startY + this.dirY * 2000;
+        // Extend to max laser length (beyond screen)
+        const endX = this.startX + this.dirX * GAME_CONFIG.SKILL_LASER.MAX_LENGTH;
+        const endY = this.startY + this.dirY * GAME_CONFIG.SKILL_LASER.MAX_LENGTH;
 
         return {
             x1: this.startX,
@@ -256,8 +256,8 @@ class TeleportEffect {
         this.active = false;
         this.phase = 'none'; // 'disappear', 'appear', 'none'
         this.startTime = 0;
-        this.disappearDuration = 150; // 0.15 second disappear
-        this.appearDuration = 200; // 0.2 second appear + damage
+        this.disappearDuration = GAME_CONFIG.SKILL_TELEPORT.DISAPPEAR_DURATION_MS;
+        this.appearDuration = GAME_CONFIG.SKILL_TELEPORT.APPEAR_DURATION_MS;
 
         // Positions
         this.startX = 0;
@@ -266,10 +266,10 @@ class TeleportEffect {
         this.endY = 0;
 
         // Teleport settings
-        this.minDistance = 200;
-        this.maxDistance = 400;
-        this.damageRadius = 100;
-        this.damage = 12;
+        this.minDistance = GAME_CONFIG.SKILL_TELEPORT.MIN_DISTANCE;
+        this.maxDistance = GAME_CONFIG.SKILL_TELEPORT.MAX_DISTANCE;
+        this.damageRadius = GAME_CONFIG.SKILL_TELEPORT.DAMAGE_RADIUS;
+        this.damage = GAME_CONFIG.SKILL_TELEPORT.DAMAGE;
 
         // Flags
         this.hasDealtDamage = false;
@@ -306,7 +306,7 @@ class TeleportEffect {
         }
 
         // Clamp to game bounds
-        const margin = 50;
+        const margin = GAME_CONFIG.KNOCKBACK.BOUNDARY_MARGIN;
         newX = Math.max(margin, Math.min(gameWidth - margin, newX));
         newY = Math.max(margin, Math.min(gameHeight - margin, newY));
 
@@ -421,17 +421,17 @@ class TelepathyEffect {
     constructor() {
         this.active = false;
         this.startTime = 0;
-        this.duration = 3000; // 3 second channeling
-        this.tickInterval = 100; // 0.1 second tick interval
+        this.duration = GAME_CONFIG.SKILL_TELEPATHY.DURATION_MS;
+        this.tickInterval = GAME_CONFIG.SKILL_TELEPATHY.TICK_INTERVAL_MS;
 
         // Position
         this.x = 0;
         this.y = 0;
 
         // Settings
-        this.radius = 180; // Larger than attack range
-        this.damagePerTick = 2; // Damage per tick per enemy (total ~60 over 3 sec with 30 ticks)
-        this.maxHealPerTick = 4; // Max heal per tick
+        this.radius = GAME_CONFIG.SKILL_TELEPATHY.RADIUS;
+        this.damagePerTick = GAME_CONFIG.SKILL_TELEPATHY.DAMAGE_PER_TICK;
+        this.maxHealPerTick = GAME_CONFIG.SKILL_TELEPATHY.MAX_HEAL_PER_TICK;
 
         // Tick tracking
         this.lastTickTime = 0;
@@ -549,11 +549,11 @@ class SkillUI {
     constructor(skillManager) {
         this.skillManager = skillManager;
 
-        // UI Settings
-        this.boxSize = 60; // Size of each skill box
-        this.boxGap = 10; // Gap between boxes
-        this.bottomMargin = 30; // Distance from bottom of screen
-        this.borderRadius = 8;
+        // UI Settings from config
+        this.boxSize = GAME_CONFIG.UI.SKILL_BOX_SIZE;
+        this.boxGap = GAME_CONFIG.UI.SKILL_BOX_GAP;
+        this.bottomMargin = GAME_CONFIG.UI.SKILL_BOX_BOTTOM_MARGIN;
+        this.borderRadius = GAME_CONFIG.UI.SKILL_BOX_BORDER_RADIUS;
     }
 
     render(ctx, canvasWidth, canvasHeight) {

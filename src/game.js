@@ -4,9 +4,9 @@
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 
-// Game world constants (16:9 aspect ratio)
-const GAME_WIDTH = 1920;
-const GAME_HEIGHT = 1080;
+// Game world constants (16:9 aspect ratio) - from config
+const GAME_WIDTH = GAME_CONFIG.WORLD.WIDTH;
+const GAME_HEIGHT = GAME_CONFIG.WORLD.HEIGHT;
 
 // Viewport/scaling variables
 let scale = 1;
@@ -40,7 +40,7 @@ const gameState = {
     lastAttackSentTime: 0, // Track last attack sent to server
     // Hit vignette effect
     hitVignetteTime: 0,
-    hitVignetteDuration: 300, // 300ms vignette effect
+    hitVignetteDuration: GAME_CONFIG.EFFECTS.HIT_VIGNETTE_DURATION_MS,
     // Player selection from lobby
     selectedCharacter: 'alien',
     playerName: 'Player'
@@ -126,11 +126,12 @@ function startGame() {
 
     // Create test dummies for combat practice
     // Position them around the map for testing
-    const dummyPositions = [
-        { x: GAME_WIDTH / 2 + 300, y: GAME_HEIGHT / 2, name: 'Dummy 1' },
-        { x: GAME_WIDTH / 2 - 300, y: GAME_HEIGHT / 2, name: 'Dummy 2' },
-        { x: GAME_WIDTH / 2, y: GAME_HEIGHT / 2 + 300, name: 'Dummy 3' },
-    ];
+    const dummyConfig = GAME_CONFIG.DUMMY;
+    const dummyPositions = dummyConfig.POSITIONS.map(pos => ({
+        x: GAME_WIDTH / 2 + pos.offsetX,
+        y: GAME_HEIGHT / 2 + pos.offsetY,
+        name: pos.name
+    }));
 
     dummyPositions.forEach(pos => {
         const dummy = new Character(
@@ -143,8 +144,8 @@ function startGame() {
         );
         // Make dummies stationary and distinguishable
         dummy.speed = 0; // Don't move
-        dummy.maxHP = 30; // 3 hits to kill (10 damage x 3 = 30)
-        dummy.currentHP = 30;
+        dummy.maxHP = dummyConfig.MAX_HP;
+        dummy.currentHP = dummyConfig.MAX_HP;
         gameState.dummies.push(dummy);
     });
 
@@ -154,9 +155,9 @@ function startGame() {
     gameState.skillManager = new SkillManager();
 
     // Add skills: Q = Laser Beam, W = Teleport, E = Telepathy
-    gameState.skillManager.addSkill(new Skill('레이저', 'q', 2000, '#FF4444')); // Red - 2sec cooldown
-    gameState.skillManager.addSkill(new Skill('순간이동', 'w', 7000, '#44FF44')); // Green - 7sec cooldown
-    gameState.skillManager.addSkill(new Skill('텔레파시', 'e', 12000, '#8B5CF6')); // Purple - 12sec cooldown
+    gameState.skillManager.addSkill(new Skill('레이저', 'q', GAME_CONFIG.SKILL_LASER.COOLDOWN_MS, GAME_CONFIG.SKILL_LASER.COLOR));
+    gameState.skillManager.addSkill(new Skill('순간이동', 'w', GAME_CONFIG.SKILL_TELEPORT.COOLDOWN_MS, GAME_CONFIG.SKILL_TELEPORT.COLOR));
+    gameState.skillManager.addSkill(new Skill('텔레파시', 'e', GAME_CONFIG.SKILL_TELEPATHY.COOLDOWN_MS, GAME_CONFIG.SKILL_TELEPATHY.COLOR));
 
     // Initialize skill UI
     gameState.skillUI = new SkillUI(gameState.skillManager);

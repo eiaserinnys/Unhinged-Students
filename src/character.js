@@ -5,10 +5,10 @@ class Character {
         this.x = x;
         this.y = y;
         // Size relative to screen height (LOL-style: about 1/8 of screen height)
-        this.displaySize = canvasHeight / 8;
+        this.displaySize = canvasHeight / GAME_CONFIG.PLAYER.DISPLAY_SIZE_RATIO;
         this.width = this.displaySize;
         this.height = this.displaySize;
-        this.speed = 300; // pixels per second (was 5 pixels per frame)
+        this.speed = GAME_CONFIG.PLAYER.SPEED;
         this.image = null;
         this.imageLoaded = false;
 
@@ -20,47 +20,47 @@ class Character {
         // Level system
         this.level = 1;
         this.experience = 0;
-        this.maxLevel = 30;
+        this.maxLevel = GAME_CONFIG.PLAYER.MAX_LEVEL;
 
         // HP system
-        this.maxHP = 100;
-        this.currentHP = 100;
+        this.maxHP = GAME_CONFIG.PLAYER.MAX_HP;
+        this.currentHP = GAME_CONFIG.PLAYER.MAX_HP;
 
         // Combat system
-        this.attackPower = 10; // Damage per attack
-        this.attackRange = 150; // Attack range in pixels
-        this.attackCooldown = 500; // Cooldown in milliseconds (0.5 seconds)
+        this.attackPower = GAME_CONFIG.COMBAT.ATTACK_POWER;
+        this.attackRange = GAME_CONFIG.COMBAT.ATTACK_RANGE;
+        this.attackCooldown = GAME_CONFIG.COMBAT.ATTACK_COOLDOWN_MS;
         this.lastAttackTime = 0;
         this.isAttacking = false;
-        this.attackAnimationTime = 200; // Attack animation duration in ms
+        this.attackAnimationTime = GAME_CONFIG.COMBAT.ATTACK_ANIMATION_MS;
         this.attackStartTime = 0;
         this.lastDamagedTime = 0; // Track when last damaged (for invincibility frame)
 
         // Respawn system (for dummies)
         this.deathTime = 0;
-        this.respawnDelay = 5000; // 5 seconds
+        this.respawnDelay = GAME_CONFIG.PLAYER.RESPAWN_DELAY_MS;
         this.initialX = x; // Store initial position for respawn
         this.initialY = y;
 
         // Hit flash effect (micro reaction)
         this.hitFlashTime = 0;
-        this.hitFlashDuration = 100; // 100ms flash duration
+        this.hitFlashDuration = GAME_CONFIG.EFFECTS.HIT_FLASH_DURATION_MS;
 
         // Knockback system
         this.isKnockedBack = false;
         this.knockbackStartTime = 0;
-        this.knockbackDuration = 200; // 200ms knockback animation
+        this.knockbackDuration = GAME_CONFIG.KNOCKBACK.DURATION_MS;
         this.knockbackStartX = 0;
         this.knockbackStartY = 0;
         this.knockbackEndX = 0;
         this.knockbackEndY = 0;
-        this.knockbackMinDistance = 30; // Minimum knockback distance
-        this.knockbackMaxDistance = 100; // Maximum knockback distance
+        this.knockbackMinDistance = GAME_CONFIG.KNOCKBACK.MIN_DISTANCE;
+        this.knockbackMaxDistance = GAME_CONFIG.KNOCKBACK.MAX_DISTANCE;
 
         // Chat bubble system
         this.chatMessage = null;
         this.chatMessageTime = 0;
-        this.chatMessageDuration = 3000; // 3 seconds
+        this.chatMessageDuration = GAME_CONFIG.EFFECTS.CHAT_BUBBLE_DURATION_MS;
 
         // Load character image
         this.loadImage(imagePath);
@@ -303,7 +303,7 @@ class Character {
     // Also immune during knockback
     takeDamage(amount) {
         const currentTime = Date.now();
-        const invincibilityDuration = 300; // 300ms invincibility after being hit
+        const invincibilityDuration = GAME_CONFIG.PLAYER.INVINCIBILITY_MS;
 
         // Immune during knockback
         if (this.isKnockedBack) {
@@ -395,7 +395,7 @@ class Character {
         let endY = targetY + dirY * knockbackDistance;
 
         // Clamp to canvas bounds (with some margin for character size)
-        const margin = 50;
+        const margin = GAME_CONFIG.KNOCKBACK.BOUNDARY_MARGIN;
         endX = Math.max(margin, Math.min(canvasWidth - margin, endX));
         endY = Math.max(margin, Math.min(canvasHeight - margin, endY));
 

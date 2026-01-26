@@ -9,21 +9,21 @@ class Particle {
 
         // Random velocity
         const angle = Math.random() * Math.PI * 2;
-        const speed = 2 + Math.random() * 3;
+        const speed = GAME_CONFIG.PARTICLE.MIN_SPEED + Math.random() * GAME_CONFIG.PARTICLE.SPEED_VARIANCE;
         this.vx = Math.cos(angle) * speed;
         this.vy = Math.sin(angle) * speed;
 
         // Size and lifetime
-        this.size = 4 + Math.random() * 4;
+        this.size = GAME_CONFIG.PARTICLE.MIN_SIZE + Math.random() * GAME_CONFIG.PARTICLE.SIZE_VARIANCE;
         this.life = 1.0; // 0.0 to 1.0
-        this.decay = 0.02 + Math.random() * 0.02;
+        this.decay = GAME_CONFIG.PARTICLE.MIN_DECAY + Math.random() * GAME_CONFIG.PARTICLE.DECAY_VARIANCE;
     }
 
     update() {
         this.x += this.vx;
         this.y += this.vy;
-        this.vx *= 0.95; // Friction
-        this.vy *= 0.95;
+        this.vx *= GAME_CONFIG.PARTICLE.FRICTION;
+        this.vy *= GAME_CONFIG.PARTICLE.FRICTION;
         this.life -= this.decay;
         return this.life > 0;
     }
@@ -47,12 +47,12 @@ class Particle {
 
 // Collection effect
 class CollectEffect {
-    constructor(x, y, color = '#00ffff') {
+    constructor(x, y, color = GAME_CONFIG.SHARD.COLOR) {
         this.particles = [];
         this.active = true;
 
         // Create particles
-        for (let i = 0; i < 20; i++) {
+        for (let i = 0; i < GAME_CONFIG.PARTICLE.COLLECT_COUNT; i++) {
             this.particles.push(new Particle(x, y, color));
         }
     }
@@ -73,13 +73,13 @@ class CollectEffect {
 }
 
 class Shard {
-    constructor(x, y, size = 20, id = null) {
+    constructor(x, y, size = GAME_CONFIG.SHARD.SIZE, id = null) {
         this.x = x;
         this.y = y;
         this.size = size;
         this.id = id; // Server-assigned ID
         this.collected = false;
-        this.color = '#00ffff'; // Cyan color for shards
+        this.color = GAME_CONFIG.SHARD.COLOR;
         this.pulsePhase = Math.random() * Math.PI * 2; // Random starting phase for animation
     }
 
@@ -139,9 +139,9 @@ class ShardManager {
     constructor() {
         this.shards = [];
         this.effects = []; // Collection effects
-        this.maxActiveShards = 40; // Maximum shards on map at once
-        this.maxActiveEffects = 10; // Maximum collection effects at once (performance cap)
-        this.respawnInterval = 5000; // 5 seconds in milliseconds
+        this.maxActiveShards = GAME_CONFIG.SHARD.MAX_COUNT;
+        this.maxActiveEffects = GAME_CONFIG.SHARD.MAX_EFFECTS;
+        this.respawnInterval = GAME_CONFIG.SHARD.RESPAWN_INTERVAL_MS;
         this.lastRespawnTime = Date.now();
         this.canvasWidth = 0;
         this.canvasHeight = 0;
@@ -152,7 +152,7 @@ class ShardManager {
     loadShardsFromServer(shardData) {
         this.shards = [];
         shardData.forEach(data => {
-            this.shards.push(new Shard(data.x, data.y, 20, data.id));
+            this.shards.push(new Shard(data.x, data.y, GAME_CONFIG.SHARD.SIZE, data.id));
         });
         console.log(`Loaded ${this.shards.length} shards from server`);
     }
@@ -169,7 +169,7 @@ class ShardManager {
                 this.shards[existingIndex].y = data.y;
             } else {
                 // New shard
-                this.shards.push(new Shard(data.x, data.y, 20, data.id));
+                this.shards.push(new Shard(data.x, data.y, GAME_CONFIG.SHARD.SIZE, data.id));
             }
         });
     }
@@ -192,7 +192,7 @@ class ShardManager {
         console.log('ShardManager: Server mode enabled');
     }
 
-    spawnShards(count, canvasWidth, canvasHeight, margin = 100) {
+    spawnShards(count, canvasWidth, canvasHeight, margin = GAME_CONFIG.SHARD.SPAWN_MARGIN) {
         this.canvasWidth = canvasWidth;
         this.canvasHeight = canvasHeight;
 
@@ -205,7 +205,7 @@ class ShardManager {
     }
 
     // Spawn a single shard at random location
-    spawnSingleShard(margin = 100) {
+    spawnSingleShard(margin = GAME_CONFIG.SHARD.SPAWN_MARGIN) {
         if (this.canvasWidth === 0 || this.canvasHeight === 0) return;
 
         const x = margin + Math.random() * (this.canvasWidth - margin * 2);

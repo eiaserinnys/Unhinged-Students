@@ -38,59 +38,139 @@ app.use(express.static(path.join(__dirname)));
 // Store connected players
 const players = new Map();
 
-// Game world constants
-const GAME_WIDTH = 1920;
-const GAME_HEIGHT = 1080;
-
 // ========================================
-// SERVER-AUTHORITATIVE GAME CONSTANTS
+// SERVER CONFIGURATION
+// Centralized constants for server-authoritative game logic
 // (Anti-cheat: ignore client values, use these)
 // ========================================
+const SERVER_CONFIG = {
+    // World
+    WORLD: {
+        WIDTH: 1920,
+        HEIGHT: 1080,
+    },
 
-// Player movement
-const PLAYER_SPEED = 300; // pixels per second
-const PLAYER_SPEED_TOLERANCE = 1.5; // Allow 50% variance for network latency
-const MAX_MOVE_DISTANCE_PER_TICK = PLAYER_SPEED * PLAYER_SPEED_TOLERANCE * 0.1; // ~45 pixels per 100ms tick
+    // Player
+    PLAYER: {
+        SPEED: 300,                     // pixels per second
+        SPEED_TOLERANCE: 1.5,           // Allow 50% variance for network latency
+        MAX_HP: 100,
+        RESPAWN_DELAY_MS: 3000,         // 3 seconds
+        RESPAWN_X: 960,                 // Center of game world
+        RESPAWN_Y: 540,
+    },
 
-// Basic attack
-const ATTACK_POWER = 10;
-const ATTACK_RANGE = 150;
-const ATTACK_COOLDOWN = 500; // ms
+    // Combat
+    COMBAT: {
+        ATTACK_POWER: 10,
+        ATTACK_RANGE: 150,
+        ATTACK_COOLDOWN_MS: 500,
+        HIT_RADIUS: 67.5,               // Half of character size for collision
+    },
 
-// Teleport skill (W)
-const TELEPORT_MAX_DISTANCE = 400;
-const TELEPORT_MIN_DISTANCE = 200;
-const TELEPORT_DAMAGE_RADIUS = 100;
-const TELEPORT_DAMAGE = 12;
-const TELEPORT_COOLDOWN = 8000; // ms
+    // Knockback
+    KNOCKBACK: {
+        MIN_DISTANCE: 30,
+        MAX_DISTANCE: 100,
+        MULTIPLIER_MIN: 1.25,
+        MULTIPLIER_MAX: 2.5,
+        BOUNDARY_MARGIN: 50,
+        LASER_DISTANCE: 50,             // Fixed knockback for laser
+    },
 
-// Laser skill (Q)
-const LASER_DAMAGE = 44;
-const LASER_MAX_LENGTH = 2000;
-const LASER_COOLDOWN = 10000; // ms
+    // Skill - Laser (Q)
+    SKILL_LASER: {
+        DAMAGE: 44,
+        MAX_LENGTH: 2000,
+        COOLDOWN_MS: 10000,
+    },
 
-// Telepathy skill (E)
-const TELEPATHY_RADIUS = 180;
-const TELEPATHY_DAMAGE_PER_TICK = 2;
-const TELEPATHY_MAX_HEAL_PER_TICK = 4;
-const TELEPATHY_DURATION = 3000; // ms
-const TELEPATHY_COOLDOWN = 15000; // ms
+    // Skill - Teleport (W)
+    SKILL_TELEPORT: {
+        MAX_DISTANCE: 400,
+        MIN_DISTANCE: 200,
+        DAMAGE_RADIUS: 100,
+        DAMAGE: 12,
+        COOLDOWN_MS: 8000,
+    },
 
-// Shard collection
-const SHARD_COLLECT_DISTANCE = 100; // Generous distance for collection validation
-const CHARACTER_SIZE = 135; // Approximate character display size
+    // Skill - Telepathy (E)
+    SKILL_TELEPATHY: {
+        RADIUS: 180,
+        DAMAGE_PER_TICK: 2,
+        MAX_HEAL_PER_TICK: 4,
+        DURATION_MS: 3000,
+        COOLDOWN_MS: 15000,
+    },
 
-// Chat message validation (CRITICAL-2 fix)
-const CHAT_MAX_MESSAGE_LENGTH = 200;
+    // Shard
+    SHARD: {
+        MAX_COUNT: 40,
+        INITIAL_COUNT: 20,
+        SPAWN_MARGIN: 100,
+        COLLECT_DISTANCE: 100,
+        RESPAWN_MIN_MS: 3000,
+        RESPAWN_VARIANCE_MS: 2000,
+    },
+
+    // Dummy
+    DUMMY: {
+        MAX_HP: 30,
+        RESPAWN_DELAY_MS: 5000,
+        POSITIONS: [
+            { offsetX: 300, offsetY: 0, name: 'Dummy 1' },
+            { offsetX: -300, offsetY: 0, name: 'Dummy 2' },
+            { offsetX: 0, offsetY: 300, name: 'Dummy 3' },
+        ],
+    },
+
+    // Chat
+    CHAT: {
+        MAX_MESSAGE_LENGTH: 200,
+    },
+
+    // Rate limiting (in milliseconds)
+    RATE_LIMIT: {
+        MOVE_MS: 50,                    // 50ms = 초당 20회
+        ATTACK_MS: 500,                 // 기본 공격 쿨다운과 동일
+        CHAT_MS: 1000,                  // 초당 1회
+    },
+};
+
+// Computed values
+SERVER_CONFIG.PLAYER.MAX_MOVE_DISTANCE_PER_TICK =
+    SERVER_CONFIG.PLAYER.SPEED * SERVER_CONFIG.PLAYER.SPEED_TOLERANCE * 0.1;
+
+// Legacy constants for backward compatibility (used throughout the file)
+const GAME_WIDTH = SERVER_CONFIG.WORLD.WIDTH;
+const GAME_HEIGHT = SERVER_CONFIG.WORLD.HEIGHT;
+const PLAYER_SPEED = SERVER_CONFIG.PLAYER.SPEED;
+const PLAYER_SPEED_TOLERANCE = SERVER_CONFIG.PLAYER.SPEED_TOLERANCE;
+const ATTACK_POWER = SERVER_CONFIG.COMBAT.ATTACK_POWER;
+const ATTACK_RANGE = SERVER_CONFIG.COMBAT.ATTACK_RANGE;
+const TELEPORT_MAX_DISTANCE = SERVER_CONFIG.SKILL_TELEPORT.MAX_DISTANCE;
+const TELEPORT_DAMAGE_RADIUS = SERVER_CONFIG.SKILL_TELEPORT.DAMAGE_RADIUS;
+const TELEPORT_DAMAGE = SERVER_CONFIG.SKILL_TELEPORT.DAMAGE;
+const LASER_DAMAGE = SERVER_CONFIG.SKILL_LASER.DAMAGE;
+const LASER_MAX_LENGTH = SERVER_CONFIG.SKILL_LASER.MAX_LENGTH;
+const TELEPATHY_RADIUS = SERVER_CONFIG.SKILL_TELEPATHY.RADIUS;
+const TELEPATHY_DAMAGE_PER_TICK = SERVER_CONFIG.SKILL_TELEPATHY.DAMAGE_PER_TICK;
+const TELEPATHY_MAX_HEAL_PER_TICK = SERVER_CONFIG.SKILL_TELEPATHY.MAX_HEAL_PER_TICK;
+const SHARD_COLLECT_DISTANCE = SERVER_CONFIG.SHARD.COLLECT_DISTANCE;
+const CHAT_MAX_MESSAGE_LENGTH = SERVER_CONFIG.CHAT.MAX_MESSAGE_LENGTH;
+const RATE_LIMIT_MOVE = SERVER_CONFIG.RATE_LIMIT.MOVE_MS;
+const RATE_LIMIT_ATTACK = SERVER_CONFIG.RATE_LIMIT.ATTACK_MS;
+const RATE_LIMIT_CHAT = SERVER_CONFIG.RATE_LIMIT.CHAT_MS;
+const KNOCKBACK_MIN = SERVER_CONFIG.KNOCKBACK.MIN_DISTANCE;
+const KNOCKBACK_MAX = SERVER_CONFIG.KNOCKBACK.MAX_DISTANCE;
+const KNOCKBACK_MULTIPLIER_MIN = SERVER_CONFIG.KNOCKBACK.MULTIPLIER_MIN;
+const KNOCKBACK_MULTIPLIER_MAX = SERVER_CONFIG.KNOCKBACK.MULTIPLIER_MAX;
+const PLAYER_RESPAWN_DELAY = SERVER_CONFIG.PLAYER.RESPAWN_DELAY_MS;
+const DUMMY_RESPAWN_DELAY = SERVER_CONFIG.DUMMY.RESPAWN_DELAY_MS;
 
 // ========================================
 // RATE LIMITING SYSTEM
 // ========================================
-
-// Rate limit constants (in milliseconds)
-const RATE_LIMIT_MOVE = 50;      // 50ms = 초당 20회
-const RATE_LIMIT_ATTACK = 500;   // 500ms = 기본 공격 쿨다운과 동일
-const RATE_LIMIT_CHAT = 1000;    // 1000ms = 초당 1회
 
 // Global rate limiter map: "socketId:eventType" -> lastTime
 const rateLimiter = new Map();
@@ -170,22 +250,12 @@ function isValidPositiveInt(value, max = 1000) {
 }
 
 // Shard system
-const MAX_SHARDS = 40;
+const MAX_SHARDS = SERVER_CONFIG.SHARD.MAX_COUNT;
 const shards = new Map(); // Map of shardId -> {id, x, y, collected, collectedTime, respawnDelay}
 let shardIdCounter = 0;
 
 // Dummy system (server-authoritative)
 const dummies = new Map(); // Map of dummyId -> {id, x, y, name, currentHP, maxHP, deathTime, respawnDelay}
-const DUMMY_RESPAWN_DELAY = 5000; // 5 seconds
-
-// Player respawn settings
-const PLAYER_RESPAWN_DELAY = 3000; // 3 seconds
-
-// Knockback settings
-const KNOCKBACK_MIN = 30; // Base minimum knockback distance (at max attack range)
-const KNOCKBACK_MAX = 100; // Base maximum knockback distance (at 0 distance)
-const KNOCKBACK_MULTIPLIER_MIN = 1.25; // Minimum random multiplier
-const KNOCKBACK_MULTIPLIER_MAX = 2.5; // Maximum random multiplier
 
 // Calculate knockback distance based on distance from attacker (closer = more knockback)
 // Applies random multiplier (1.25x ~ 2.5x) for impactful knockback
@@ -243,7 +313,7 @@ function calculateKnockbackEndPosition(attackerX, attackerY, targetX, targetY, k
     let endY = targetY + dirY * knockbackDistance;
 
     // Clamp to game bounds (with margin for character size)
-    const margin = 50;
+    const margin = SERVER_CONFIG.KNOCKBACK.BOUNDARY_MARGIN;
     endX = Math.max(margin, Math.min(GAME_WIDTH - margin, endX));
     endY = Math.max(margin, Math.min(GAME_HEIGHT - margin, endY));
 
@@ -251,11 +321,12 @@ function calculateKnockbackEndPosition(attackerX, attackerY, targetX, targetY, k
 }
 
 function initializeDummies() {
-    const dummyPositions = [
-        { x: GAME_WIDTH / 2 + 300, y: GAME_HEIGHT / 2, name: 'Dummy 1' },
-        { x: GAME_WIDTH / 2 - 300, y: GAME_HEIGHT / 2, name: 'Dummy 2' },
-        { x: GAME_WIDTH / 2, y: GAME_HEIGHT / 2 + 300, name: 'Dummy 3' },
-    ];
+    const dummyConfig = SERVER_CONFIG.DUMMY;
+    const dummyPositions = dummyConfig.POSITIONS.map(pos => ({
+        x: GAME_WIDTH / 2 + pos.offsetX,
+        y: GAME_HEIGHT / 2 + pos.offsetY,
+        name: pos.name
+    }));
 
     dummyPositions.forEach((pos, index) => {
         dummies.set(index, {
@@ -265,10 +336,10 @@ function initializeDummies() {
             initialX: pos.x,
             initialY: pos.y,
             name: pos.name,
-            currentHP: 30, // 3 hits to kill (10 damage x 3)
-            maxHP: 30,
+            currentHP: dummyConfig.MAX_HP,
+            maxHP: dummyConfig.MAX_HP,
             deathTime: 0,
-            respawnDelay: DUMMY_RESPAWN_DELAY
+            respawnDelay: dummyConfig.RESPAWN_DELAY_MS
         });
     });
 
@@ -336,8 +407,9 @@ function checkPlayerRespawn() {
 
 // Initialize shards
 function initializeShards() {
-    const margin = 100;
-    for (let i = 0; i < 20; i++) {
+    const shardConfig = SERVER_CONFIG.SHARD;
+    const margin = shardConfig.SPAWN_MARGIN;
+    for (let i = 0; i < shardConfig.INITIAL_COUNT; i++) {
         const x = margin + Math.random() * (GAME_WIDTH - margin * 2);
         const y = margin + Math.random() * (GAME_HEIGHT - margin * 2);
         const shardId = shardIdCounter++;
@@ -577,7 +649,7 @@ io.on('connection', (socket) => {
             shard.collected = true;
             shard.collectedTime = Date.now();
             // Random respawn delay between 3-5 seconds (3000-5000ms)
-            shard.respawnDelay = 3000 + Math.random() * 2000;
+            shard.respawnDelay = SERVER_CONFIG.SHARD.RESPAWN_MIN_MS + Math.random() * SERVER_CONFIG.SHARD.RESPAWN_VARIANCE_MS;
             console.log(`Player ${socket.id} collected shard ${data.shardId} (will respawn in ${Math.round(shard.respawnDelay/1000)}s)`);
 
             // Broadcast to all players
@@ -1001,7 +1073,7 @@ io.on('connection', (socket) => {
                 player.currentHP = Math.max(0, player.currentHP - damage);
 
                 // Calculate knockback direction from laser origin
-                const knockbackDist = 50; // Fixed knockback for laser
+                const knockbackDist = SERVER_CONFIG.KNOCKBACK.LASER_DISTANCE;
                 const knockbackEnd = calculateKnockbackEndPosition(x1, y1, player.x, player.y, knockbackDist);
 
                 player.x = knockbackEnd.x;
@@ -1063,7 +1135,7 @@ io.on('connection', (socket) => {
                 dummy.currentHP = Math.max(0, dummy.currentHP - damage);
 
                 // Calculate knockback
-                const knockbackDist = 50;
+                const knockbackDist = SERVER_CONFIG.KNOCKBACK.LASER_DISTANCE;
                 const knockbackEnd = calculateKnockbackEndPosition(x1, y1, dummy.x, dummy.y, knockbackDist);
 
                 dummy.x = knockbackEnd.x;
