@@ -82,8 +82,51 @@ const CHARACTER_SIZE = 135; // Approximate character display size
 
 // Chat message validation (CRITICAL-2 fix)
 const CHAT_MAX_MESSAGE_LENGTH = 200;
-const CHAT_RATE_LIMIT_MS = 1000; // 1 message per second
-const chatRateLimits = new Map(); // socket.id -> lastMessageTime
+
+// ========================================
+// RATE LIMITING SYSTEM
+// ========================================
+
+// Rate limit constants (in milliseconds)
+const RATE_LIMIT_MOVE = 50;      // 50ms = 초당 20회
+const RATE_LIMIT_ATTACK = 500;   // 500ms = 기본 공격 쿨다운과 동일
+const RATE_LIMIT_CHAT = 1000;    // 1000ms = 초당 1회
+
+// Global rate limiter map: "socketId:eventType" -> lastTime
+const rateLimiter = new Map();
+
+/**
+ * Check if an action should be rate limited
+ * @param {string} socketId - Socket ID of the client
+ * @param {string} eventType - Type of event (move, attack, chat, etc.)
+ * @param {number} limitMs - Minimum time between events in milliseconds
+ * @returns {boolean} - true if allowed, false if rate limited
+ */
+function rateLimit(socketId, eventType, limitMs) {
+    const key = `${socketId}:${eventType}`;
+    const now = Date.now();
+    const lastTime = rateLimiter.get(key) || 0;
+
+    if (now - lastTime < limitMs) {
+        return false; // Rate limited
+    }
+
+    rateLimiter.set(key, now);
+    return true;
+}
+
+/**
+ * Clean up rate limiter entries for a disconnected socket
+ * @param {string} socketId - Socket ID to clean up
+ */
+function cleanupRateLimiter(socketId) {
+    const prefix = `${socketId}:`;
+    for (const key of rateLimiter.keys()) {
+        if (key.startsWith(prefix)) {
+            rateLimiter.delete(key);
+        }
+    }
+}
 
 // ========================================
 // INPUT VALIDATION UTILITIES
@@ -396,6 +439,11 @@ io.on('connection', (socket) => {
 
     // Handle player position updates
     socket.on('playerMove', (data) => {
+        // === RATE LIMITING ===
+        if (!rateLimit(socket.id, 'move', RATE_LIMIT_MOVE)) {
+            return; // Too many move events, silently ignore
+        }
+
         // === INPUT VALIDATION ===
         // Validate coordinate types
         if (!isValidNumber(data.x) || !isValidNumber(data.y)) {
@@ -463,39 +511,36 @@ io.on('connection', (socket) => {
 
     // Handle chat messages (CRITICAL-2 fix: Server-side validation)
     socket.on('chatMessage', (data) => {
-        // 1. Type validation
+        // 1. Rate limiting (1 message per second) - check first to avoid unnecessary processing
+        if (!rateLimit(socket.id, 'chat', RATE_LIMIT_CHAT)) {
+            console.warn(`[CHAT] Rate limit exceeded by ${socket.id}`);
+            return;
+        }
+
+        // 2. Type validation
         if (!data || typeof data.message !== 'string') {
             console.warn(`[CHAT] Invalid message type from ${socket.id}`);
             return;
         }
 
-        // 2. Empty message filter (trim and check)
+        // 3. Empty message filter (trim and check)
         const trimmedMessage = data.message.trim();
         if (trimmedMessage.length === 0) {
             return; // Silently ignore empty messages
         }
 
-        // 3. Length limit (max 200 characters)
+        // 4. Length limit (max 200 characters)
         if (trimmedMessage.length > CHAT_MAX_MESSAGE_LENGTH) {
             console.warn(`[CHAT] Message too long from ${socket.id}: ${trimmedMessage.length} chars`);
             return;
         }
-
-        // 4. Rate limiting (1 message per second)
-        const now = Date.now();
-        const lastMessageTime = chatRateLimits.get(socket.id) || 0;
-        if (now - lastMessageTime < CHAT_RATE_LIMIT_MS) {
-            console.warn(`[CHAT] Rate limit exceeded by ${socket.id}`);
-            return;
-        }
-        chatRateLimits.set(socket.id, now);
 
         const playerData = players.get(socket.id);
         const message = {
             playerId: socket.id,
             playerName: playerData ? playerData.playerName : 'Unknown',
             message: trimmedMessage,
-            timestamp: now
+            timestamp: Date.now()
         };
 
         console.log(`Chat from ${message.playerName}: ${message.message}`);
@@ -545,6 +590,11 @@ io.on('connection', (socket) => {
 
     // Handle player attack
     socket.on('playerAttack', (data) => {
+        // === RATE LIMITING ===
+        if (!rateLimit(socket.id, 'attack', RATE_LIMIT_ATTACK)) {
+            return; // Attack on cooldown, silently ignore
+        }
+
         const attacker = players.get(socket.id);
         if (!attacker) return;
 
@@ -1196,7 +1246,7 @@ io.on('connection', (socket) => {
     socket.on('disconnect', () => {
         console.log(`Player disconnected: ${socket.id}`);
         players.delete(socket.id);
-        chatRateLimits.delete(socket.id); // Clean up rate limit entry
+        cleanupRateLimiter(socket.id); // Clean up all rate limit entries for this socket
 
         // Notify others
         socket.broadcast.emit('playerLeft', {
