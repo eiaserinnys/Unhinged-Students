@@ -154,7 +154,7 @@ class ShardManager {
         shardData.forEach(data => {
             this.shards.push(new Shard(data.x, data.y, GAME_CONFIG.SHARD.SIZE, data.id));
         });
-        console.log(`Loaded ${this.shards.length} shards from server`);
+        logger.debug(`Loaded ${this.shards.length} shards from server`);
     }
 
     // Add shards from server spawn event (respawn)
@@ -189,7 +189,7 @@ class ShardManager {
     // Enable server mode
     enableServerMode() {
         this.serverMode = true;
-        console.log('ShardManager: Server mode enabled');
+        logger.debug('ShardManager: Server mode enabled');
     }
 
     spawnShards(count, canvasWidth, canvasHeight, margin = GAME_CONFIG.SHARD.SPAWN_MARGIN) {
@@ -201,7 +201,7 @@ class ShardManager {
             const y = margin + Math.random() * (canvasHeight - margin * 2);
             this.shards.push(new Shard(x, y));
         }
-        console.log(`Spawned ${count} shards`);
+        logger.debug(`Spawned ${count} shards`);
     }
 
     // Spawn a single shard at random location
@@ -244,7 +244,7 @@ class ShardManager {
             }
 
             if (actualSpawnCount > 0) {
-                console.log(`Respawned ${actualSpawnCount} shards (Active: ${activeCount + actualSpawnCount}/${this.maxActiveShards})`);
+                logger.debug(`Respawned ${actualSpawnCount} shards (Active: ${activeCount + actualSpawnCount}/${this.maxActiveShards})`);
             }
         }
     }

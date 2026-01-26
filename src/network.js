@@ -172,7 +172,7 @@ class NetworkManager {
             path: '/game/socket.io'
         };
 
-        console.log('Connecting to server via /game/socket.io');
+        logger.info('Connecting to server via /game/socket.io');
 
         this.serverUrl = serverUrl;
 
@@ -188,7 +188,7 @@ class NetworkManager {
         this.socket.on('connected', (data) => {
             this.playerId = data.playerId;
             this.connected = true;
-            console.log(`Connected to server. Player ID: ${this.playerId}`);
+            logger.info(`Connected to server. Player ID: ${this.playerId}`);
 
             // Hide reconnect UI on successful connection
             if (this.reconnectUI && this.reconnectUI.isVisible) {
@@ -198,7 +198,7 @@ class NetworkManager {
 
         // Receive existing players
         this.socket.on('existingPlayers', (players) => {
-            console.log(`Received ${players.length} existing players`);
+            logger.debug(`Received ${players.length} existing players`);
             players.forEach(playerData => {
                 if (playerData.playerId !== this.playerId) {
                     this.addRemotePlayer(playerData);
@@ -208,7 +208,7 @@ class NetworkManager {
 
         // New player joined
         this.socket.on('playerJoined', (data) => {
-            console.log(`Player joined: ${data.playerId}`);
+            logger.info(`Player joined: ${data.playerId}`);
             this.addRemotePlayer(data);
         });
 
@@ -225,13 +225,13 @@ class NetworkManager {
 
         // Player left
         this.socket.on('playerLeft', (data) => {
-            console.log(`Player left: ${data.playerId}`);
+            logger.info(`Player left: ${data.playerId}`);
             this.removeRemotePlayer(data.playerId);
         });
 
         // Connection error
         this.socket.on('connect_error', (error) => {
-            console.error('Connection error:', error);
+            logger.error('Connection error:', error);
 
             // Show reconnect UI on connection error
             if (this.reconnectUI) {
@@ -242,7 +242,7 @@ class NetworkManager {
 
         // Disconnection
         this.socket.on('disconnect', () => {
-            console.log('Disconnected from server');
+            logger.warn('Disconnected from server');
             this.connected = false;
 
             // Show reconnect UI instead of auto-reload
@@ -306,7 +306,7 @@ class NetworkManager {
         this.socket.on('telepathyHeal', (data) => {
             if (data.playerId === this.playerId && this.localPlayer) {
                 this.localPlayer.currentHP = Math.min(this.localPlayer.maxHP, this.localPlayer.currentHP + data.healAmount);
-                console.log(`Telepathy healed ${data.healAmount} HP! Current: ${this.localPlayer.currentHP}/${this.localPlayer.maxHP}`);
+                logger.debug(`Telepathy healed ${data.healAmount} HP! Current: ${this.localPlayer.currentHP}/${this.localPlayer.maxHP}`);
             }
         });
 
@@ -353,21 +353,21 @@ class NetworkManager {
 
         // Shard events
         this.socket.on('existingShards', (shards) => {
-            console.log(`Received ${shards.length} existing shards`);
+            logger.debug(`Received ${shards.length} existing shards`);
             if (this.shardManager) {
                 this.shardManager.loadShardsFromServer(shards);
             }
         });
 
         this.socket.on('shardsSpawned', (shards) => {
-            console.log(`${shards.length} new shards spawned`);
+            logger.debug(`${shards.length} new shards spawned`);
             if (this.shardManager) {
                 this.shardManager.addShardsFromServer(shards);
             }
         });
 
         this.socket.on('shardCollected', (data) => {
-            console.log(`Shard ${data.shardId} collected by ${data.playerId}`);
+            logger.debug(`Shard ${data.shardId} collected by ${data.playerId}`);
             if (this.shardManager) {
                 this.shardManager.removeShard(data.shardId);
             }
@@ -375,7 +375,7 @@ class NetworkManager {
 
         // Player damage event
         this.socket.on('playerDamaged', (data) => {
-            console.log(`Players damaged by ${data.attackerId}:`, data.hitPlayers);
+            logger.debug(`Players damaged by ${data.attackerId}:`, data.hitPlayers);
             data.hitPlayers.forEach(hit => {
                 // Check if it's the local player
                 if (hit.playerId === this.playerId && this.localPlayer) {
@@ -397,7 +397,7 @@ class NetworkManager {
                         );
                     }
 
-                    console.log(`You took damage! HP: ${hit.currentHP}/${hit.maxHP}`);
+                    logger.debug(`You took damage! HP: ${hit.currentHP}/${hit.maxHP}`);
                 } else {
                     // Update remote player HP
                     const player = this.remotePlayers.get(hit.playerId);
@@ -422,7 +422,7 @@ class NetworkManager {
 
         // Dummy events
         this.socket.on('existingDummies', (serverDummies) => {
-            console.log(`Received ${serverDummies.length} existing dummies`);
+            logger.debug(`Received ${serverDummies.length} existing dummies`);
             if (this.dummies) {
                 // Sync dummies with server state
                 serverDummies.forEach(serverDummy => {
@@ -438,7 +438,7 @@ class NetworkManager {
         });
 
         this.socket.on('dummyDamaged', (data) => {
-            console.log(`Dummies damaged by ${data.attackerId}:`, data.hitDummies);
+            logger.debug(`Dummies damaged by ${data.attackerId}:`, data.hitDummies);
             if (this.dummies) {
                 data.hitDummies.forEach(hit => {
                     const dummy = this.dummies[hit.dummyId];
@@ -466,7 +466,7 @@ class NetworkManager {
         });
 
         this.socket.on('dummyRespawned', (data) => {
-            console.log(`Dummy ${data.dummyId} respawned`);
+            logger.debug(`Dummy ${data.dummyId} respawned`);
             if (this.dummies) {
                 const dummy = this.dummies[data.dummyId];
                 if (dummy) {
@@ -481,14 +481,14 @@ class NetworkManager {
 
         // Player death event
         this.socket.on('playerDied', (data) => {
-            console.log(`Player ${data.playerId} died, killed by ${data.killedBy}`);
+            logger.info(`Player ${data.playerId} died, killed by ${data.killedBy}`);
 
             // Check if it's the local player
             if (data.playerId === this.playerId && this.localPlayer) {
                 this.localPlayer.isDead = true;
                 this.localPlayer.deathTime = Date.now();
                 this.localPlayer.respawnDelay = data.respawnDelay;
-                console.log(`You died! Respawning in ${data.respawnDelay / 1000} seconds...`);
+                logger.info(`You died! Respawning in ${data.respawnDelay / 1000} seconds...`);
             } else {
                 // Update remote player
                 const remotePlayer = this.remotePlayers.get(data.playerId);
@@ -500,7 +500,7 @@ class NetworkManager {
 
         // Player respawn event
         this.socket.on('playerRespawned', (data) => {
-            console.log(`Player ${data.playerId} respawned`);
+            logger.debug(`Player ${data.playerId} respawned`);
 
             // Check if it's the local player
             if (data.playerId === this.playerId && this.localPlayer) {
@@ -509,7 +509,7 @@ class NetworkManager {
                 this.localPlayer.x = data.x;
                 this.localPlayer.y = data.y;
                 this.localPlayer.currentHP = data.currentHP;
-                console.log('You respawned!');
+                logger.info('You respawned!');
             } else {
                 // Update remote player
                 const remotePlayer = this.remotePlayers.get(data.playerId);
@@ -669,7 +669,7 @@ class NetworkManager {
 
     // Attempt to reconnect to the server
     attemptReconnect() {
-        console.log('Attempting to reconnect...');
+        logger.info('Attempting to reconnect...');
 
         // If socket exists, try to reconnect
         if (this.socket) {
@@ -721,7 +721,7 @@ class NetworkManager {
         this.localPlayer = null;
         this.dummies = null;
 
-        console.log('Network manager cleaned up');
+        logger.info('Network manager cleaned up');
     }
 }
 
@@ -836,10 +836,10 @@ class RemotePlayer {
                 this.width = this.displaySize * aspectRatio;
             }
 
-            console.log(`Remote player image loaded: ${path}`);
+            logger.debug(`Remote player image loaded: ${path}`);
         };
         this.image.onerror = () => {
-            console.error(`Failed to load remote player image: ${path}`);
+            logger.warn(`Failed to load remote player image: ${path}`);
         };
         this.image.src = path;
     }
@@ -987,10 +987,10 @@ class RemotePlayer {
     // Take damage
     takeDamage(amount) {
         this.currentHP = Math.max(0, this.currentHP - amount);
-        console.log(`${this.playerName} took ${amount} damage! HP: ${this.currentHP}/${this.maxHP}`);
+        logger.debug(`${this.playerName} took ${amount} damage! HP: ${this.currentHP}/${this.maxHP}`);
 
         if (this.currentHP <= 0) {
-            console.log(`${this.playerName} has been defeated!`);
+            logger.info(`${this.playerName} has been defeated!`);
             return true; // Character died
         }
         return false;

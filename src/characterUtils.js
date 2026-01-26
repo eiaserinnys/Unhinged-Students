@@ -243,7 +243,7 @@ const CharacterUtils = {
         entity.knockbackEndX = endX;
         entity.knockbackEndY = endY;
 
-        console.log(`${entity.playerName} knocked back from (${entity.x.toFixed(1)}, ${entity.y.toFixed(1)}) to (${endX.toFixed(1)}, ${endY.toFixed(1)})`);
+        logger.debug(`${entity.playerName} knocked back from (${entity.x.toFixed(1)}, ${entity.y.toFixed(1)}) to (${endX.toFixed(1)}, ${endY.toFixed(1)})`);
     },
 
     /**

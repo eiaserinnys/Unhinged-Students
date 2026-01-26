@@ -76,7 +76,7 @@ class LobbyManager {
 
         // Update selected character
         this.selectedCharacter = option.dataset.character;
-        console.log(`Selected character: ${this.selectedCharacter}`);
+        logger.debug(`Selected character: ${this.selectedCharacter}`);
 
         // Validate input to update button state
         this.validateInput();
@@ -97,7 +97,7 @@ class LobbyManager {
     startGame() {
         if (!this.canStartGame()) return;
 
-        console.log(`Starting game with character: ${this.selectedCharacter}, name: ${this.playerName}`);
+        logger.info(`Starting game with character: ${this.selectedCharacter}, name: ${this.playerName}`);
 
         // Hide lobby with animation
         this.hide();

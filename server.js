@@ -3,6 +3,7 @@ const express = require('express');
 const { createServer } = require('http');
 const { Server } = require('socket.io');
 const path = require('path');
+const logger = require('./logger');
 
 const app = express();
 const httpServer = createServer(app);
@@ -343,7 +344,7 @@ function initializeDummies() {
         });
     });
 
-    console.log(`Initialized ${dummies.size} dummies`);
+    logger.info(`Initialized ${dummies.size} dummies`);
 }
 
 function checkDummyRespawn() {
@@ -360,7 +361,7 @@ function checkDummyRespawn() {
                 dummy.y = dummy.initialY;
                 dummy.deathTime = 0;
 
-                console.log(`${dummy.name} respawned`);
+                logger.debug(`${dummy.name} respawned`);
 
                 // Broadcast respawn to all clients
                 io.emit('dummyRespawned', {
@@ -390,7 +391,7 @@ function checkPlayerRespawn() {
                 player.deathTime = 0;
                 player.isDead = false;
 
-                console.log(`Player ${playerId} respawned`);
+                logger.debug(`Player ${playerId} respawned`);
 
                 // Broadcast respawn to all clients
                 io.emit('playerRespawned', {
@@ -422,7 +423,7 @@ function initializeShards() {
             respawnDelay: 0
         });
     }
-    console.log(`Initialized ${shards.size} shards`);
+    logger.info(`Initialized ${shards.size} shards`);
 }
 
 // Respawn shards (individual shard respawn)
@@ -451,7 +452,7 @@ function checkShardRespawn() {
 
     if (respawnedCount > 0) {
         const activeCount = Array.from(shards.values()).filter(s => !s.collected).length;
-        console.log(`Respawned ${respawnedCount} shard(s) (Active: ${activeCount}/${MAX_SHARDS})`);
+        logger.debug(`Respawned ${respawnedCount} shard(s) (Active: ${activeCount}/${MAX_SHARDS})`);
     }
 }
 
@@ -463,7 +464,7 @@ setInterval(checkDummyRespawn, 1000); // Check dummy respawn every second
 setInterval(checkPlayerRespawn, 500); // Check player respawn more frequently
 
 io.on('connection', (socket) => {
-    console.log(`Player connected: ${socket.id}`);
+    logger.info(`Player connected: ${socket.id}`);
 
     // Send player their ID
     socket.emit('connected', {
@@ -519,7 +520,7 @@ io.on('connection', (socket) => {
         // === INPUT VALIDATION ===
         // Validate coordinate types
         if (!isValidNumber(data.x) || !isValidNumber(data.y)) {
-            console.log(`[CHEAT] Invalid move coordinates from ${socket.id}: x=${data.x}, y=${data.y}`);
+            logger.cheat(`Invalid move coordinates from ${socket.id}: x=${data.x}, y=${data.y}`);
             return;
         }
 
@@ -542,7 +543,7 @@ io.on('connection', (socket) => {
                 // Log potential speed hack but allow within reasonable bounds
                 // (Network lag can cause position jumps)
                 if (moveDistance > maxAllowedDistance * 3) {
-                    console.log(`[CHEAT] Speed hack detected from ${socket.id}: moved ${moveDistance.toFixed(1)}px in ${timeDelta}ms (max: ${maxAllowedDistance.toFixed(1)}px)`);
+                    logger.cheat(`Speed hack detected from ${socket.id}: moved ${moveDistance.toFixed(1)}px in ${timeDelta}ms (max: ${maxAllowedDistance.toFixed(1)}px)`);
                     // Use last valid position instead
                     validX = existingPlayer.x;
                     validY = existingPlayer.y;
@@ -585,13 +586,13 @@ io.on('connection', (socket) => {
     socket.on('chatMessage', (data) => {
         // 1. Rate limiting (1 message per second) - check first to avoid unnecessary processing
         if (!rateLimit(socket.id, 'chat', RATE_LIMIT_CHAT)) {
-            console.warn(`[CHAT] Rate limit exceeded by ${socket.id}`);
+            logger.debug(`Chat rate limit exceeded by ${socket.id}`);
             return;
         }
 
         // 2. Type validation
         if (!data || typeof data.message !== 'string') {
-            console.warn(`[CHAT] Invalid message type from ${socket.id}`);
+            logger.debug(`Chat invalid message type from ${socket.id}`);
             return;
         }
 
@@ -603,7 +604,7 @@ io.on('connection', (socket) => {
 
         // 4. Length limit (max 200 characters)
         if (trimmedMessage.length > CHAT_MAX_MESSAGE_LENGTH) {
-            console.warn(`[CHAT] Message too long from ${socket.id}: ${trimmedMessage.length} chars`);
+            logger.debug(`Chat message too long from ${socket.id}: ${trimmedMessage.length} chars`);
             return;
         }
 
@@ -615,7 +616,7 @@ io.on('connection', (socket) => {
             timestamp: Date.now()
         };
 
-        console.log(`Chat from ${message.playerName}: ${message.message}`);
+        logger.debug(`Chat from ${message.playerName}: ${message.message}`);
 
         // Broadcast to all players (including sender)
         io.emit('chatMessage', message);
@@ -632,7 +633,7 @@ io.on('connection', (socket) => {
         // === INPUT VALIDATION ===
         // Validate shardId type
         if (!isValidPositiveInt(data.shardId, 10000)) {
-            console.log(`[CHEAT] Invalid shardId from ${socket.id}: ${data.shardId}`);
+            logger.cheat(`Invalid shardId from ${socket.id}: ${data.shardId}`);
             return;
         }
 
@@ -642,7 +643,7 @@ io.on('connection', (socket) => {
             // Verify player is close enough to collect (anti-cheat: prevent remote collection)
             const distance = calculateDistance(player.x, player.y, shard.x, shard.y);
             if (distance > SHARD_COLLECT_DISTANCE) {
-                console.log(`[CHEAT] Remote shard collection attempt from ${socket.id}: distance=${distance.toFixed(1)}px (max: ${SHARD_COLLECT_DISTANCE}px)`);
+                logger.cheat(`Remote shard collection attempt from ${socket.id}: distance=${distance.toFixed(1)}px (max: ${SHARD_COLLECT_DISTANCE}px)`);
                 return;
             }
 
@@ -650,7 +651,7 @@ io.on('connection', (socket) => {
             shard.collectedTime = Date.now();
             // Random respawn delay between 3-5 seconds (3000-5000ms)
             shard.respawnDelay = SERVER_CONFIG.SHARD.RESPAWN_MIN_MS + Math.random() * SERVER_CONFIG.SHARD.RESPAWN_VARIANCE_MS;
-            console.log(`Player ${socket.id} collected shard ${data.shardId} (will respawn in ${Math.round(shard.respawnDelay/1000)}s)`);
+            logger.debug(`Player ${socket.id} collected shard ${data.shardId} (will respawn in ${Math.round(shard.respawnDelay/1000)}s)`);
 
             // Broadcast to all players
             io.emit('shardCollected', {
@@ -684,10 +685,10 @@ io.on('connection', (socket) => {
 
         // Log if client sent suspicious values
         if (data.range && data.range > ATTACK_RANGE * 1.1) {
-            console.log(`[CHEAT] Suspicious attack range from ${socket.id}: ${data.range} (server: ${ATTACK_RANGE})`);
+            logger.cheat(`Suspicious attack range from ${socket.id}: ${data.range} (server: ${ATTACK_RANGE})`);
         }
         if (data.power && data.power > ATTACK_POWER * 1.1) {
-            console.log(`[CHEAT] Suspicious attack power from ${socket.id}: ${data.power} (server: ${ATTACK_POWER})`);
+            logger.cheat(`Suspicious attack power from ${socket.id}: ${data.power} (server: ${ATTACK_POWER})`);
         }
 
         // Broadcast attack to all other players (for visual effect)
@@ -733,7 +734,7 @@ io.on('connection', (socket) => {
                     attackerY: attackY
                 });
 
-                console.log(`${socket.id} hit ${playerId} for ${attackPower} damage (HP: ${player.currentHP}/${player.maxHP}), knockback to (${knockbackEnd.x.toFixed(1)}, ${knockbackEnd.y.toFixed(1)})`);
+                logger.debug(`${socket.id} hit ${playerId} for ${attackPower} damage (HP: ${player.currentHP}/${player.maxHP}), knockback to (${knockbackEnd.x.toFixed(1)}, ${knockbackEnd.y.toFixed(1)})`);
 
                 // Check if player died
                 if (player.currentHP <= 0 && !player.isDead) {
@@ -744,7 +745,7 @@ io.on('connection', (socket) => {
                         killedBy: socket.id,
                         respawnDelay: PLAYER_RESPAWN_DELAY
                     });
-                    console.log(`${playerId} has been killed by ${socket.id}!`);
+                    logger.info(`${playerId} has been killed by ${socket.id}!`);
                 }
             }
         });
@@ -801,12 +802,12 @@ io.on('connection', (socket) => {
                     attackerY: attackY
                 });
 
-                console.log(`${socket.id} hit ${dummy.name} for ${attackPower} damage (HP: ${dummy.currentHP}/${dummy.maxHP}), knockback to (${knockbackEnd.x.toFixed(1)}, ${knockbackEnd.y.toFixed(1)})`);
+                logger.debug(`${socket.id} hit ${dummy.name} for ${attackPower} damage (HP: ${dummy.currentHP}/${dummy.maxHP}), knockback to (${knockbackEnd.x.toFixed(1)}, ${knockbackEnd.y.toFixed(1)})`);
 
                 // Mark death time if killed
                 if (dummy.currentHP <= 0) {
                     dummy.deathTime = Date.now();
-                    console.log(`${dummy.name} has been defeated!`);
+                    logger.debug(`${dummy.name} has been defeated!`);
                 }
             }
         });
@@ -832,7 +833,7 @@ io.on('connection', (socket) => {
         // Validate coordinate types
         if (!isValidNumber(data.startX) || !isValidNumber(data.startY) ||
             !isValidNumber(data.endX) || !isValidNumber(data.endY)) {
-            console.log(`[CHEAT] Invalid teleport coordinates from ${socket.id}`);
+            logger.cheat(`Invalid teleport coordinates from ${socket.id}`);
             return;
         }
 
@@ -847,7 +848,7 @@ io.on('connection', (socket) => {
         // Check teleport distance (anti-cheat: limit max teleport distance)
         const teleportDistance = calculateDistance(startX, startY, endX, endY);
         if (teleportDistance > TELEPORT_MAX_DISTANCE * 1.2) { // Allow 20% tolerance
-            console.log(`[CHEAT] Teleport distance exceeded from ${socket.id}: ${teleportDistance.toFixed(1)}px (max: ${TELEPORT_MAX_DISTANCE}px)`);
+            logger.cheat(`Teleport distance exceeded from ${socket.id}: ${teleportDistance.toFixed(1)}px (max: ${TELEPORT_MAX_DISTANCE}px)`);
             // Clamp to max distance
             const angle = Math.atan2(endY - startY, endX - startX);
             endX = startX + Math.cos(angle) * TELEPORT_MAX_DISTANCE;
@@ -892,10 +893,10 @@ io.on('connection', (socket) => {
 
         // Log if client sent suspicious values
         if (data.radius && data.radius > TELEPORT_DAMAGE_RADIUS * 1.1) {
-            console.log(`[CHEAT] Suspicious teleport damage radius from ${socket.id}: ${data.radius} (server: ${TELEPORT_DAMAGE_RADIUS})`);
+            logger.cheat(`Suspicious teleport damage radius from ${socket.id}: ${data.radius} (server: ${TELEPORT_DAMAGE_RADIUS})`);
         }
         if (data.damage && data.damage > TELEPORT_DAMAGE * 1.1) {
-            console.log(`[CHEAT] Suspicious teleport damage from ${socket.id}: ${data.damage} (server: ${TELEPORT_DAMAGE})`);
+            logger.cheat(`Suspicious teleport damage from ${socket.id}: ${data.damage} (server: ${TELEPORT_DAMAGE})`);
         }
 
         // Check all players in range
@@ -1023,7 +1024,7 @@ io.on('connection', (socket) => {
         // Validate coordinate types
         if (!isValidNumber(data.x1) || !isValidNumber(data.y1) ||
             !isValidNumber(data.x2) || !isValidNumber(data.y2)) {
-            console.log(`[CHEAT] Invalid laser coordinates from ${socket.id}`);
+            logger.cheat(`Invalid laser coordinates from ${socket.id}`);
             return;
         }
 
@@ -1049,10 +1050,10 @@ io.on('connection', (socket) => {
 
         // Log if client sent suspicious values
         if (data.damage && data.damage > LASER_DAMAGE * 1.1) {
-            console.log(`[CHEAT] Suspicious laser damage from ${socket.id}: ${data.damage} (server: ${LASER_DAMAGE})`);
+            logger.cheat(`Suspicious laser damage from ${socket.id}: ${data.damage} (server: ${LASER_DAMAGE})`);
         }
 
-        console.log(`Laser attack from ${socket.id}: (${x1.toFixed(0)}, ${y1.toFixed(0)}) -> (${x2.toFixed(0)}, ${y2.toFixed(0)})`);
+        logger.debug(`Laser attack from ${socket.id}: (${x1.toFixed(0)}, ${y1.toFixed(0)}) -> (${x2.toFixed(0)}, ${y2.toFixed(0)})`);
 
         // Broadcast laser effect to all other players (use validated coordinates)
         socket.broadcast.emit('laserFired', {
@@ -1089,7 +1090,7 @@ io.on('connection', (socket) => {
                     attackerY: y1
                 });
 
-                console.log(`Laser hit ${playerId} for ${damage} damage (HP: ${player.currentHP}/${player.maxHP})`);
+                logger.debug(`Laser hit ${playerId} for ${damage} damage (HP: ${player.currentHP}/${player.maxHP})`);
 
                 // Check if player died
                 if (player.currentHP <= 0 && !player.isDead) {
@@ -1100,7 +1101,7 @@ io.on('connection', (socket) => {
                         killedBy: socket.id,
                         respawnDelay: PLAYER_RESPAWN_DELAY
                     });
-                    console.log(`${playerId} has been killed by laser from ${socket.id}!`);
+                    logger.info(`${playerId} has been killed by laser from ${socket.id}!`);
                 }
             }
         });
@@ -1151,11 +1152,11 @@ io.on('connection', (socket) => {
                     attackerY: y1
                 });
 
-                console.log(`Laser hit ${dummy.name} for ${damage} damage (HP: ${dummy.currentHP}/${dummy.maxHP})`);
+                logger.debug(`Laser hit ${dummy.name} for ${damage} damage (HP: ${dummy.currentHP}/${dummy.maxHP})`);
 
                 if (dummy.currentHP <= 0) {
                     dummy.deathTime = Date.now();
-                    console.log(`${dummy.name} has been defeated by laser!`);
+                    logger.debug(`${dummy.name} has been defeated by laser!`);
                 }
             }
         });
@@ -1200,10 +1201,10 @@ io.on('connection', (socket) => {
 
         // Log if client sent suspicious values
         if (data.radius && data.radius > TELEPATHY_RADIUS * 1.1) {
-            console.log(`[CHEAT] Suspicious telepathy radius from ${socket.id}: ${data.radius} (server: ${TELEPATHY_RADIUS})`);
+            logger.cheat(`Suspicious telepathy radius from ${socket.id}: ${data.radius} (server: ${TELEPATHY_RADIUS})`);
         }
         if (data.damagePerTarget && data.damagePerTarget > TELEPATHY_DAMAGE_PER_TICK * 1.1) {
-            console.log(`[CHEAT] Suspicious telepathy damage from ${socket.id}: ${data.damagePerTarget} (server: ${TELEPATHY_DAMAGE_PER_TICK})`);
+            logger.cheat(`Suspicious telepathy damage from ${socket.id}: ${data.damagePerTarget} (server: ${TELEPATHY_DAMAGE_PER_TICK})`);
         }
 
         let totalDamageDealt = 0;
@@ -1316,7 +1317,7 @@ io.on('connection', (socket) => {
 
     // Handle disconnection
     socket.on('disconnect', () => {
-        console.log(`Player disconnected: ${socket.id}`);
+        logger.info(`Player disconnected: ${socket.id}`);
         players.delete(socket.id);
         cleanupRateLimiter(socket.id); // Clean up all rate limit entries for this socket
 
@@ -1329,6 +1330,7 @@ io.on('connection', (socket) => {
 
 const PORT = process.env.PORT || 3000;
 httpServer.listen(PORT, () => {
-    console.log(`Server running on http://localhost:${PORT}`);
-    console.log(`Game client available at http://localhost:${PORT}/index.html`);
+    logger.info(`Server running on http://localhost:${PORT}`);
+    logger.info(`Game client available at http://localhost:${PORT}/index.html`);
+    logger.info(`Log level: ${logger.getLevel()}`);
 });

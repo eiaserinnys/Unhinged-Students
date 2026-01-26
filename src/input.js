@@ -92,7 +92,7 @@ function initInput(canvas) {
     };
     canvas.addEventListener('touchmove', touchmoveHandler);
 
-    console.log('Input system initialized');
+    logger.debug('Input system initialized');
 }
 
 // Cleanup input handlers to prevent memory leaks
@@ -140,7 +140,7 @@ function cleanupInput() {
     Input.mouse = { x: 0, y: 0, pressed: false, button: -1 };
     Input.touch = { x: 0, y: 0, active: false };
 
-    console.log('Input system cleaned up');
+    logger.debug('Input system cleaned up');
 }
 
 // Update input state (call once per frame before checking inputs)

@@ -93,12 +93,12 @@ class Character {
                     this.width = this.displaySize * aspectRatio;
                 }
 
-                console.log(`Character image loaded: ${path} (${img.width}x${img.height}) -> Display: (${Math.round(this.width)}x${Math.round(this.height)})`);
+                logger.debug(`Character image loaded: ${path} (${img.width}x${img.height}) -> Display: (${Math.round(this.width)}x${Math.round(this.height)})`);
                 resolve();
             };
 
             img.onerror = () => {
-                console.error(`Failed to load character image: ${path} (retries left: ${retries})`);
+                logger.warn(`Failed to load character image: ${path} (retries left: ${retries})`);
 
                 if (retries > 0) {
                     // Retry after 1 second
@@ -109,7 +109,7 @@ class Character {
                     }, 1000);
                 } else {
                     // All retries exhausted, load fallback
-                    console.warn(`All retries exhausted for: ${path}. Loading fallback image.`);
+                    logger.warn(`All retries exhausted for: ${path}. Loading fallback image.`);
                     this.loadFallbackImage()
                         .then(resolve)
                         .catch(() => {
@@ -147,12 +147,12 @@ class Character {
                 // Keep square dimensions for fallback
                 this.width = this.displaySize;
                 this.height = this.displaySize;
-                console.log('Fallback image loaded successfully');
+                logger.debug('Fallback image loaded successfully');
                 resolve();
             };
 
             img.onerror = () => {
-                console.error('Failed to load fallback image');
+                logger.error('Failed to load fallback image');
                 reject(new Error('Failed to load fallback image'));
             };
 
@@ -325,7 +325,7 @@ class Character {
     // Add experience and check for level up
     addExperience(amount) {
         if (this.level >= this.maxLevel) {
-            console.log('Max level reached!');
+            logger.debug('Max level reached!');
             return false;
         }
 
@@ -337,7 +337,7 @@ class Character {
             this.experience -= this.getRequiredExperience();
             this.level++;
             leveledUp = true;
-            console.log(`Level up! Now level ${this.level}`);
+            logger.info(`Level up! Now level ${this.level}`);
         }
 
         return leveledUp;
@@ -354,7 +354,7 @@ class Character {
         this.lastAttackTime = currentTime;
         this.isAttacking = true;
         this.attackStartTime = currentTime;
-        console.log(`${this.playerName} attacks!`);
+        logger.debug(`${this.playerName} attacks!`);
         return this.getAttackArea();
     }
 
@@ -386,11 +386,11 @@ class Character {
         this.lastDamagedTime = currentTime;
         this.hitFlashTime = currentTime; // Trigger hit flash effect
         this.currentHP = Math.max(0, this.currentHP - amount);
-        console.log(`${this.playerName} took ${amount} damage! HP: ${this.currentHP}/${this.maxHP}`);
+        logger.debug(`${this.playerName} took ${amount} damage! HP: ${this.currentHP}/${this.maxHP}`);
 
         if (this.currentHP <= 0) {
             this.deathTime = Date.now();
-            console.log(`${this.playerName} has been defeated!`);
+            logger.info(`${this.playerName} has been defeated!`);
             return true; // Character died
         }
         return false;
@@ -407,7 +407,7 @@ class Character {
         this.x = this.initialX;
         this.y = this.initialY;
         this.deathTime = 0;
-        console.log(`${this.playerName} respawned!`);
+        logger.debug(`${this.playerName} respawned!`);
     }
 
     // Check if ready to respawn

@@ -75,12 +75,12 @@ function resizeCanvas() {
     canvas.style.left = offsetX + 'px';
     canvas.style.top = offsetY + 'px';
 
-    console.log(`Canvas resized to ${canvas.width}x${canvas.height}, scale: ${scale.toFixed(2)}`);
+    logger.debug(`Canvas resized to ${canvas.width}x${canvas.height}, scale: ${scale.toFixed(2)}`);
 }
 
 // Initialize game (called on page load)
 function init() {
-    console.log('Initializing...');
+    logger.info('Initializing...');
 
     // Setup canvas size
     resizeCanvas();
@@ -101,12 +101,12 @@ function init() {
         startGame();
     });
 
-    console.log('Lobby initialized - waiting for player input');
+    logger.info('Lobby initialized - waiting for player input');
 }
 
 // Start game after lobby selection
 function startGame() {
-    console.log(`Starting game with character: ${gameState.selectedCharacter}, name: ${gameState.playerName}`);
+    logger.info(`Starting game with character: ${gameState.selectedCharacter}, name: ${gameState.playerName}`);
 
     // Update screen state
     gameState.screen = 'playing';
@@ -149,7 +149,7 @@ function startGame() {
         gameState.dummies.push(dummy);
     });
 
-    console.log(`Created ${gameState.dummies.length} test dummies`);
+    logger.debug(`Created ${gameState.dummies.length} test dummies`);
 
     // Initialize skill system
     gameState.skillManager = new SkillManager();
@@ -171,7 +171,7 @@ function startGame() {
     // Initialize telepathy effect
     gameState.telepathyEffect = new TelepathyEffect();
 
-    console.log('Skill system initialized');
+    logger.debug('Skill system initialized');
 
     // Create shard manager (will be populated by server)
     gameState.shardManager = new ShardManager();
@@ -231,7 +231,7 @@ function update(deltaTime) {
         const collectedShards = gameState.shardManager.checkCollisions(gameState.player);
         if (collectedShards.length > 0) {
             gameState.stats.shardsCollected += collectedShards.length;
-            console.log(`Collected ${collectedShards.length} shard(s)! Total: ${gameState.stats.shardsCollected}`);
+            logger.debug(`Collected ${collectedShards.length} shard(s)! Total: ${gameState.stats.shardsCollected}`);
 
             // Add experience for each shard collected (1 shard = 1 exp)
             gameState.player.addExperience(collectedShards.length);
@@ -293,7 +293,7 @@ function update(deltaTime) {
                 const target = findNearestEnemy(true); // playersOnly = true
                 if (target) {
                     gameState.laserBeamEffect.start(playerPos.x, playerPos.y, target.x, target.y);
-                    console.log(`Used skill: ${skill.name} - targeting ${target.type} at (${target.x.toFixed(0)}, ${target.y.toFixed(0)})`);
+                    logger.debug(`Used skill: ${skill.name} - targeting ${target.type} at (${target.x.toFixed(0)}, ${target.y.toFixed(0)})`);
 
                     // Send laser aiming to server for sync with other players
                     if (gameState.networkManager) {
@@ -318,11 +318,11 @@ function update(deltaTime) {
                 if (target) {
                     // Teleport to near the target enemy
                     gameState.teleportEffect.start(playerPos.x, playerPos.y, GAME_WIDTH, GAME_HEIGHT, target.x, target.y);
-                    console.log(`Used skill: ${skill.name} - teleporting to ${target.type} at (${target.x.toFixed(0)}, ${target.y.toFixed(0)})`);
+                    logger.debug(`Used skill: ${skill.name} - teleporting to ${target.type} at (${target.x.toFixed(0)}, ${target.y.toFixed(0)})`);
                 } else {
                     // No enemies, teleport randomly
                     gameState.teleportEffect.start(playerPos.x, playerPos.y, GAME_WIDTH, GAME_HEIGHT);
-                    console.log(`Used skill: ${skill.name} - random teleport (no enemies)`);
+                    logger.debug(`Used skill: ${skill.name} - random teleport (no enemies)`);
                 }
 
                 // Send teleport event to server for sync
@@ -343,7 +343,7 @@ function update(deltaTime) {
             if (skill) {
                 const playerPos = gameState.player.getPosition();
                 gameState.telepathyEffect.start(playerPos.x, playerPos.y);
-                console.log(`Used skill: ${skill.name}`);
+                logger.debug(`Used skill: ${skill.name}`);
 
                 // Send telepathy event to server for sync
                 if (gameState.networkManager) {
@@ -741,7 +741,7 @@ function cleanupGame() {
     gameState.telepathyEffect = null;
     gameState.dummies = [];
 
-    console.log('Game cleaned up');
+    logger.info('Game cleaned up');
 }
 
 // Start game when page loads
