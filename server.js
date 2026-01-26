@@ -6,10 +6,29 @@ const path = require('path');
 
 const app = express();
 const httpServer = createServer(app);
+
+// CORS origin configuration - Security hardening (CRITICAL-3)
+function getAllowedOrigins() {
+    if (process.env.NODE_ENV === 'production') {
+        return [
+            'https://eiaserinnys.me',
+            'http://eiaserinnys.me'  // HTTP to HTTPS redirect 중 요청 허용
+        ];
+    }
+    // Development/local environment
+    return [
+        'http://localhost:3000',
+        'http://localhost:8000',
+        'http://127.0.0.1:3000',
+        'http://127.0.0.1:8000'
+    ];
+}
+
 const io = new Server(httpServer, {
     cors: {
-        origin: "*",
-        methods: ["GET", "POST"]
+        origin: getAllowedOrigins(),
+        methods: ["GET", "POST"],
+        credentials: true
     }
 });
 
