@@ -245,6 +245,109 @@
             opacity: 0.6;
         }
 
+        /* Reconnect Dialog */
+        #reconnectOverlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+        }
+        #reconnectOverlay.visible {
+            opacity: 1;
+            pointer-events: auto;
+        }
+        .reconnect-dialog {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            border: 3px solid #FF6B6B;
+            border-radius: 20px;
+            padding: 30px 40px;
+            max-width: 400px;
+            width: 90%;
+            text-align: center;
+            box-shadow: 0 0 40px rgba(255, 107, 107, 0.3);
+        }
+        .reconnect-icon {
+            font-size: 48px;
+            margin-bottom: 15px;
+        }
+        .reconnect-title {
+            font-family: 'Jua', sans-serif;
+            font-size: 24px;
+            color: #FF6B6B;
+            margin-bottom: 10px;
+        }
+        .reconnect-status {
+            font-family: 'Inter', sans-serif;
+            font-size: 16px;
+            color: #E0E0E0;
+            margin-bottom: 20px;
+            min-height: 24px;
+        }
+        .reconnect-options {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+        .reconnect-btn {
+            font-family: 'Jua', sans-serif;
+            font-size: 18px;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        .reconnect-btn.primary {
+            background: linear-gradient(135deg, #4ECDC4 0%, #00D9FF 100%);
+            color: #1a1a2e;
+        }
+        .reconnect-btn.primary:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(0, 217, 255, 0.4);
+        }
+        .reconnect-btn.secondary {
+            background: rgba(255, 255, 255, 0.1);
+            color: #E0E0E0;
+            border: 2px solid #4ECDC4;
+        }
+        .reconnect-btn.secondary:hover:not(:disabled) {
+            background: rgba(78, 205, 196, 0.2);
+        }
+        .reconnect-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        .reconnect-toggle {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            font-family: 'Inter', sans-serif;
+            font-size: 14px;
+            color: #A78BFA;
+        }
+        .reconnect-toggle input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+        }
+        .reconnect-countdown {
+            font-family: 'Inter', sans-serif;
+            font-size: 12px;
+            color: #888;
+            margin-top: 10px;
+        }
+
         /* Small screen adjustments */
         @media (max-height: 600px) {
             #lobbyContainer {
@@ -267,6 +370,24 @@
 </head>
 <body>
     <canvas id="gameCanvas"></canvas>
+
+    <!-- Reconnect Dialog -->
+    <div id="reconnectOverlay">
+        <div class="reconnect-dialog">
+            <div class="reconnect-icon">🔌</div>
+            <div class="reconnect-title">서버 연결 끊김</div>
+            <div id="reconnectStatus" class="reconnect-status">서버와의 연결이 끊어졌습니다.</div>
+            <div class="reconnect-options">
+                <button id="reconnectBtn" class="reconnect-btn primary">🔄 재연결 시도</button>
+                <button id="reloadBtn" class="reconnect-btn secondary">🔃 페이지 새로고침</button>
+            </div>
+            <div class="reconnect-toggle">
+                <input type="checkbox" id="autoReconnectToggle" checked>
+                <label for="autoReconnectToggle">자동 재연결 시도</label>
+            </div>
+            <div id="reconnectCountdown" class="reconnect-countdown"></div>
+        </div>
+    </div>
 
     <!-- Lobby UI -->
     <div id="lobbyContainer">

@@ -1,3 +1,142 @@
+// Reconnect UI Manager
+class ReconnectUI {
+    constructor() {
+        this.overlay = document.getElementById('reconnectOverlay');
+        this.statusEl = document.getElementById('reconnectStatus');
+        this.reconnectBtn = document.getElementById('reconnectBtn');
+        this.reloadBtn = document.getElementById('reloadBtn');
+        this.autoReconnectToggle = document.getElementById('autoReconnectToggle');
+        this.countdownEl = document.getElementById('reconnectCountdown');
+
+        this.isVisible = false;
+        this.reconnectAttempts = 0;
+        this.maxReconnectAttempts = 5;
+        this.reconnectDelay = 3000; // 3 seconds
+        this.countdownInterval = null;
+        this.reconnectTimeout = null;
+        this.onReconnect = null; // Callback for reconnect attempts
+
+        // Load auto-reconnect preference from localStorage
+        const savedPref = localStorage.getItem('autoReconnect');
+        this.autoReconnectToggle.checked = savedPref !== 'false'; // Default to true
+
+        this.setupEventListeners();
+    }
+
+    setupEventListeners() {
+        this.reconnectBtn.addEventListener('click', () => {
+            this.attemptReconnect();
+        });
+
+        this.reloadBtn.addEventListener('click', () => {
+            window.location.reload();
+        });
+
+        this.autoReconnectToggle.addEventListener('change', () => {
+            localStorage.setItem('autoReconnect', this.autoReconnectToggle.checked);
+            if (this.autoReconnectToggle.checked && this.isVisible) {
+                this.startAutoReconnect();
+            } else {
+                this.stopAutoReconnect();
+            }
+        });
+    }
+
+    show() {
+        if (this.isVisible) return;
+
+        this.isVisible = true;
+        this.reconnectAttempts = 0;
+        this.overlay.classList.add('visible');
+        this.setStatus('서버와의 연결이 끊어졌습니다.');
+        this.reconnectBtn.disabled = false;
+
+        if (this.autoReconnectToggle.checked) {
+            this.startAutoReconnect();
+        }
+    }
+
+    hide() {
+        if (!this.isVisible) return;
+
+        this.isVisible = false;
+        this.overlay.classList.remove('visible');
+        this.stopAutoReconnect();
+        this.reconnectAttempts = 0;
+    }
+
+    setStatus(message) {
+        this.statusEl.textContent = message;
+    }
+
+    attemptReconnect() {
+        if (!this.onReconnect) return;
+
+        this.reconnectAttempts++;
+        this.reconnectBtn.disabled = true;
+        this.setStatus(`재연결 시도 중... (${this.reconnectAttempts}/${this.maxReconnectAttempts})`);
+        this.countdownEl.textContent = '';
+
+        this.onReconnect();
+    }
+
+    onReconnectSuccess() {
+        this.setStatus('연결되었습니다!');
+        setTimeout(() => this.hide(), 500);
+    }
+
+    onReconnectFailed() {
+        if (this.reconnectAttempts >= this.maxReconnectAttempts) {
+            this.setStatus('재연결 실패. 수동으로 다시 시도해주세요.');
+            this.reconnectBtn.disabled = false;
+            this.stopAutoReconnect();
+            this.countdownEl.textContent = '';
+        } else {
+            this.setStatus(`재연결 실패 (${this.reconnectAttempts}/${this.maxReconnectAttempts})`);
+            this.reconnectBtn.disabled = false;
+
+            if (this.autoReconnectToggle.checked) {
+                this.startAutoReconnect();
+            }
+        }
+    }
+
+    startAutoReconnect() {
+        this.stopAutoReconnect(); // Clear any existing timers
+
+        if (this.reconnectAttempts >= this.maxReconnectAttempts) return;
+
+        let countdown = Math.ceil(this.reconnectDelay / 1000);
+        this.countdownEl.textContent = `${countdown}초 후 자동 재연결...`;
+
+        this.countdownInterval = setInterval(() => {
+            countdown--;
+            if (countdown > 0) {
+                this.countdownEl.textContent = `${countdown}초 후 자동 재연결...`;
+            } else {
+                this.countdownEl.textContent = '';
+            }
+        }, 1000);
+
+        this.reconnectTimeout = setTimeout(() => {
+            this.stopAutoReconnect();
+            this.attemptReconnect();
+        }, this.reconnectDelay);
+    }
+
+    stopAutoReconnect() {
+        if (this.countdownInterval) {
+            clearInterval(this.countdownInterval);
+            this.countdownInterval = null;
+        }
+        if (this.reconnectTimeout) {
+            clearTimeout(this.reconnectTimeout);
+            this.reconnectTimeout = null;
+        }
+        this.countdownEl.textContent = '';
+    }
+}
+
 // Network module for multiplayer
 class NetworkManager {
     constructor() {
@@ -10,6 +149,8 @@ class NetworkManager {
         this.shardManager = null; // Reference to shard manager for sync
         this.localPlayer = null; // Reference to local player for HP sync
         this.dummies = null; // Reference to dummies array for sync
+        this.reconnectUI = null; // Reconnect UI manager
+        this.serverUrl = null; // Store server URL for reconnection
     }
 
     setShardManager(shardManager) {
@@ -33,6 +174,14 @@ class NetworkManager {
 
         console.log('Connecting to server via /game/socket.io');
 
+        this.serverUrl = serverUrl;
+
+        // Initialize ReconnectUI if not already done
+        if (!this.reconnectUI) {
+            this.reconnectUI = new ReconnectUI();
+            this.reconnectUI.onReconnect = () => this.attemptReconnect();
+        }
+
         this.socket = io(options);
 
         // Connection established
@@ -40,6 +189,11 @@ class NetworkManager {
             this.playerId = data.playerId;
             this.connected = true;
             console.log(`Connected to server. Player ID: ${this.playerId}`);
+
+            // Hide reconnect UI on successful connection
+            if (this.reconnectUI && this.reconnectUI.isVisible) {
+                this.reconnectUI.onReconnectSuccess();
+            }
         });
 
         // Receive existing players
@@ -78,6 +232,12 @@ class NetworkManager {
         // Connection error
         this.socket.on('connect_error', (error) => {
             console.error('Connection error:', error);
+
+            // Show reconnect UI on connection error
+            if (this.reconnectUI) {
+                this.reconnectUI.show();
+                this.reconnectUI.onReconnectFailed();
+            }
         });
 
         // Disconnection
@@ -85,11 +245,10 @@ class NetworkManager {
             console.log('Disconnected from server');
             this.connected = false;
 
-            // Auto-reload after server disconnect (useful for development)
-            console.log('Server disconnected. Reloading page in 2 seconds...');
-            setTimeout(() => {
-                window.location.reload();
-            }, 2000);
+            // Show reconnect UI instead of auto-reload
+            if (this.reconnectUI) {
+                this.reconnectUI.show();
+            }
         });
 
         // Chat message (for showing bubbles on remote players)
@@ -506,6 +665,19 @@ class NetworkManager {
         this.remotePlayers.forEach(remotePlayer => {
             remotePlayer.render(ctx);
         });
+    }
+
+    // Attempt to reconnect to the server
+    attemptReconnect() {
+        console.log('Attempting to reconnect...');
+
+        // If socket exists, try to reconnect
+        if (this.socket) {
+            this.socket.connect();
+        } else {
+            // Create new socket connection
+            this.connect(this.serverUrl);
+        }
     }
 
     disconnect() {
