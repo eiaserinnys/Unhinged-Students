@@ -80,6 +80,11 @@ const TELEPATHY_COOLDOWN = 15000; // ms
 const SHARD_COLLECT_DISTANCE = 100; // Generous distance for collection validation
 const CHARACTER_SIZE = 135; // Approximate character display size
 
+// Chat message validation (CRITICAL-2 fix)
+const CHAT_MAX_MESSAGE_LENGTH = 200;
+const CHAT_RATE_LIMIT_MS = 1000; // 1 message per second
+const chatRateLimits = new Map(); // socket.id -> lastMessageTime
+
 // ========================================
 // INPUT VALIDATION UTILITIES
 // ========================================
@@ -456,14 +461,41 @@ io.on('connection', (socket) => {
         });
     });
 
-    // Handle chat messages
+    // Handle chat messages (CRITICAL-2 fix: Server-side validation)
     socket.on('chatMessage', (data) => {
+        // 1. Type validation
+        if (!data || typeof data.message !== 'string') {
+            console.warn(`[CHAT] Invalid message type from ${socket.id}`);
+            return;
+        }
+
+        // 2. Empty message filter (trim and check)
+        const trimmedMessage = data.message.trim();
+        if (trimmedMessage.length === 0) {
+            return; // Silently ignore empty messages
+        }
+
+        // 3. Length limit (max 200 characters)
+        if (trimmedMessage.length > CHAT_MAX_MESSAGE_LENGTH) {
+            console.warn(`[CHAT] Message too long from ${socket.id}: ${trimmedMessage.length} chars`);
+            return;
+        }
+
+        // 4. Rate limiting (1 message per second)
+        const now = Date.now();
+        const lastMessageTime = chatRateLimits.get(socket.id) || 0;
+        if (now - lastMessageTime < CHAT_RATE_LIMIT_MS) {
+            console.warn(`[CHAT] Rate limit exceeded by ${socket.id}`);
+            return;
+        }
+        chatRateLimits.set(socket.id, now);
+
         const playerData = players.get(socket.id);
         const message = {
             playerId: socket.id,
             playerName: playerData ? playerData.playerName : 'Unknown',
-            message: data.message,
-            timestamp: Date.now()
+            message: trimmedMessage,
+            timestamp: now
         };
 
         console.log(`Chat from ${message.playerName}: ${message.message}`);
@@ -1164,6 +1196,7 @@ io.on('connection', (socket) => {
     socket.on('disconnect', () => {
         console.log(`Player disconnected: ${socket.id}`);
         players.delete(socket.id);
+        chatRateLimits.delete(socket.id); // Clean up rate limit entry
 
         // Notify others
         socket.broadcast.emit('playerLeft', {

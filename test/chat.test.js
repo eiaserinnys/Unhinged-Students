@@ -380,3 +380,198 @@ describe('Focus Management', () => {
     expect(mockChatInput.blur).toHaveBeenCalled();
   });
 });
+
+// ==========================================
+// Server-side Chat Validation Tests (CRITICAL-2)
+// ==========================================
+
+describe('Server-side Chat Validation', () => {
+  // Constants matching server.js
+  const CHAT_MAX_MESSAGE_LENGTH = 200;
+  const CHAT_RATE_LIMIT_MS = 1000;
+
+  // Simulated server validation logic (mirrors server.js chatMessage handler)
+  function validateChatMessage(data, socketId, chatRateLimits) {
+    const now = Date.now();
+
+    // 1. Type validation
+    if (!data || typeof data.message !== 'string') {
+      return { valid: false, reason: 'invalid_type' };
+    }
+
+    // 2. Empty message filter (trim and check)
+    const trimmedMessage = data.message.trim();
+    if (trimmedMessage.length === 0) {
+      return { valid: false, reason: 'empty_message' };
+    }
+
+    // 3. Length limit (max 200 characters)
+    if (trimmedMessage.length > CHAT_MAX_MESSAGE_LENGTH) {
+      return { valid: false, reason: 'too_long' };
+    }
+
+    // 4. Rate limiting (1 message per second)
+    const lastMessageTime = chatRateLimits.get(socketId) || 0;
+    if (now - lastMessageTime < CHAT_RATE_LIMIT_MS) {
+      return { valid: false, reason: 'rate_limited' };
+    }
+    chatRateLimits.set(socketId, now);
+
+    return { valid: true, message: trimmedMessage };
+  }
+
+  describe('Type Validation', () => {
+    const rateLimits = new Map();
+
+    test('should reject null data', () => {
+      const result = validateChatMessage(null, 'socket1', rateLimits);
+      expect(result.valid).toBe(false);
+      expect(result.reason).toBe('invalid_type');
+    });
+
+    test('should reject undefined data', () => {
+      const result = validateChatMessage(undefined, 'socket1', rateLimits);
+      expect(result.valid).toBe(false);
+      expect(result.reason).toBe('invalid_type');
+    });
+
+    test('should reject non-string message', () => {
+      const result = validateChatMessage({ message: 123 }, 'socket1', rateLimits);
+      expect(result.valid).toBe(false);
+      expect(result.reason).toBe('invalid_type');
+    });
+
+    test('should reject array message', () => {
+      const result = validateChatMessage({ message: ['hello'] }, 'socket1', rateLimits);
+      expect(result.valid).toBe(false);
+      expect(result.reason).toBe('invalid_type');
+    });
+
+    test('should reject object message', () => {
+      const result = validateChatMessage({ message: { text: 'hello' } }, 'socket1', rateLimits);
+      expect(result.valid).toBe(false);
+      expect(result.reason).toBe('invalid_type');
+    });
+
+    test('should reject missing message field', () => {
+      const result = validateChatMessage({ text: 'hello' }, 'socket1', rateLimits);
+      expect(result.valid).toBe(false);
+      expect(result.reason).toBe('invalid_type');
+    });
+  });
+
+  describe('Empty Message Filter', () => {
+    const rateLimits = new Map();
+
+    test('should reject empty string', () => {
+      const result = validateChatMessage({ message: '' }, 'socket1', rateLimits);
+      expect(result.valid).toBe(false);
+      expect(result.reason).toBe('empty_message');
+    });
+
+    test('should reject whitespace-only message', () => {
+      const result = validateChatMessage({ message: '   ' }, 'socket1', rateLimits);
+      expect(result.valid).toBe(false);
+      expect(result.reason).toBe('empty_message');
+    });
+
+    test('should reject tabs and newlines only', () => {
+      const result = validateChatMessage({ message: '\t\n  \n' }, 'socket1', rateLimits);
+      expect(result.valid).toBe(false);
+      expect(result.reason).toBe('empty_message');
+    });
+
+    test('should trim and accept valid message', () => {
+      const result = validateChatMessage({ message: '  hello  ' }, 'socket2', rateLimits);
+      expect(result.valid).toBe(true);
+      expect(result.message).toBe('hello');
+    });
+  });
+
+  describe('Length Limit', () => {
+    const rateLimits = new Map();
+
+    test('should accept message at max length', () => {
+      const maxMessage = 'a'.repeat(CHAT_MAX_MESSAGE_LENGTH);
+      const result = validateChatMessage({ message: maxMessage }, 'socket3', rateLimits);
+      expect(result.valid).toBe(true);
+      expect(result.message.length).toBe(CHAT_MAX_MESSAGE_LENGTH);
+    });
+
+    test('should reject message exceeding max length', () => {
+      const tooLongMessage = 'a'.repeat(CHAT_MAX_MESSAGE_LENGTH + 1);
+      const result = validateChatMessage({ message: tooLongMessage }, 'socket4', rateLimits);
+      expect(result.valid).toBe(false);
+      expect(result.reason).toBe('too_long');
+    });
+
+    test('should reject very long message (DoS prevention)', () => {
+      const dosMessage = 'x'.repeat(10000);
+      const result = validateChatMessage({ message: dosMessage }, 'socket5', rateLimits);
+      expect(result.valid).toBe(false);
+      expect(result.reason).toBe('too_long');
+    });
+
+    test('should accept short message', () => {
+      const result = validateChatMessage({ message: 'hi' }, 'socket6', rateLimits);
+      expect(result.valid).toBe(true);
+    });
+  });
+
+  describe('Rate Limiting', () => {
+    test('should allow first message', () => {
+      const rateLimits = new Map();
+      const result = validateChatMessage({ message: 'first' }, 'socket10', rateLimits);
+      expect(result.valid).toBe(true);
+    });
+
+    test('should reject rapid consecutive messages', () => {
+      const rateLimits = new Map();
+
+      // First message should pass
+      const result1 = validateChatMessage({ message: 'first' }, 'socket11', rateLimits);
+      expect(result1.valid).toBe(true);
+
+      // Immediate second message should fail
+      const result2 = validateChatMessage({ message: 'second' }, 'socket11', rateLimits);
+      expect(result2.valid).toBe(false);
+      expect(result2.reason).toBe('rate_limited');
+    });
+
+    test('should track rate limits per socket', () => {
+      const rateLimits = new Map();
+
+      // Socket A sends message
+      const resultA1 = validateChatMessage({ message: 'A1' }, 'socketA', rateLimits);
+      expect(resultA1.valid).toBe(true);
+
+      // Socket B should be able to send immediately (different socket)
+      const resultB1 = validateChatMessage({ message: 'B1' }, 'socketB', rateLimits);
+      expect(resultB1.valid).toBe(true);
+
+      // Socket A should be rate limited
+      const resultA2 = validateChatMessage({ message: 'A2' }, 'socketA', rateLimits);
+      expect(resultA2.valid).toBe(false);
+      expect(resultA2.reason).toBe('rate_limited');
+    });
+  });
+
+  describe('Special Characters', () => {
+    const rateLimits = new Map();
+
+    test('should accept Unicode characters', () => {
+      const result = validateChatMessage({ message: '안녕하세요!' }, 'socket20', rateLimits);
+      expect(result.valid).toBe(true);
+    });
+
+    test('should accept emojis', () => {
+      const result = validateChatMessage({ message: '🎮 GG! 😎' }, 'socket21', rateLimits);
+      expect(result.valid).toBe(true);
+    });
+
+    test('should accept mixed content', () => {
+      const result = validateChatMessage({ message: 'Hello 世界 🌍' }, 'socket22', rateLimits);
+      expect(result.valid).toBe(true);
+    });
+  });
+});
