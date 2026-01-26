@@ -510,8 +510,46 @@ class NetworkManager {
 
     disconnect() {
         if (this.socket) {
+            // Remove all socket event listeners before disconnecting
+            this.socket.off('connected');
+            this.socket.off('existingPlayers');
+            this.socket.off('playerJoined');
+            this.socket.off('playerMoved');
+            this.socket.off('playerLeft');
+            this.socket.off('connect_error');
+            this.socket.off('disconnect');
+            this.socket.off('chatMessage');
+            this.socket.off('playerAttacked');
+            this.socket.off('laserAiming');
+            this.socket.off('laserFired');
+            this.socket.off('playerTeleport');
+            this.socket.off('playerTelepathy');
+            this.socket.off('telepathyHeal');
+            this.socket.off('telepathyTick');
+            this.socket.off('telepathyTickDummy');
+            this.socket.off('existingShards');
+            this.socket.off('shardsSpawned');
+            this.socket.off('shardCollected');
+            this.socket.off('playerDamaged');
+            this.socket.off('existingDummies');
+            this.socket.off('dummyDamaged');
+            this.socket.off('dummyRespawned');
+            this.socket.off('playerDied');
+            this.socket.off('playerRespawned');
+
             this.socket.disconnect();
+            this.socket = null;
         }
+
+        // Clear references
+        this.connected = false;
+        this.playerId = null;
+        this.remotePlayers.clear();
+        this.shardManager = null;
+        this.localPlayer = null;
+        this.dummies = null;
+
+        console.log('Network manager cleaned up');
     }
 }
 

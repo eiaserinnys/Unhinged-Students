@@ -17,61 +17,130 @@ const Input = {
     }
 };
 
+// Store event handler references for cleanup
+let inputCanvas = null;
+let keydownHandler = null;
+let keyupHandler = null;
+let mousedownHandler = null;
+let mouseupHandler = null;
+let mousemoveHandler = null;
+let touchstartHandler = null;
+let touchendHandler = null;
+let touchmoveHandler = null;
+
 // Initialize input handlers
 function initInput(canvas) {
-    // Keyboard input
-    window.addEventListener('keydown', (e) => {
-        Input.keys[e.key.toLowerCase()] = true;
-    });
+    inputCanvas = canvas;
 
-    window.addEventListener('keyup', (e) => {
+    // Keyboard input
+    keydownHandler = (e) => {
+        Input.keys[e.key.toLowerCase()] = true;
+    };
+    window.addEventListener('keydown', keydownHandler);
+
+    keyupHandler = (e) => {
         Input.keys[e.key.toLowerCase()] = false;
-    });
+    };
+    window.addEventListener('keyup', keyupHandler);
 
     // Mouse input
-    canvas.addEventListener('mousedown', (e) => {
+    mousedownHandler = (e) => {
         const rect = canvas.getBoundingClientRect();
         Input.mouse.x = e.clientX - rect.left;
         Input.mouse.y = e.clientY - rect.top;
         Input.mouse.pressed = true;
         Input.mouse.button = e.button;
-    });
+    };
+    canvas.addEventListener('mousedown', mousedownHandler);
 
-    canvas.addEventListener('mouseup', () => {
+    mouseupHandler = () => {
         Input.mouse.pressed = false;
         Input.mouse.button = -1;
-    });
+    };
+    canvas.addEventListener('mouseup', mouseupHandler);
 
-    canvas.addEventListener('mousemove', (e) => {
+    mousemoveHandler = (e) => {
         const rect = canvas.getBoundingClientRect();
         Input.mouse.x = e.clientX - rect.left;
         Input.mouse.y = e.clientY - rect.top;
-    });
+    };
+    canvas.addEventListener('mousemove', mousemoveHandler);
 
     // Touch input
-    canvas.addEventListener('touchstart', (e) => {
+    touchstartHandler = (e) => {
         e.preventDefault();
         const rect = canvas.getBoundingClientRect();
         const touch = e.touches[0];
         Input.touch.x = touch.clientX - rect.left;
         Input.touch.y = touch.clientY - rect.top;
         Input.touch.active = true;
-    });
+    };
+    canvas.addEventListener('touchstart', touchstartHandler);
 
-    canvas.addEventListener('touchend', (e) => {
+    touchendHandler = (e) => {
         e.preventDefault();
         Input.touch.active = false;
-    });
+    };
+    canvas.addEventListener('touchend', touchendHandler);
 
-    canvas.addEventListener('touchmove', (e) => {
+    touchmoveHandler = (e) => {
         e.preventDefault();
         const rect = canvas.getBoundingClientRect();
         const touch = e.touches[0];
         Input.touch.x = touch.clientX - rect.left;
         Input.touch.y = touch.clientY - rect.top;
-    });
+    };
+    canvas.addEventListener('touchmove', touchmoveHandler);
 
     console.log('Input system initialized');
+}
+
+// Cleanup input handlers to prevent memory leaks
+function cleanupInput() {
+    if (keydownHandler) {
+        window.removeEventListener('keydown', keydownHandler);
+        keydownHandler = null;
+    }
+    if (keyupHandler) {
+        window.removeEventListener('keyup', keyupHandler);
+        keyupHandler = null;
+    }
+    if (inputCanvas) {
+        if (mousedownHandler) {
+            inputCanvas.removeEventListener('mousedown', mousedownHandler);
+            mousedownHandler = null;
+        }
+        if (mouseupHandler) {
+            inputCanvas.removeEventListener('mouseup', mouseupHandler);
+            mouseupHandler = null;
+        }
+        if (mousemoveHandler) {
+            inputCanvas.removeEventListener('mousemove', mousemoveHandler);
+            mousemoveHandler = null;
+        }
+        if (touchstartHandler) {
+            inputCanvas.removeEventListener('touchstart', touchstartHandler);
+            touchstartHandler = null;
+        }
+        if (touchendHandler) {
+            inputCanvas.removeEventListener('touchend', touchendHandler);
+            touchendHandler = null;
+        }
+        if (touchmoveHandler) {
+            inputCanvas.removeEventListener('touchmove', touchmoveHandler);
+            touchmoveHandler = null;
+        }
+        inputCanvas = null;
+    }
+
+    // Reset input state
+    Input.keys = {};
+    Input.keysJustPressed = {};
+    Input.keysPrevious = {};
+    Input.mouse = { x: 0, y: 0, pressed: false, button: -1 };
+    Input.touch = { x: 0, y: 0, active: false };
+
+    console.log('Input system cleaned up');
 }
 
 // Update input state (call once per frame before checking inputs)

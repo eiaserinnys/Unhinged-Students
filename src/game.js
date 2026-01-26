@@ -13,6 +13,10 @@ let scale = 1;
 let offsetX = 0;
 let offsetY = 0;
 
+// Store event handler references for cleanup
+let resizeHandler = null;
+let loadHandler = null;
+
 // Game state
 const gameState = {
     screen: 'lobby', // 'lobby' | 'playing'
@@ -80,7 +84,8 @@ function init() {
 
     // Setup canvas size
     resizeCanvas();
-    window.addEventListener('resize', resizeCanvas);
+    resizeHandler = resizeCanvas;
+    window.addEventListener('resize', resizeHandler);
 
     // Initialize input system
     initInput(canvas);
@@ -701,5 +706,46 @@ function findRandomEnemy() {
     return enemies[Math.floor(Math.random() * enemies.length)];
 }
 
+// Cleanup game resources to prevent memory leaks
+function cleanupGame() {
+    // Stop game loop
+    gameState.running = false;
+
+    // Cleanup input system
+    if (typeof cleanupInput === 'function') {
+        cleanupInput();
+    }
+
+    // Cleanup network
+    if (gameState.networkManager) {
+        gameState.networkManager.disconnect();
+        gameState.networkManager = null;
+    }
+
+    // Remove resize handler
+    if (resizeHandler) {
+        window.removeEventListener('resize', resizeHandler);
+        resizeHandler = null;
+    }
+
+    // Clear game state objects
+    gameState.player = null;
+    gameState.lobbyManager = null;
+    gameState.shardManager = null;
+    gameState.chatManager = null;
+    gameState.skillManager = null;
+    gameState.skillUI = null;
+    gameState.laserBeamEffect = null;
+    gameState.teleportEffect = null;
+    gameState.telepathyEffect = null;
+    gameState.dummies = [];
+
+    console.log('Game cleaned up');
+}
+
 // Start game when page loads
-window.addEventListener('load', init);
+loadHandler = init;
+window.addEventListener('load', loadHandler);
+
+// Cleanup on page unload to prevent memory leaks
+window.addEventListener('beforeunload', cleanupGame);
