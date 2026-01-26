@@ -1,0 +1,158 @@
+// ========================================
+// SERVER CONFIGURATION
+// Centralized constants for server-authoritative game logic
+// (Anti-cheat: ignore client values, use these)
+// ========================================
+const SERVER_CONFIG = {
+    // World
+    WORLD: {
+        WIDTH: 1920,
+        HEIGHT: 1080,
+    },
+
+    // Player
+    PLAYER: {
+        SPEED: 300,                     // pixels per second
+        SPEED_TOLERANCE: 1.5,           // Allow 50% variance for network latency
+        MAX_HP: 100,
+        RESPAWN_DELAY_MS: 3000,         // 3 seconds
+        RESPAWN_X: 960,                 // Center of game world
+        RESPAWN_Y: 540,
+    },
+
+    // Combat
+    COMBAT: {
+        ATTACK_POWER: 10,
+        ATTACK_RANGE: 150,
+        ATTACK_COOLDOWN_MS: 500,
+        HIT_RADIUS: 67.5,               // Half of character size for collision
+    },
+
+    // Knockback
+    KNOCKBACK: {
+        MIN_DISTANCE: 30,
+        MAX_DISTANCE: 100,
+        MULTIPLIER_MIN: 1.25,
+        MULTIPLIER_MAX: 2.5,
+        BOUNDARY_MARGIN: 50,
+        LASER_DISTANCE: 50,             // Fixed knockback for laser
+    },
+
+    // Skill - Laser (Q)
+    SKILL_LASER: {
+        DAMAGE: 44,
+        MAX_LENGTH: 2000,
+        COOLDOWN_MS: 10000,
+    },
+
+    // Skill - Teleport (W)
+    SKILL_TELEPORT: {
+        MAX_DISTANCE: 400,
+        MIN_DISTANCE: 200,
+        DAMAGE_RADIUS: 100,
+        DAMAGE: 12,
+        COOLDOWN_MS: 8000,
+    },
+
+    // Skill - Telepathy (E)
+    SKILL_TELEPATHY: {
+        RADIUS: 180,
+        DAMAGE_PER_TICK: 2,
+        MAX_HEAL_PER_TICK: 4,
+        DURATION_MS: 3000,
+        COOLDOWN_MS: 15000,
+    },
+
+    // Shard
+    SHARD: {
+        MAX_COUNT: 40,
+        INITIAL_COUNT: 20,
+        SPAWN_MARGIN: 100,
+        COLLECT_DISTANCE: 100,
+        RESPAWN_MIN_MS: 3000,
+        RESPAWN_VARIANCE_MS: 2000,
+    },
+
+    // Dummy
+    DUMMY: {
+        MAX_HP: 30,
+        RESPAWN_DELAY_MS: 5000,
+        POSITIONS: [
+            { offsetX: 300, offsetY: 0, name: 'Dummy 1' },
+            { offsetX: -300, offsetY: 0, name: 'Dummy 2' },
+            { offsetX: 0, offsetY: 300, name: 'Dummy 3' },
+        ],
+    },
+
+    // Chat
+    CHAT: {
+        MAX_MESSAGE_LENGTH: 200,
+    },
+
+    // Rate limiting (in milliseconds)
+    RATE_LIMIT: {
+        MOVE_MS: 50,                    // 50ms = 초당 20회
+        ATTACK_MS: 500,                 // 기본 공격 쿨다운과 동일
+        CHAT_MS: 1000,                  // 초당 1회
+    },
+};
+
+// Computed values
+SERVER_CONFIG.PLAYER.MAX_MOVE_DISTANCE_PER_TICK =
+    SERVER_CONFIG.PLAYER.SPEED * SERVER_CONFIG.PLAYER.SPEED_TOLERANCE * 0.1;
+
+// Legacy constants for backward compatibility
+const GAME_WIDTH = SERVER_CONFIG.WORLD.WIDTH;
+const GAME_HEIGHT = SERVER_CONFIG.WORLD.HEIGHT;
+const PLAYER_SPEED = SERVER_CONFIG.PLAYER.SPEED;
+const PLAYER_SPEED_TOLERANCE = SERVER_CONFIG.PLAYER.SPEED_TOLERANCE;
+const ATTACK_POWER = SERVER_CONFIG.COMBAT.ATTACK_POWER;
+const ATTACK_RANGE = SERVER_CONFIG.COMBAT.ATTACK_RANGE;
+const TELEPORT_MAX_DISTANCE = SERVER_CONFIG.SKILL_TELEPORT.MAX_DISTANCE;
+const TELEPORT_DAMAGE_RADIUS = SERVER_CONFIG.SKILL_TELEPORT.DAMAGE_RADIUS;
+const TELEPORT_DAMAGE = SERVER_CONFIG.SKILL_TELEPORT.DAMAGE;
+const LASER_DAMAGE = SERVER_CONFIG.SKILL_LASER.DAMAGE;
+const LASER_MAX_LENGTH = SERVER_CONFIG.SKILL_LASER.MAX_LENGTH;
+const TELEPATHY_RADIUS = SERVER_CONFIG.SKILL_TELEPATHY.RADIUS;
+const TELEPATHY_DAMAGE_PER_TICK = SERVER_CONFIG.SKILL_TELEPATHY.DAMAGE_PER_TICK;
+const TELEPATHY_MAX_HEAL_PER_TICK = SERVER_CONFIG.SKILL_TELEPATHY.MAX_HEAL_PER_TICK;
+const SHARD_COLLECT_DISTANCE = SERVER_CONFIG.SHARD.COLLECT_DISTANCE;
+const CHAT_MAX_MESSAGE_LENGTH = SERVER_CONFIG.CHAT.MAX_MESSAGE_LENGTH;
+const RATE_LIMIT_MOVE = SERVER_CONFIG.RATE_LIMIT.MOVE_MS;
+const RATE_LIMIT_ATTACK = SERVER_CONFIG.RATE_LIMIT.ATTACK_MS;
+const RATE_LIMIT_CHAT = SERVER_CONFIG.RATE_LIMIT.CHAT_MS;
+const KNOCKBACK_MIN = SERVER_CONFIG.KNOCKBACK.MIN_DISTANCE;
+const KNOCKBACK_MAX = SERVER_CONFIG.KNOCKBACK.MAX_DISTANCE;
+const KNOCKBACK_MULTIPLIER_MIN = SERVER_CONFIG.KNOCKBACK.MULTIPLIER_MIN;
+const KNOCKBACK_MULTIPLIER_MAX = SERVER_CONFIG.KNOCKBACK.MULTIPLIER_MAX;
+const PLAYER_RESPAWN_DELAY = SERVER_CONFIG.PLAYER.RESPAWN_DELAY_MS;
+const DUMMY_RESPAWN_DELAY = SERVER_CONFIG.DUMMY.RESPAWN_DELAY_MS;
+
+module.exports = {
+    SERVER_CONFIG,
+    GAME_WIDTH,
+    GAME_HEIGHT,
+    PLAYER_SPEED,
+    PLAYER_SPEED_TOLERANCE,
+    ATTACK_POWER,
+    ATTACK_RANGE,
+    TELEPORT_MAX_DISTANCE,
+    TELEPORT_DAMAGE_RADIUS,
+    TELEPORT_DAMAGE,
+    LASER_DAMAGE,
+    LASER_MAX_LENGTH,
+    TELEPATHY_RADIUS,
+    TELEPATHY_DAMAGE_PER_TICK,
+    TELEPATHY_MAX_HEAL_PER_TICK,
+    SHARD_COLLECT_DISTANCE,
+    CHAT_MAX_MESSAGE_LENGTH,
+    RATE_LIMIT_MOVE,
+    RATE_LIMIT_ATTACK,
+    RATE_LIMIT_CHAT,
+    KNOCKBACK_MIN,
+    KNOCKBACK_MAX,
+    KNOCKBACK_MULTIPLIER_MIN,
+    KNOCKBACK_MULTIPLIER_MAX,
+    PLAYER_RESPAWN_DELAY,
+    DUMMY_RESPAWN_DELAY,
+};

@@ -8,8 +8,8 @@
     "test": "test"
   },
   "scripts": {
-    "start": "node server.js",
-    "dev": "node server.js",
+    "start": "node server/index.js",
+    "dev": "node server/index.js",
     "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage"
