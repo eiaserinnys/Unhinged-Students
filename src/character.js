@@ -66,30 +66,98 @@ class Character {
         this.loadImage(imagePath);
     }
 
-    loadImage(path) {
-        this.image = new Image();
-        this.image.onload = () => {
-            this.imageLoaded = true;
+    /**
+     * Load character image with retry logic and fallback support
+     * @param {string} path - Image path to load
+     * @param {number} retries - Number of retry attempts remaining (default: 3)
+     * @returns {Promise<void>} - Resolves when image is loaded successfully
+     */
+    loadImage(path, retries = 3) {
+        return new Promise((resolve, reject) => {
+            const img = new Image();
 
-            // Calculate dimensions maintaining aspect ratio
-            const aspectRatio = this.image.width / this.image.height;
+            img.onload = () => {
+                this.image = img;
+                this.imageLoaded = true;
 
-            if (aspectRatio > 1) {
-                // Wider than tall
+                // Calculate dimensions maintaining aspect ratio
+                const aspectRatio = img.width / img.height;
+
+                if (aspectRatio > 1) {
+                    // Wider than tall
+                    this.width = this.displaySize;
+                    this.height = this.displaySize / aspectRatio;
+                } else {
+                    // Taller than wide
+                    this.height = this.displaySize;
+                    this.width = this.displaySize * aspectRatio;
+                }
+
+                console.log(`Character image loaded: ${path} (${img.width}x${img.height}) -> Display: (${Math.round(this.width)}x${Math.round(this.height)})`);
+                resolve();
+            };
+
+            img.onerror = () => {
+                console.error(`Failed to load character image: ${path} (retries left: ${retries})`);
+
+                if (retries > 0) {
+                    // Retry after 1 second
+                    setTimeout(() => {
+                        this.loadImage(path, retries - 1)
+                            .then(resolve)
+                            .catch(reject);
+                    }, 1000);
+                } else {
+                    // All retries exhausted, load fallback
+                    console.warn(`All retries exhausted for: ${path}. Loading fallback image.`);
+                    this.loadFallbackImage()
+                        .then(resolve)
+                        .catch(() => {
+                            // Even fallback failed, reject with error
+                            reject(new Error(`Failed to load image: ${path}`));
+                        });
+                }
+            };
+
+            img.src = path;
+        });
+    }
+
+    /**
+     * Load a fallback placeholder image (inline SVG as data URL)
+     * This ensures the character is always visible even if the main image fails
+     * @returns {Promise<void>}
+     */
+    loadFallbackImage() {
+        return new Promise((resolve, reject) => {
+            // Simple placeholder SVG: gray circle with question mark
+            const fallbackSvg = `
+                <svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100">
+                    <circle cx="50" cy="50" r="45" fill="#6b7280" stroke="#374151" stroke-width="4"/>
+                    <text x="50" y="62" font-size="48" font-family="Arial, sans-serif" fill="#f3f4f6" text-anchor="middle">?</text>
+                </svg>
+            `.trim();
+
+            const dataUrl = 'data:image/svg+xml;base64,' + btoa(fallbackSvg);
+            const img = new Image();
+
+            img.onload = () => {
+                this.image = img;
+                this.imageLoaded = true;
+                // Keep square dimensions for fallback
                 this.width = this.displaySize;
-                this.height = this.displaySize / aspectRatio;
-            } else {
-                // Taller than wide
                 this.height = this.displaySize;
-                this.width = this.displaySize * aspectRatio;
-            }
+                console.log('Fallback image loaded successfully');
+                resolve();
+            };
 
-            console.log(`Character image loaded: ${path} (${this.image.width}x${this.image.height}) -> Display: (${Math.round(this.width)}x${Math.round(this.height)})`);
-        };
-        this.image.onerror = () => {
-            console.error(`Failed to load character image: ${path}`);
-        };
-        this.image.src = path;
+            img.onerror = () => {
+                console.error('Failed to load fallback image');
+                reject(new Error('Failed to load fallback image'));
+            };
+
+            img.src = dataUrl;
+        });
     }
 
     update(canvas, deltaTime = 0.016) {

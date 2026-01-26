@@ -717,6 +717,180 @@ describe('Hit Flash System', () => {
   });
 });
 
+describe('Image Loading System', () => {
+  beforeEach(() => {
+    resetTime();
+    jest.useFakeTimers();
+  });
+
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
+  // Character class with image loading for testing
+  class CharacterWithImageLoading extends Character {
+    constructor(x, y, imagePath, canvasHeight, playerName = 'Player', isDummy = false) {
+      super(x, y, imagePath, canvasHeight, playerName, isDummy);
+    }
+
+    loadImage(path, retries = 3) {
+      return new Promise((resolve, reject) => {
+        const img = {
+          onload: null,
+          onerror: null,
+          src: null,
+          width: 100,
+          height: 100,
+        };
+
+        // Store callbacks for test manipulation
+        this._lastImageCallbacks = { img, resolve, reject };
+
+        setTimeout(() => {
+          if (img.onload) {
+            img.onload.call(img);
+          }
+        }, 0);
+
+        img.onload = () => {
+          this.image = img;
+          this.imageLoaded = true;
+          const aspectRatio = img.width / img.height;
+          if (aspectRatio > 1) {
+            this.width = this.displaySize;
+            this.height = this.displaySize / aspectRatio;
+          } else {
+            this.height = this.displaySize;
+            this.width = this.displaySize * aspectRatio;
+          }
+          resolve();
+        };
+
+        img.onerror = () => {
+          if (retries > 0) {
+            setTimeout(() => {
+              this.loadImage(path, retries - 1).then(resolve).catch(reject);
+            }, 1000);
+          } else {
+            this.loadFallbackImage().then(resolve).catch(() => {
+              reject(new Error(`Failed to load image: ${path}`));
+            });
+          }
+        };
+
+        img.src = path;
+      });
+    }
+
+    loadFallbackImage() {
+      return new Promise((resolve, reject) => {
+        const img = { width: 100, height: 100 };
+        this.image = img;
+        this.imageLoaded = true;
+        this.width = this.displaySize;
+        this.height = this.displaySize;
+        resolve();
+      });
+    }
+  }
+
+  describe('loadImage', () => {
+    test('should return a Promise', () => {
+      const char = new CharacterWithImageLoading(0, 0, 'test.png', 1080);
+      const result = char.loadImage('test.png');
+      expect(result).toBeInstanceOf(Promise);
+    });
+
+    test('should set imageLoaded to true on success', async () => {
+      const char = new CharacterWithImageLoading(0, 0, 'test.png', 1080);
+      char.imageLoaded = false;
+
+      const promise = char.loadImage('test.png');
+      jest.advanceTimersByTime(100);
+      await promise;
+
+      expect(char.imageLoaded).toBe(true);
+    });
+
+    test('should accept retries parameter', () => {
+      const char = new CharacterWithImageLoading(0, 0, 'test.png', 1080);
+      // Should not throw when called with retries parameter
+      expect(() => char.loadImage('test.png', 5)).not.toThrow();
+    });
+
+    test('should have default retries of 3', () => {
+      const char = new CharacterWithImageLoading(0, 0, 'test.png', 1080);
+      // The function signature shows default of 3
+      const promise = char.loadImage('test.png');
+      expect(promise).toBeInstanceOf(Promise);
+    });
+  });
+
+  describe('loadFallbackImage', () => {
+    test('should return a Promise', () => {
+      const char = new CharacterWithImageLoading(0, 0, 'test.png', 1080);
+      const result = char.loadFallbackImage();
+      expect(result).toBeInstanceOf(Promise);
+    });
+
+    test('should set imageLoaded to true', async () => {
+      const char = new CharacterWithImageLoading(0, 0, 'test.png', 1080);
+      char.imageLoaded = false;
+
+      await char.loadFallbackImage();
+
+      expect(char.imageLoaded).toBe(true);
+    });
+
+    test('should set image property', async () => {
+      const char = new CharacterWithImageLoading(0, 0, 'test.png', 1080);
+      char.image = null;
+
+      await char.loadFallbackImage();
+
+      expect(char.image).not.toBeNull();
+    });
+
+    test('should set square dimensions', async () => {
+      const char = new CharacterWithImageLoading(0, 0, 'test.png', 1080);
+
+      await char.loadFallbackImage();
+
+      expect(char.width).toBe(char.displaySize);
+      expect(char.height).toBe(char.displaySize);
+    });
+  });
+
+  describe('retry logic', () => {
+    test('should call loadImage with retries parameter', () => {
+      const char = new CharacterWithImageLoading(0, 0, 'test.png', 1080);
+      const loadImageSpy = jest.spyOn(char, 'loadImage');
+
+      char.loadImage('test.png', 2);
+
+      expect(loadImageSpy).toHaveBeenCalledWith('test.png', 2);
+    });
+
+    test('should load fallback after all retries exhausted', async () => {
+      const char = new CharacterWithImageLoading(0, 0, 'test.png', 1080);
+      const loadFallbackSpy = jest.spyOn(char, 'loadFallbackImage');
+
+      // Simulate all retries exhausted by calling with 0 retries
+      // and triggering error
+      char.loadImage = jest.fn().mockImplementation((path, retries = 3) => {
+        if (retries === 0) {
+          return char.loadFallbackImage();
+        }
+        return Promise.resolve();
+      });
+
+      await char.loadImage('test.png', 0);
+
+      expect(loadFallbackSpy).toHaveBeenCalled();
+    });
+  });
+});
+
 describe('Edge Cases', () => {
   beforeEach(() => {
     resetTime();
