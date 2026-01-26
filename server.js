@@ -23,6 +23,85 @@ const players = new Map();
 const GAME_WIDTH = 1920;
 const GAME_HEIGHT = 1080;
 
+// ========================================
+// SERVER-AUTHORITATIVE GAME CONSTANTS
+// (Anti-cheat: ignore client values, use these)
+// ========================================
+
+// Player movement
+const PLAYER_SPEED = 300; // pixels per second
+const PLAYER_SPEED_TOLERANCE = 1.5; // Allow 50% variance for network latency
+const MAX_MOVE_DISTANCE_PER_TICK = PLAYER_SPEED * PLAYER_SPEED_TOLERANCE * 0.1; // ~45 pixels per 100ms tick
+
+// Basic attack
+const ATTACK_POWER = 10;
+const ATTACK_RANGE = 150;
+const ATTACK_COOLDOWN = 500; // ms
+
+// Teleport skill (W)
+const TELEPORT_MAX_DISTANCE = 400;
+const TELEPORT_MIN_DISTANCE = 200;
+const TELEPORT_DAMAGE_RADIUS = 100;
+const TELEPORT_DAMAGE = 12;
+const TELEPORT_COOLDOWN = 8000; // ms
+
+// Laser skill (Q)
+const LASER_DAMAGE = 44;
+const LASER_MAX_LENGTH = 2000;
+const LASER_COOLDOWN = 10000; // ms
+
+// Telepathy skill (E)
+const TELEPATHY_RADIUS = 180;
+const TELEPATHY_DAMAGE_PER_TICK = 2;
+const TELEPATHY_MAX_HEAL_PER_TICK = 4;
+const TELEPATHY_DURATION = 3000; // ms
+const TELEPATHY_COOLDOWN = 15000; // ms
+
+// Shard collection
+const SHARD_COLLECT_DISTANCE = 100; // Generous distance for collection validation
+const CHARACTER_SIZE = 135; // Approximate character display size
+
+// ========================================
+// INPUT VALIDATION UTILITIES
+// ========================================
+
+// Validate that a value is a finite number
+function isValidNumber(value) {
+    return typeof value === 'number' && Number.isFinite(value);
+}
+
+// Validate coordinates are within game bounds
+function isValidCoordinate(x, y, margin = 0) {
+    return isValidNumber(x) && isValidNumber(y) &&
+           x >= margin && x <= GAME_WIDTH - margin &&
+           y >= margin && y <= GAME_HEIGHT - margin;
+}
+
+// Clamp coordinates to game bounds
+function clampCoordinates(x, y, margin = 50) {
+    return {
+        x: Math.max(margin, Math.min(GAME_WIDTH - margin, x)),
+        y: Math.max(margin, Math.min(GAME_HEIGHT - margin, y))
+    };
+}
+
+// Calculate distance between two points
+function calculateDistance(x1, y1, x2, y2) {
+    const dx = x2 - x1;
+    const dy = y2 - y1;
+    return Math.sqrt(dx * dx + dy * dy);
+}
+
+// Validate string input (for player names, etc.)
+function isValidString(value, maxLength = 50) {
+    return typeof value === 'string' && value.length <= maxLength;
+}
+
+// Validate positive integer
+function isValidPositiveInt(value, max = 1000) {
+    return Number.isInteger(value) && value >= 0 && value <= max;
+}
+
 // Shard system
 const MAX_SHARDS = 40;
 const shards = new Map(); // Map of shardId -> {id, x, y, collected, collectedTime, respawnDelay}
@@ -293,30 +372,68 @@ io.on('connection', (socket) => {
 
     // Handle player position updates
     socket.on('playerMove', (data) => {
+        // === INPUT VALIDATION ===
+        // Validate coordinate types
+        if (!isValidNumber(data.x) || !isValidNumber(data.y)) {
+            console.log(`[CHEAT] Invalid move coordinates from ${socket.id}: x=${data.x}, y=${data.y}`);
+            return;
+        }
+
         const existingPlayer = players.get(socket.id);
+
+        // Clamp coordinates to game bounds (anti-cheat: prevent out-of-bounds positions)
+        const clamped = clampCoordinates(data.x, data.y);
+        let validX = clamped.x;
+        let validY = clamped.y;
+
+        // Speed hack detection (only if player exists with previous position)
+        if (existingPlayer && !existingPlayer.isDead) {
+            const moveDistance = calculateDistance(existingPlayer.x, existingPlayer.y, data.x, data.y);
+            const currentTime = Date.now();
+            const lastMoveTime = existingPlayer.lastMoveTime || currentTime;
+            const timeDelta = Math.max(16, currentTime - lastMoveTime); // Minimum 16ms (60fps)
+            const maxAllowedDistance = PLAYER_SPEED * PLAYER_SPEED_TOLERANCE * (timeDelta / 1000);
+
+            if (moveDistance > maxAllowedDistance) {
+                // Log potential speed hack but allow within reasonable bounds
+                // (Network lag can cause position jumps)
+                if (moveDistance > maxAllowedDistance * 3) {
+                    console.log(`[CHEAT] Speed hack detected from ${socket.id}: moved ${moveDistance.toFixed(1)}px in ${timeDelta}ms (max: ${maxAllowedDistance.toFixed(1)}px)`);
+                    // Use last valid position instead
+                    validX = existingPlayer.x;
+                    validY = existingPlayer.y;
+                }
+            }
+        }
+
+        // Validate and sanitize other inputs
+        const playerName = isValidString(data.playerName, 30) ? data.playerName : 'Player';
+        const level = isValidPositiveInt(data.level, 30) ? data.level : 1;
+        const experience = isValidPositiveInt(data.experience, 10000) ? data.experience : 0;
 
         // Update player data, preserving HP and death state
         players.set(socket.id, {
             playerId: socket.id,
-            x: data.x,
-            y: data.y,
-            playerName: data.playerName || 'Player',
-            level: data.level || 1,
-            experience: data.experience || 0,
+            x: validX,
+            y: validY,
+            playerName: playerName,
+            level: level,
+            experience: experience,
             currentHP: existingPlayer ? existingPlayer.currentHP : 100,
             maxHP: existingPlayer ? existingPlayer.maxHP : 100,
             deathTime: existingPlayer ? existingPlayer.deathTime : 0,
-            isDead: existingPlayer ? existingPlayer.isDead : false
+            isDead: existingPlayer ? existingPlayer.isDead : false,
+            lastMoveTime: Date.now()
         });
 
-        // Broadcast to other players
+        // Broadcast to other players (use validated position)
         socket.broadcast.emit('playerMoved', {
             playerId: socket.id,
-            x: data.x,
-            y: data.y,
-            playerName: data.playerName,
-            level: data.level,
-            experience: data.experience
+            x: validX,
+            y: validY,
+            playerName: playerName,
+            level: level,
+            experience: experience
         });
     });
 
@@ -338,9 +455,29 @@ io.on('connection', (socket) => {
 
     // Handle shard collection
     socket.on('collectShard', (data) => {
+        const player = players.get(socket.id);
+        if (!player) return;
+
+        // Dead players cannot collect shards
+        if (player.isDead) return;
+
+        // === INPUT VALIDATION ===
+        // Validate shardId type
+        if (!isValidPositiveInt(data.shardId, 10000)) {
+            console.log(`[CHEAT] Invalid shardId from ${socket.id}: ${data.shardId}`);
+            return;
+        }
+
         const shard = shards.get(data.shardId);
 
         if (shard && !shard.collected) {
+            // Verify player is close enough to collect (anti-cheat: prevent remote collection)
+            const distance = calculateDistance(player.x, player.y, shard.x, shard.y);
+            if (distance > SHARD_COLLECT_DISTANCE) {
+                console.log(`[CHEAT] Remote shard collection attempt from ${socket.id}: distance=${distance.toFixed(1)}px (max: ${SHARD_COLLECT_DISTANCE}px)`);
+                return;
+            }
+
             shard.collected = true;
             shard.collectedTime = Date.now();
             // Random respawn delay between 3-5 seconds (3000-5000ms)
@@ -360,10 +497,25 @@ io.on('connection', (socket) => {
         const attacker = players.get(socket.id);
         if (!attacker) return;
 
-        const attackX = data.x;
-        const attackY = data.y;
-        const attackRange = data.range;
-        const attackPower = data.power;
+        // Dead players cannot attack
+        if (attacker.isDead) return;
+
+        // === INPUT VALIDATION ===
+        // Use attacker's server-side position (ignore client x,y to prevent remote attack hacks)
+        const attackX = attacker.x;
+        const attackY = attacker.y;
+
+        // IGNORE client range/power values - use server constants (anti-cheat)
+        const attackRange = ATTACK_RANGE;
+        const attackPower = ATTACK_POWER;
+
+        // Log if client sent suspicious values
+        if (data.range && data.range > ATTACK_RANGE * 1.1) {
+            console.log(`[CHEAT] Suspicious attack range from ${socket.id}: ${data.range} (server: ${ATTACK_RANGE})`);
+        }
+        if (data.power && data.power > ATTACK_POWER * 1.1) {
+            console.log(`[CHEAT] Suspicious attack power from ${socket.id}: ${data.power} (server: ${ATTACK_POWER})`);
+        }
 
         // Broadcast attack to all other players (for visual effect)
         socket.broadcast.emit('playerAttacked', {
@@ -380,14 +532,14 @@ io.on('connection', (socket) => {
             if (playerId === socket.id) return; // Don't hit yourself
             if (player.isDead) return; // Skip dead players
 
-            // Calculate distance
+            // Calculate distance from attacker position
             const dx = player.x - attackX;
             const dy = player.y - attackY;
             const distance = Math.sqrt(dx * dx + dy * dy);
 
-            // Check if in range
+            // Check if in range (server-authoritative range)
             if (distance <= attackRange) {
-                // Apply damage
+                // Apply damage (server-authoritative power)
                 player.currentHP = Math.max(0, player.currentHP - attackPower);
 
                 // Calculate knockback
@@ -497,21 +649,55 @@ io.on('connection', (socket) => {
 
     // Handle teleport (sync with other players)
     socket.on('teleport', (data) => {
+        const player = players.get(socket.id);
+        if (!player) return;
+
+        // Dead players cannot teleport
+        if (player.isDead) return;
+
+        // === INPUT VALIDATION ===
+        // Validate coordinate types
+        if (!isValidNumber(data.startX) || !isValidNumber(data.startY) ||
+            !isValidNumber(data.endX) || !isValidNumber(data.endY)) {
+            console.log(`[CHEAT] Invalid teleport coordinates from ${socket.id}`);
+            return;
+        }
+
+        // Use server-side start position (prevent start position spoofing)
+        const startX = player.x;
+        const startY = player.y;
+
+        // Validate end position
+        let endX = data.endX;
+        let endY = data.endY;
+
+        // Check teleport distance (anti-cheat: limit max teleport distance)
+        const teleportDistance = calculateDistance(startX, startY, endX, endY);
+        if (teleportDistance > TELEPORT_MAX_DISTANCE * 1.2) { // Allow 20% tolerance
+            console.log(`[CHEAT] Teleport distance exceeded from ${socket.id}: ${teleportDistance.toFixed(1)}px (max: ${TELEPORT_MAX_DISTANCE}px)`);
+            // Clamp to max distance
+            const angle = Math.atan2(endY - startY, endX - startX);
+            endX = startX + Math.cos(angle) * TELEPORT_MAX_DISTANCE;
+            endY = startY + Math.sin(angle) * TELEPORT_MAX_DISTANCE;
+        }
+
+        // Clamp to game bounds
+        const clamped = clampCoordinates(endX, endY);
+        endX = clamped.x;
+        endY = clamped.y;
+
         // Broadcast teleport to all other players
         socket.broadcast.emit('playerTeleport', {
             playerId: socket.id,
-            startX: data.startX,
-            startY: data.startY,
-            endX: data.endX,
-            endY: data.endY
+            startX: startX,
+            startY: startY,
+            endX: endX,
+            endY: endY
         });
 
         // Update player position on server
-        const player = players.get(socket.id);
-        if (player) {
-            player.x = data.endX;
-            player.y = data.endY;
-        }
+        player.x = endX;
+        player.y = endY;
     });
 
     // Handle teleport damage
@@ -519,7 +705,25 @@ io.on('connection', (socket) => {
         const attacker = players.get(socket.id);
         if (!attacker) return;
 
-        const { x, y, radius, damage } = data;
+        // Dead players cannot deal damage
+        if (attacker.isDead) return;
+
+        // === INPUT VALIDATION ===
+        // Use attacker's server-side position (ignore client x,y)
+        const x = attacker.x;
+        const y = attacker.y;
+
+        // IGNORE client radius/damage values - use server constants (anti-cheat)
+        const radius = TELEPORT_DAMAGE_RADIUS;
+        const damage = TELEPORT_DAMAGE;
+
+        // Log if client sent suspicious values
+        if (data.radius && data.radius > TELEPORT_DAMAGE_RADIUS * 1.1) {
+            console.log(`[CHEAT] Suspicious teleport damage radius from ${socket.id}: ${data.radius} (server: ${TELEPORT_DAMAGE_RADIUS})`);
+        }
+        if (data.damage && data.damage > TELEPORT_DAMAGE * 1.1) {
+            console.log(`[CHEAT] Suspicious teleport damage from ${socket.id}: ${data.damage} (server: ${TELEPORT_DAMAGE})`);
+        }
 
         // Check all players in range
         const hitPlayers = [];
@@ -639,12 +843,45 @@ io.on('connection', (socket) => {
         const attacker = players.get(socket.id);
         if (!attacker) return;
 
-        const { x1, y1, x2, y2, damage } = data;
+        // Dead players cannot attack
+        if (attacker.isDead) return;
+
+        // === INPUT VALIDATION ===
+        // Validate coordinate types
+        if (!isValidNumber(data.x1) || !isValidNumber(data.y1) ||
+            !isValidNumber(data.x2) || !isValidNumber(data.y2)) {
+            console.log(`[CHEAT] Invalid laser coordinates from ${socket.id}`);
+            return;
+        }
+
+        // Use attacker's server-side position as laser start (prevent remote laser hacks)
+        const x1 = attacker.x;
+        const y1 = attacker.y;
+
+        // Validate laser direction and clamp length
+        let x2 = data.x2;
+        let y2 = data.y2;
+        const laserLength = calculateDistance(x1, y1, x2, y2);
+
+        if (laserLength > LASER_MAX_LENGTH) {
+            // Clamp to max length
+            const angle = Math.atan2(y2 - y1, x2 - x1);
+            x2 = x1 + Math.cos(angle) * LASER_MAX_LENGTH;
+            y2 = y1 + Math.sin(angle) * LASER_MAX_LENGTH;
+        }
+
+        // IGNORE client damage value - use server constant (anti-cheat)
+        const damage = LASER_DAMAGE;
         const hitRadius = 67.5; // Half of character size for collision
+
+        // Log if client sent suspicious values
+        if (data.damage && data.damage > LASER_DAMAGE * 1.1) {
+            console.log(`[CHEAT] Suspicious laser damage from ${socket.id}: ${data.damage} (server: ${LASER_DAMAGE})`);
+        }
 
         console.log(`Laser attack from ${socket.id}: (${x1.toFixed(0)}, ${y1.toFixed(0)}) -> (${x2.toFixed(0)}, ${y2.toFixed(0)})`);
 
-        // Broadcast laser effect to all other players
+        // Broadcast laser effect to all other players (use validated coordinates)
         socket.broadcast.emit('laserFired', {
             playerId: socket.id,
             x1, y1, x2, y2
@@ -659,7 +896,7 @@ io.on('connection', (socket) => {
 
             // Check line-circle collision
             if (lineCircleIntersect(x1, y1, x2, y2, player.x, player.y, hitRadius)) {
-                // Apply damage
+                // Apply damage (server-authoritative)
                 player.currentHP = Math.max(0, player.currentHP - damage);
 
                 // Calculate knockback direction from laser origin
@@ -775,7 +1012,27 @@ io.on('connection', (socket) => {
         const attacker = players.get(socket.id);
         if (!attacker) return;
 
-        const { x, y, radius, damagePerTarget, maxHeal } = data;
+        // Dead players cannot deal damage
+        if (attacker.isDead) return;
+
+        // === INPUT VALIDATION ===
+        // Use attacker's server-side position (ignore client x,y)
+        const x = attacker.x;
+        const y = attacker.y;
+
+        // IGNORE client values - use server constants (anti-cheat)
+        const radius = TELEPATHY_RADIUS;
+        const damagePerTarget = TELEPATHY_DAMAGE_PER_TICK;
+        const maxHeal = TELEPATHY_MAX_HEAL_PER_TICK;
+
+        // Log if client sent suspicious values
+        if (data.radius && data.radius > TELEPATHY_RADIUS * 1.1) {
+            console.log(`[CHEAT] Suspicious telepathy radius from ${socket.id}: ${data.radius} (server: ${TELEPATHY_RADIUS})`);
+        }
+        if (data.damagePerTarget && data.damagePerTarget > TELEPATHY_DAMAGE_PER_TICK * 1.1) {
+            console.log(`[CHEAT] Suspicious telepathy damage from ${socket.id}: ${data.damagePerTarget} (server: ${TELEPATHY_DAMAGE_PER_TICK})`);
+        }
+
         let totalDamageDealt = 0;
 
         // Check all players in range
