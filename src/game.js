@@ -8,66 +8,8 @@ const ctx = canvas.getContext('2d');
 const GAME_WIDTH = GAME_CONFIG.WORLD.WIDTH;
 const GAME_HEIGHT = GAME_CONFIG.WORLD.HEIGHT;
 
-// Viewport/scaling variables
-let scale = 1;
-let offsetX = 0;
-let offsetY = 0;
-
-// Store event handler references for cleanup
-let resizeHandler = null;
-let loadHandler = null;
-
-// Game state
-const gameState = {
-    screen: 'lobby', // 'lobby' | 'waitingTeam' | 'teamAnnounce' | 'playing'
-    running: false,
-    player: null,
-    lobbyManager: null, // Lobby UI manager
-    shardManager: null,
-    networkManager: null,
-    chatManager: null,
-    skillManager: null, // Skill system
-    skillUI: null, // Skill UI renderer
-    laserBeamEffect: null, // Laser beam (Q skill) effect
-    teleportEffect: null, // Teleport (W skill) effect
-    telepathyEffect: null, // Telepathy (E skill) effect
-    dummies: [], // Test dummies for combat practice
-    stats: {
-        shardsCollected: 0
-    },
-    lastFrameTime: 0,
-    deltaTime: 0,
-    lastAttackSentTime: 0, // Track last attack sent to server
-    // Hit vignette effect
-    hitVignetteTime: 0,
-    hitVignetteDuration: GAME_CONFIG.EFFECTS.HIT_VIGNETTE_DURATION_MS,
-    // Player selection from lobby
-    selectedCharacter: 'alien',
-    playerName: 'Player',
-    // Team info
-    team: null, // 'red' or 'blue'
-    teamAnnounceStartTime: 0,
-    teamAnnounceDuration: 2500, // 2.5 seconds to show team
-    // Madness walk (Crazy-Eyes E skill)
-    madnessActive: false,
-    madnessStartTime: 0,
-    madnessDuration: 0,
-    madnessLastTickTime: 0,
-    madnessTickInterval: 0,
-    madnessRadius: 0,
-    // Curry Recovery (Curry-Bear E skill)
-    storedDamage: 0,
-    maxStoredDamage: GAME_CONFIG.SKILL_CURRY_RECOVERY.MAX_STORED_DAMAGE,
-    curryRecoveryActive: false,
-    curryRecoveryStartTime: 0,
-    // Hulk Sister - Rage (폭주)
-    rageActive: false,
-    rageStartTime: 0,
-    rageDuration: 0,
-    // Hulk Sister - Passive (분노 스택)
-    hulkRageStacks: 0,
-    hulkLastStackTime: 0
-};
+// Use global gameState from src/core/gameState.js
+// Access viewport variables via getter/setter functions from gameState module
 
 // Resize canvas to fill window while maintaining 16:9 aspect ratio
 function resizeCanvas() {
@@ -76,39 +18,50 @@ function resizeCanvas() {
     const windowAspectRatio = windowWidth / windowHeight;
     const gameAspectRatio = GAME_WIDTH / GAME_HEIGHT;
 
+    let newOffsetX, newOffsetY;
+
     if (windowAspectRatio > gameAspectRatio) {
         // Window is wider - fit to height
         canvas.height = windowHeight;
         canvas.width = windowHeight * gameAspectRatio;
-        offsetX = (windowWidth - canvas.width) / 2;
-        offsetY = 0;
+        newOffsetX = (windowWidth - canvas.width) / 2;
+        newOffsetY = 0;
     } else {
         // Window is taller - fit to width
         canvas.width = windowWidth;
         canvas.height = windowWidth / gameAspectRatio;
-        offsetX = 0;
-        offsetY = (windowHeight - canvas.height) / 2;
+        newOffsetX = 0;
+        newOffsetY = (windowHeight - canvas.height) / 2;
     }
 
     // Calculate scale factor for rendering
-    scale = canvas.width / GAME_WIDTH;
+    const newScale = canvas.width / GAME_WIDTH;
+
+    // Update global viewport variables
+    setScale(newScale);
+    setOffsetX(newOffsetX);
+    setOffsetY(newOffsetY);
 
     // Position canvas in center of window
     canvas.style.position = 'absolute';
-    canvas.style.left = offsetX + 'px';
-    canvas.style.top = offsetY + 'px';
+    canvas.style.left = newOffsetX + 'px';
+    canvas.style.top = newOffsetY + 'px';
 
-    logger.debug(`Canvas resized to ${canvas.width}x${canvas.height}, scale: ${scale.toFixed(2)}`);
+    logger.debug(`Canvas resized to ${canvas.width}x${canvas.height}, scale: ${newScale.toFixed(2)}`);
 }
 
 // Initialize game (called on page load)
 function init() {
     logger.info('Initializing...');
 
+    // Register canvas with global state
+    setCanvas(canvas);
+    setCtx(ctx);
+
     // Setup canvas size
     resizeCanvas();
-    resizeHandler = resizeCanvas;
-    window.addEventListener('resize', resizeHandler);
+    setResizeHandler(resizeCanvas);
+    window.addEventListener('resize', resizeCanvas);
 
     // Initialize input system
     initInput(canvas);
@@ -482,7 +435,7 @@ function gameLoop(currentTime) {
 
     // Apply scaling for game world rendering
     ctx.save();
-    ctx.scale(scale, scale);
+    ctx.scale(getScale(), getScale());
 
     // Check current screen state
     if (gameState.screen === 'waitingTeam') {
@@ -1608,9 +1561,10 @@ function cleanupGame() {
     }
 
     // Remove resize handler
-    if (resizeHandler) {
-        window.removeEventListener('resize', resizeHandler);
-        resizeHandler = null;
+    const currentResizeHandler = getResizeHandler();
+    if (currentResizeHandler) {
+        window.removeEventListener('resize', currentResizeHandler);
+        setResizeHandler(null);
     }
 
     // Clear game state objects
@@ -1629,8 +1583,8 @@ function cleanupGame() {
 }
 
 // Start game when page loads
-loadHandler = init;
-window.addEventListener('load', loadHandler);
+setLoadHandler(init);
+window.addEventListener('load', init);
 
 // Cleanup on page unload to prevent memory leaks
 window.addEventListener('beforeunload', cleanupGame);

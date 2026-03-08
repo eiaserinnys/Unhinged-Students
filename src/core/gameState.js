@@ -24,7 +24,7 @@ let loadHandler = null;
 
 // Game state
 const gameState = {
-    screen: 'lobby', // 'lobby' | 'playing'
+    screen: 'lobby', // 'lobby' | 'waitingTeam' | 'teamAnnounce' | 'playing'
     running: false,
     player: null,
     lobbyManager: null, // Lobby UI manager
@@ -48,7 +48,36 @@ const gameState = {
     hitVignetteDuration: GAME_CONFIG.EFFECTS.HIT_VIGNETTE_DURATION_MS,
     // Player selection from lobby
     selectedCharacter: 'alien',
-    playerName: 'Player'
+    playerName: 'Player',
+    // Team info
+    team: null, // 'red' or 'blue'
+    teamAnnounceStartTime: 0,
+    teamAnnounceDuration: 2500, // 2.5 seconds to show team
+    // Madness walk (Crazy-Eyes E skill)
+    madnessActive: false,
+    madnessStartTime: 0,
+    madnessDuration: 0,
+    madnessLastTickTime: 0,
+    madnessTickInterval: 0,
+    madnessRadius: 0,
+    // Curry Recovery (Curry-Bear E skill)
+    storedDamage: 0,
+    maxStoredDamage: GAME_CONFIG.SKILL_CURRY_RECOVERY.MAX_STORED_DAMAGE,
+    curryRecoveryActive: false,
+    curryRecoveryStartTime: 0,
+    // Hulk Sister - Rage (폭주)
+    rageActive: false,
+    rageStartTime: 0,
+    rageDuration: 0,
+    // Hulk Sister - Passive (분노 스택)
+    hulkRageStacks: 0,
+    hulkLastStackTime: 0,
+    // Wave effect (Crazy-Eyes Q skill)
+    waveEffect: null,
+    // Pot smash effect (Curry-Bear Q skill)
+    potSmashEffect: null,
+    // Spin throw effect (Hulk Sister Q skill)
+    spinThrowEffect: null
 };
 
 // Expose to global scope for other modules
