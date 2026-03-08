@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>Debug Lobby</title>
+</head>
+<body>
+    <h1>Lobby Debug Test</h1>
+    <pre id="output"></pre>
+
+    <!-- Minimal DOM elements for lobby -->
+    <div id="lobbyContainer" style="display:none">
+        <div class="character-option selected" data-character="alien">외계인</div>
+        <div class="character-option" data-character="crazy-eyes">눈 돌아가는 사람</div>
+        <input type="text" id="playerNameInput" placeholder="이름">
+        <button id="startGameBtn" disabled>게임 시작</button>
+        <div class="character-stats"></div>
+        <div class="character-skills"></div>
+    </div>
+
+    <canvas id="gameCanvas" width="800" height="450"></canvas>
+
+    <script>
+        const log = (msg) => {
+            document.getElementById('output').textContent += msg + '\n';
+            console.log(msg);
+        };
+
+        window.onerror = (msg, url, line, col, err) => {
+            log('ERROR: ' + msg + ' at ' + url + ':' + line);
+            return false;
+        };
+
+        log('Starting script load test...');
+    </script>
+
+    <!-- Load scripts in same order as index.html -->
+    <script>log('Loading logger.js...');</script>
+    <script src="../src/utils/logger.js"></script>
+    <script>log('logger loaded: ' + (typeof logger !== 'undefined'));</script>
+
+    <script>log('Loading config.js...');</script>
+    <script src="../src/config.js"></script>
+    <script>log('GAME_CONFIG loaded: ' + (typeof GAME_CONFIG !== 'undefined'));</script>
+
+    <script>log('Loading gameState.js...');</script>
+    <script src="../src/core/gameState.js"></script>
+    <script>log('gameState loaded: ' + (typeof gameState !== 'undefined' && typeof window.gameState !== 'undefined'));</script>
+    <script>log('getScale function: ' + (typeof getScale !== 'undefined'));</script>
+    <script>log('setCanvas function: ' + (typeof setCanvas !== 'undefined'));</script>
+
+    <script>log('Loading uiRenderer.js...');</script>
+    <script src="../src/rendering/uiRenderer.js"></script>
+    <script>log('uiRenderer loaded: ' + (typeof renderStoredDamageUI !== 'undefined'));</script>
+
+    <script>log('Loading lobby.js...');</script>
+    <script src="../src/lobby.js"></script>
+    <script>log('LobbyManager loaded: ' + (typeof LobbyManager !== 'undefined'));</script>
+
+    <script>
+        log('');
+        log('=== Testing LobbyManager ===');
+        try {
+            const lobbyManager = new LobbyManager();
+            log('LobbyManager created successfully');
+            log('Initial selectedCharacter: ' + lobbyManager.selectedCharacter);
+            log('Initial playerName: ' + lobbyManager.playerName);
+            log('Initial canStartGame: ' + lobbyManager.canStartGame());
+            log('startButton.disabled: ' + lobbyManager.startButton.disabled);
+
+            // Test character selection
+            const options = document.querySelectorAll('.character-option');
+            log('Character options found: ' + options.length);
+
+            // Test event listener
+            log('');
+            log('=== Testing Event Handlers ===');
+            lobbyManager.nameInput.value = 'TestPlayer';
+            lobbyManager.nameInput.dispatchEvent(new Event('input'));
+            log('After input - canStartGame: ' + lobbyManager.canStartGame());
+            log('After input - button.disabled: ' + lobbyManager.startButton.disabled);
+
+            // Test character selection click
+            options[1].click();
+            log('After click - selectedCharacter: ' + lobbyManager.selectedCharacter);
+
+            // Test start button click
+            let gameStarted = false;
+            lobbyManager.setOnGameStart((selection) => {
+                gameStarted = true;
+                log('Game start callback fired! Character: ' + selection.character + ', Name: ' + selection.playerName);
+            });
+
+            lobbyManager.startButton.click();
+            log('After startButton click - gameStarted: ' + gameStarted);
+
+            log('');
+            log('=== ALL TESTS PASSED ===');
+        } catch (e) {
+            log('ERROR: ' + e.message);
+            log('Stack: ' + e.stack);
+        }
+    </script>
+</body>
+</html>
