@@ -2,12 +2,13 @@
 
 // Base Skill class
 class Skill {
-    constructor(name, key, cooldown, iconColor = '#666666') {
+    constructor(name, key, cooldown, iconColor = '#666666', emoji = '⭐') {
         this.name = name;
         this.key = key;
         this.cooldown = cooldown; // in milliseconds
         this.lastUsedTime = 0;
         this.iconColor = iconColor;
+        this.emoji = emoji; // Skill icon emoji
 
         // Ready flash effect
         this.readyFlashTime = 0;
@@ -611,12 +612,12 @@ class SkillUI {
         this.roundRect(ctx, x, y, this.boxSize, this.boxSize, this.borderRadius);
         ctx.stroke();
 
-        // Skill icon color indicator (small square)
-        const iconSize = 20;
-        const iconX = x + (this.boxSize - iconSize) / 2;
-        const iconY = y + 8;
-        ctx.fillStyle = isReady ? skill.iconColor : this.darkenColor(skill.iconColor);
-        ctx.fillRect(iconX, iconY, iconSize, iconSize);
+        // Skill icon emoji
+        ctx.fillStyle = isReady ? '#ffffff' : '#666666';
+        ctx.font = '24px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(skill.emoji, x + this.boxSize / 2, y + 18);
 
         // Key label (Q, W, E)
         ctx.fillStyle = isReady ? '#ffffff' : '#666666';
