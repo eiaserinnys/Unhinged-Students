@@ -1221,9 +1221,11 @@ function registerCombatHandlers(socket, io) {
         if (!player) return;
         if (player.isDead) return;
 
+        logger.info(`Curry recovery attempt by ${socket.id}, characterId: ${player.characterId}, storedDamage: ${player.storedDamage}`);
+
         // Only curry-bear can use this skill
         if (player.characterId !== 'curry-bear') {
-            logger.cheat(`Non curry-bear ${socket.id} tried to use curry recovery`);
+            logger.info(`Non curry-bear ${socket.id} (${player.characterId}) tried to use curry recovery`);
             return;
         }
 
