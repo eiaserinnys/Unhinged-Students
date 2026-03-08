@@ -965,8 +965,9 @@ function handleQSkill() {
 
 // Initialize skills based on selected character
 function initializeCharacterSkills(characterId) {
-    // Clear existing skills
-    gameState.skillManager.skills = [];
+    // Clear existing skills (skills is a Map, skillOrder is an array)
+    gameState.skillManager.skills.clear();
+    gameState.skillManager.skillOrder = [];
 
     switch (characterId) {
         case 'crazy-eyes': // 눈 돌아가는 사람
