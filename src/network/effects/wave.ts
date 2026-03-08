@@ -1,21 +1,40 @@
 // Wave Effect Mixin for RemotePlayer (Crazy-Eyes basic attack)
+
+/**
+ * Interface for objects that can have wave effects applied
+ */
+export interface WaveEffectState {
+    x: number;
+    y: number;
+    waveActive: boolean;
+    waveStartTime: number;
+    waveExpandDuration: number;
+    waveMaxRadius: number;
+}
+
 export const WaveEffectMixin = {
-    // Initialize wave effect properties
-    initWaveEffect() {
+    /**
+     * Initialize wave effect properties
+     */
+    initWaveEffect(this: WaveEffectState): void {
         this.waveActive = false;
         this.waveStartTime = 0;
         this.waveExpandDuration = 500; // 0.5 second expanding
         this.waveMaxRadius = 250;
     },
 
-    // Start wave attack effect
-    startWave() {
+    /**
+     * Start wave attack effect
+     */
+    startWave(this: WaveEffectState): void {
         this.waveActive = true;
         this.waveStartTime = Date.now();
     },
 
-    // Update wave effect state
-    updateWave() {
+    /**
+     * Update wave effect state
+     */
+    updateWave(this: WaveEffectState): void {
         if (!this.waveActive) return;
 
         const elapsed = Date.now() - this.waveStartTime;
@@ -25,8 +44,10 @@ export const WaveEffectMixin = {
         }
     },
 
-    // Render wave effect
-    renderWave(ctx) {
+    /**
+     * Render wave effect
+     */
+    renderWave(this: WaveEffectState, ctx: CanvasRenderingContext2D): void {
         if (!this.waveActive) return;
 
         const elapsed = Date.now() - this.waveStartTime;
@@ -74,4 +95,9 @@ export const WaveEffectMixin = {
 };
 
 // Backward compatibility: expose to window
+declare global {
+    interface Window {
+        WaveEffectMixin: typeof WaveEffectMixin;
+    }
+}
 window.WaveEffectMixin = WaveEffectMixin;

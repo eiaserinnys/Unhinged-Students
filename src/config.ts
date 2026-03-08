@@ -1,7 +1,9 @@
 // Game Configuration - Centralized constants for Unhinged Students
 // This file consolidates all magic numbers to improve maintainability
 
-export const GAME_CONFIG = {
+import type { GameConfig } from './types/index.js';
+
+export const GAME_CONFIG: GameConfig = {
     // =====================================
     // WORLD
     // =====================================
@@ -239,6 +241,5 @@ export default GAME_CONFIG;
 window.GAME_CONFIG = GAME_CONFIG;
 
 // Export for Node.js (server-side) if module is defined
-if (typeof module !== 'undefined' && module.exports) {
-    module.exports = { GAME_CONFIG };
-}
+// Note: This is for compatibility with server code that might import this
+// In ESM, we use export statements instead

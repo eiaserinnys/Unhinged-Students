@@ -1,24 +1,42 @@
 // Curry Recovery Effect Mixin for RemotePlayer (Curry-Bear E skill)
 // This mixin adds curry recovery effect rendering capabilities to RemotePlayer
 
+/**
+ * Interface for objects that can have curry recovery effects applied
+ */
+export interface CurryRecoveryEffectState {
+    x: number;
+    y: number;
+    curryRecoveryActive: boolean;
+    curryRecoveryStartTime: number;
+    curryRecoveryDuration: number;
+    curryRecoveryHealAmount: number;
+}
+
 export const CurryRecoveryEffectMixin = {
-    // Initialize curry recovery effect state
-    initCurryRecoveryEffect() {
+    /**
+     * Initialize curry recovery effect state
+     */
+    initCurryRecoveryEffect(this: CurryRecoveryEffectState): void {
         this.curryRecoveryActive = false;
         this.curryRecoveryStartTime = 0;
         this.curryRecoveryDuration = 500; // 500ms effect duration
         this.curryRecoveryHealAmount = 0;
     },
 
-    // Start curry recovery effect
-    startCurryRecovery(healAmount) {
+    /**
+     * Start curry recovery effect
+     */
+    startCurryRecovery(this: CurryRecoveryEffectState, healAmount: number): void {
         this.curryRecoveryActive = true;
         this.curryRecoveryStartTime = Date.now();
         this.curryRecoveryHealAmount = healAmount;
     },
 
-    // Update curry recovery effect
-    updateCurryRecovery() {
+    /**
+     * Update curry recovery effect
+     */
+    updateCurryRecovery(this: CurryRecoveryEffectState): void {
         if (!this.curryRecoveryActive) return;
 
         const elapsed = Date.now() - this.curryRecoveryStartTime;
@@ -27,8 +45,10 @@ export const CurryRecoveryEffectMixin = {
         }
     },
 
-    // Render curry recovery effect
-    renderCurryRecovery(ctx) {
+    /**
+     * Render curry recovery effect
+     */
+    renderCurryRecovery(this: CurryRecoveryEffectState, ctx: CanvasRenderingContext2D): void {
         if (!this.curryRecoveryActive) return;
 
         const elapsed = Date.now() - this.curryRecoveryStartTime;
@@ -50,7 +70,7 @@ export const CurryRecoveryEffectMixin = {
             ctx.font = `${16 + progress * 8}px sans-serif`;
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
-            ctx.fillText('🍛', x, y);
+            ctx.fillText('\u{1F35B}', x, y);
         }
 
         // Healing glow
@@ -79,4 +99,9 @@ export const CurryRecoveryEffectMixin = {
 };
 
 // Backward compatibility: expose to window
+declare global {
+    interface Window {
+        CurryRecoveryEffectMixin: typeof CurryRecoveryEffectMixin;
+    }
+}
 window.CurryRecoveryEffectMixin = CurryRecoveryEffectMixin;

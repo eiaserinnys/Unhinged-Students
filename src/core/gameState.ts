@@ -6,26 +6,27 @@
  */
 
 import { GAME_CONFIG } from '../config.js';
+import type { GameState, CharacterType } from '../types/index.js';
 
 // Canvas setup - will be initialized by game.js
-let canvas = null;
-let ctx = null;
+let canvas: HTMLCanvasElement | null = null;
+let ctx: CanvasRenderingContext2D | null = null;
 
 // Game world constants (16:9 aspect ratio) - from config
-export const GAME_WIDTH = GAME_CONFIG.WORLD.WIDTH;
-export const GAME_HEIGHT = GAME_CONFIG.WORLD.HEIGHT;
+export const GAME_WIDTH: number = GAME_CONFIG.WORLD.WIDTH;
+export const GAME_HEIGHT: number = GAME_CONFIG.WORLD.HEIGHT;
 
 // Viewport/scaling variables
-let scale = 1;
-let offsetX = 0;
-let offsetY = 0;
+let scale: number = 1;
+let offsetX: number = 0;
+let offsetY: number = 0;
 
 // Store event handler references for cleanup
-let resizeHandler = null;
-let loadHandler = null;
+let resizeHandler: (() => void) | null = null;
+let loadHandler: (() => void) | null = null;
 
 // Game state
-export const gameState = {
+export const gameState: GameState = {
     screen: 'lobby', // 'lobby' | 'waitingTeam' | 'teamAnnounce' | 'playing'
     running: false,
     player: null,
@@ -49,7 +50,7 @@ export const gameState = {
     hitVignetteTime: 0,
     hitVignetteDuration: GAME_CONFIG.EFFECTS.HIT_VIGNETTE_DURATION_MS,
     // Player selection from lobby
-    selectedCharacter: 'alien',
+    selectedCharacter: 'alien' as CharacterType,
     playerName: 'Player',
     // Team info
     team: null, // 'red' or 'blue'
@@ -83,50 +84,50 @@ export const gameState = {
 };
 
 // Getter/setter functions for viewport variables
-export function getScale() {
+export function getScale(): number {
     return scale;
 }
-export function setScale(value) {
+export function setScale(value: number): void {
     scale = value;
 }
-export function getOffsetX() {
+export function getOffsetX(): number {
     return offsetX;
 }
-export function setOffsetX(value) {
+export function setOffsetX(value: number): void {
     offsetX = value;
 }
-export function getOffsetY() {
+export function getOffsetY(): number {
     return offsetY;
 }
-export function setOffsetY(value) {
+export function setOffsetY(value: number): void {
     offsetY = value;
 }
 
 // Canvas getters/setters
-export function getCanvas() {
+export function getCanvas(): HTMLCanvasElement | null {
     return canvas;
 }
-export function setCanvas(c) {
+export function setCanvas(c: HTMLCanvasElement): void {
     canvas = c;
 }
-export function getCtx() {
+export function getCtx(): CanvasRenderingContext2D | null {
     return ctx;
 }
-export function setCtx(c) {
+export function setCtx(c: CanvasRenderingContext2D): void {
     ctx = c;
 }
 
 // Event handler getters/setters
-export function getResizeHandler() {
+export function getResizeHandler(): (() => void) | null {
     return resizeHandler;
 }
-export function setResizeHandler(handler) {
+export function setResizeHandler(handler: () => void): void {
     resizeHandler = handler;
 }
-export function getLoadHandler() {
+export function getLoadHandler(): (() => void) | null {
     return loadHandler;
 }
-export function setLoadHandler(handler) {
+export function setLoadHandler(handler: () => void): void {
     loadHandler = handler;
 }
 

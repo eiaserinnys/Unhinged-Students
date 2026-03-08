@@ -2,9 +2,47 @@
 
 import { GAME_CONFIG } from './config.js';
 
+interface LaserLine {
+    x1: number;
+    y1: number;
+    x2: number;
+    y2: number;
+}
+
+interface TeleportPosition {
+    x: number;
+    y: number;
+    teleported: boolean;
+}
+
+interface DamageArea {
+    x: number;
+    y: number;
+    radius: number;
+    damage?: number;
+    damagePerTarget?: number;
+    maxHeal?: number;
+}
+
 // Base Skill class
 export class Skill {
-    constructor(name, key, cooldown, iconColor = '#666666', emoji = '⭐') {
+    name: string;
+    key: string;
+    cooldown: number;
+    lastUsedTime: number;
+    iconColor: string;
+    emoji: string;
+    readyFlashTime: number;
+    readyFlashDuration: number;
+    wasOnCooldown: boolean;
+
+    constructor(
+        name: string,
+        key: string,
+        cooldown: number,
+        iconColor: string = '#666666',
+        emoji: string = '⭐'
+    ) {
         this.name = name;
         this.key = key;
         this.cooldown = cooldown; // in milliseconds
@@ -18,30 +56,30 @@ export class Skill {
         this.wasOnCooldown = false;
     }
 
-    isReady() {
+    isReady(): boolean {
         return Date.now() - this.lastUsedTime >= this.cooldown;
     }
 
-    use() {
+    use(): boolean {
         if (!this.isReady()) return false;
         this.lastUsedTime = Date.now();
         this.wasOnCooldown = true;
         return true;
     }
 
-    getRemainingCooldown() {
+    getRemainingCooldown(): number {
         const elapsed = Date.now() - this.lastUsedTime;
         return Math.max(0, this.cooldown - elapsed);
     }
 
-    getCooldownProgress() {
+    getCooldownProgress(): number {
         if (this.lastUsedTime === 0) return 1; // Never used, fully ready
         const elapsed = Date.now() - this.lastUsedTime;
         return Math.min(1, elapsed / this.cooldown);
     }
 
     // Check and trigger ready flash
-    checkReadyFlash() {
+    checkReadyFlash(): boolean {
         if (this.wasOnCooldown && this.isReady()) {
             this.readyFlashTime = Date.now();
             this.wasOnCooldown = false;
@@ -50,12 +88,12 @@ export class Skill {
         return false;
     }
 
-    isFlashing() {
+    isFlashing(): boolean {
         if (this.readyFlashTime === 0) return false;
         return Date.now() - this.readyFlashTime < this.readyFlashDuration;
     }
 
-    getFlashIntensity() {
+    getFlashIntensity(): number {
         if (!this.isFlashing()) return 0;
         const elapsed = Date.now() - this.readyFlashTime;
         const progress = elapsed / this.readyFlashDuration;
@@ -66,21 +104,24 @@ export class Skill {
 
 // Skill Manager - handles all skills for a character
 export class SkillManager {
+    skills: Map<string, Skill>;
+    skillOrder: string[];
+
     constructor() {
         this.skills = new Map(); // key -> Skill
         this.skillOrder = []; // For UI ordering
     }
 
-    addSkill(skill) {
+    addSkill(skill: Skill): void {
         this.skills.set(skill.key.toLowerCase(), skill);
         this.skillOrder.push(skill.key.toLowerCase());
     }
 
-    getSkill(key) {
+    getSkill(key: string): Skill | undefined {
         return this.skills.get(key.toLowerCase());
     }
 
-    useSkill(key) {
+    useSkill(key: string): Skill | null {
         const skill = this.getSkill(key);
         if (skill && skill.use()) {
             return skill;
@@ -88,7 +129,7 @@ export class SkillManager {
         return null;
     }
 
-    update() {
+    update(): void {
         // Check for ready flashes
         this.skills.forEach((skill) => {
             skill.checkReadyFlash();
@@ -96,16 +137,34 @@ export class SkillManager {
     }
 
     // Get all skills in order for UI
-    getAllSkills() {
+    getAllSkills(): (Skill | undefined)[] {
         return this.skillOrder.map((key) => this.skills.get(key));
     }
 }
 
 // Laser Beam Effect - handles the Q skill visual and logic
 export class LaserBeamEffect {
+    active: boolean;
+    phase: 'aiming' | 'firing' | 'none';
+    startTime: number;
+    aimDuration: number;
+    fireDuration: number;
+
+    // Positions
+    startX: number;
+    startY: number;
+
+    // Fixed direction (set once when skill starts)
+    dirX: number;
+    dirY: number;
+
+    // Damage
+    damage: number;
+    hasDealtDamage: boolean;
+
     constructor() {
         this.active = false;
-        this.phase = 'none'; // 'aiming', 'firing', 'none'
+        this.phase = 'none';
         this.startTime = 0;
         this.aimDuration = GAME_CONFIG.SKILL_LASER.AIM_DURATION_MS;
         this.fireDuration = GAME_CONFIG.SKILL_LASER.FIRE_DURATION_MS;
@@ -123,7 +182,7 @@ export class LaserBeamEffect {
         this.hasDealtDamage = false;
     }
 
-    start(playerX, playerY, targetX, targetY) {
+    start(playerX: number, playerY: number, targetX: number, targetY: number): void {
         this.active = true;
         this.phase = 'aiming';
         this.startTime = Date.now();
@@ -146,7 +205,7 @@ export class LaserBeamEffect {
         this.hasDealtDamage = false;
     }
 
-    update(playerX, playerY) {
+    update(playerX: number, playerY: number): void {
         if (!this.active) return;
 
         // Update start position to follow player (direction stays fixed)
@@ -169,7 +228,7 @@ export class LaserBeamEffect {
     }
 
     // Check if laser should deal damage this frame
-    shouldDealDamage() {
+    shouldDealDamage(): boolean {
         if (this.phase === 'firing' && !this.hasDealtDamage) {
             this.hasDealtDamage = true;
             return true;
@@ -178,7 +237,7 @@ export class LaserBeamEffect {
     }
 
     // Get laser line for collision detection
-    getLaserLine() {
+    getLaserLine(): LaserLine | null {
         // Use fixed direction (set at skill start)
         if (this.dirX === 0 && this.dirY === 0) return null;
 
@@ -194,7 +253,7 @@ export class LaserBeamEffect {
         };
     }
 
-    render(ctx) {
+    render(ctx: CanvasRenderingContext2D): void {
         if (!this.active) return;
 
         const elapsed = Date.now() - this.startTime;
@@ -254,9 +313,31 @@ export class LaserBeamEffect {
 
 // Teleport Effect - handles the W skill visual and logic
 export class TeleportEffect {
+    active: boolean;
+    phase: 'disappear' | 'appear' | 'none';
+    startTime: number;
+    disappearDuration: number;
+    appearDuration: number;
+
+    // Positions
+    startX: number;
+    startY: number;
+    endX: number;
+    endY: number;
+
+    // Teleport settings
+    minDistance: number;
+    maxDistance: number;
+    damageRadius: number;
+    damage: number;
+
+    // Flags
+    hasDealtDamage: boolean;
+    hasTeleported: boolean;
+
     constructor() {
         this.active = false;
-        this.phase = 'none'; // 'disappear', 'appear', 'none'
+        this.phase = 'none';
         this.startTime = 0;
         this.disappearDuration = GAME_CONFIG.SKILL_TELEPORT.DISAPPEAR_DURATION_MS;
         this.appearDuration = GAME_CONFIG.SKILL_TELEPORT.APPEAR_DURATION_MS;
@@ -278,7 +359,14 @@ export class TeleportEffect {
         this.hasTeleported = false;
     }
 
-    start(playerX, playerY, gameWidth, gameHeight, targetX = null, targetY = null) {
+    start(
+        playerX: number,
+        playerY: number,
+        gameWidth: number,
+        gameHeight: number,
+        targetX: number | null = null,
+        targetY: number | null = null
+    ): void {
         this.active = true;
         this.phase = 'disappear';
         this.startTime = Date.now();
@@ -287,7 +375,8 @@ export class TeleportEffect {
         this.hasDealtDamage = false;
         this.hasTeleported = false;
 
-        let newX, newY;
+        let newX: number;
+        let newY: number;
 
         // If target position is provided, teleport near the target
         if (targetX !== null && targetY !== null) {
@@ -317,7 +406,7 @@ export class TeleportEffect {
         this.endY = newY;
     }
 
-    update() {
+    update(): TeleportPosition | null {
         if (!this.active) return null;
 
         const elapsed = Date.now() - this.startTime;
@@ -341,7 +430,7 @@ export class TeleportEffect {
     }
 
     // Check if should deal damage
-    shouldDealDamage() {
+    shouldDealDamage(): boolean {
         if (this.phase === 'appear' && !this.hasDealtDamage) {
             this.hasDealtDamage = true;
             return true;
@@ -350,7 +439,7 @@ export class TeleportEffect {
     }
 
     // Get damage area
-    getDamageArea() {
+    getDamageArea(): DamageArea {
         return {
             x: this.endX,
             y: this.endY,
@@ -359,7 +448,7 @@ export class TeleportEffect {
         };
     }
 
-    render(ctx) {
+    render(ctx: CanvasRenderingContext2D): void {
         if (!this.active) return;
 
         const elapsed = Date.now() - this.startTime;
@@ -420,6 +509,24 @@ export class TeleportEffect {
 
 // Telepathy Effect - handles the E skill visual and logic (3 second channeling)
 export class TelepathyEffect {
+    active: boolean;
+    startTime: number;
+    duration: number;
+    tickInterval: number;
+
+    // Position
+    x: number;
+    y: number;
+
+    // Settings
+    radius: number;
+    damagePerTick: number;
+    maxHealPerTick: number;
+
+    // Tick tracking
+    lastTickTime: number;
+    tickCount: number;
+
     constructor() {
         this.active = false;
         this.startTime = 0;
@@ -440,7 +547,7 @@ export class TelepathyEffect {
         this.tickCount = 0;
     }
 
-    start(playerX, playerY) {
+    start(playerX: number, playerY: number): void {
         this.active = true;
         this.startTime = Date.now();
         this.lastTickTime = 0;
@@ -449,7 +556,7 @@ export class TelepathyEffect {
         this.y = playerY;
     }
 
-    update(playerX, playerY) {
+    update(playerX: number, playerY: number): void {
         if (!this.active) return;
 
         // Follow player position
@@ -463,7 +570,7 @@ export class TelepathyEffect {
     }
 
     // Check if should deal damage (every 0.1 seconds during channel)
-    shouldDealDamage() {
+    shouldDealDamage(): boolean {
         if (!this.active) return false;
 
         const elapsed = Date.now() - this.startTime;
@@ -477,7 +584,7 @@ export class TelepathyEffect {
     }
 
     // Get damage area
-    getDamageArea() {
+    getDamageArea(): DamageArea {
         return {
             x: this.x,
             y: this.y,
@@ -487,7 +594,7 @@ export class TelepathyEffect {
         };
     }
 
-    render(ctx) {
+    render(ctx: CanvasRenderingContext2D): void {
         if (!this.active) return;
 
         const elapsed = Date.now() - this.startTime;
@@ -552,7 +659,13 @@ export class TelepathyEffect {
 
 // Skill UI Renderer
 export class SkillUI {
-    constructor(skillManager) {
+    skillManager: SkillManager;
+    boxSize: number;
+    boxGap: number;
+    bottomMargin: number;
+    borderRadius: number;
+
+    constructor(skillManager: SkillManager) {
         this.skillManager = skillManager;
 
         // UI Settings from config
@@ -562,7 +675,7 @@ export class SkillUI {
         this.borderRadius = GAME_CONFIG.UI.SKILL_BOX_BORDER_RADIUS;
     }
 
-    render(ctx, canvasWidth, canvasHeight) {
+    render(ctx: CanvasRenderingContext2D, canvasWidth: number, canvasHeight: number): void {
         const skills = this.skillManager.getAllSkills();
         if (skills.length === 0) return;
 
@@ -572,13 +685,15 @@ export class SkillUI {
         const startY = canvasHeight - this.bottomMargin - this.boxSize;
 
         skills.forEach((skill, index) => {
-            const x = startX + index * (this.boxSize + this.boxGap);
-            const y = startY;
-            this.renderSkillBox(ctx, skill, x, y);
+            if (skill) {
+                const x = startX + index * (this.boxSize + this.boxGap);
+                const y = startY;
+                this.renderSkillBox(ctx, skill, x, y);
+            }
         });
     }
 
-    renderSkillBox(ctx, skill, x, y) {
+    renderSkillBox(ctx: CanvasRenderingContext2D, skill: Skill, x: number, y: number): void {
         const isReady = skill.isReady();
         const cooldownProgress = skill.getCooldownProgress();
         const isFlashing = skill.isFlashing();
@@ -648,7 +763,14 @@ export class SkillUI {
     }
 
     // Helper: draw rounded rectangle
-    roundRect(ctx, x, y, width, height, radius) {
+    roundRect(
+        ctx: CanvasRenderingContext2D,
+        x: number,
+        y: number,
+        width: number,
+        height: number,
+        radius: number
+    ): void {
         ctx.beginPath();
         ctx.moveTo(x + radius, y);
         ctx.lineTo(x + width - radius, y);
@@ -663,7 +785,7 @@ export class SkillUI {
     }
 
     // Helper: darken a hex color
-    darkenColor(hex) {
+    darkenColor(hex: string): string {
         const r = parseInt(hex.slice(1, 3), 16);
         const g = parseInt(hex.slice(3, 5), 16);
         const b = parseInt(hex.slice(5, 7), 16);

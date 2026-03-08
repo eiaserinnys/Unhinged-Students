@@ -4,9 +4,81 @@ import { GAME_CONFIG } from './config.js';
 import { logger } from './utils/logger.js';
 import { CharacterUtils } from './characterUtils.js';
 import { isKeyPressed } from './input.js';
+import type { Position, Bounds, AttackArea } from './types/index.js';
+
+interface CanvasSize {
+    width: number;
+    height: number;
+}
 
 export class Character {
-    constructor(x, y, imagePath, canvasHeight, playerName = 'Player', isDummy = false) {
+    x: number;
+    y: number;
+    displaySize: number;
+    width: number;
+    height: number;
+    speed: number;
+    image: HTMLImageElement | null;
+    imageLoaded: boolean;
+
+    // Player info
+    playerName: string;
+    isDummy: boolean;
+    isDead: boolean;
+
+    // Level system
+    level: number;
+    experience: number;
+    maxLevel: number;
+
+    // HP system
+    maxHP: number;
+    currentHP: number;
+
+    // Combat system
+    attackPower: number;
+    attackRange: number;
+    attackCooldown: number;
+    lastAttackTime: number;
+    isAttacking: boolean;
+    attackAnimationTime: number;
+    attackStartTime: number;
+    lastDamagedTime: number;
+
+    // Respawn system (for dummies)
+    deathTime: number;
+    respawnDelay: number;
+    initialX: number;
+    initialY: number;
+
+    // Hit flash effect (micro reaction)
+    hitFlashTime: number;
+    hitFlashDuration: number;
+
+    // Knockback system
+    isKnockedBack: boolean;
+    knockbackStartTime: number;
+    knockbackDuration: number;
+    knockbackStartX: number;
+    knockbackStartY: number;
+    knockbackEndX: number;
+    knockbackEndY: number;
+    knockbackMinDistance: number;
+    knockbackMaxDistance: number;
+
+    // Chat bubble system
+    chatMessage: string | null;
+    chatMessageTime: number;
+    chatMessageDuration: number;
+
+    constructor(
+        x: number,
+        y: number,
+        imagePath: string,
+        canvasHeight: number,
+        playerName: string = 'Player',
+        isDummy: boolean = false
+    ) {
         this.x = x;
         this.y = y;
         // Size relative to screen height (LOL-style: about 1/8 of screen height)
@@ -73,15 +145,15 @@ export class Character {
 
     /**
      * Load character image with retry logic and fallback support
-     * @param {string} path - Image path to load
-     * @param {number} retries - Number of retry attempts remaining (default: 3)
-     * @returns {Promise<void>} - Resolves when image is loaded successfully
+     * @param path - Image path to load
+     * @param retries - Number of retry attempts remaining (default: 3)
+     * @returns Resolves when image is loaded successfully
      */
-    loadImage(path, retries = 3) {
+    loadImage(path: string, retries: number = 3): Promise<void> {
         return new Promise((resolve, reject) => {
             const img = new Image();
 
-            img.onload = () => {
+            img.onload = (): void => {
                 this.image = img;
                 this.imageLoaded = true;
 
@@ -104,7 +176,7 @@ export class Character {
                 resolve();
             };
 
-            img.onerror = () => {
+            img.onerror = (): void => {
                 logger.warn(`Failed to load character image: ${path} (retries left: ${retries})`);
 
                 if (retries > 0) {
@@ -133,9 +205,8 @@ export class Character {
     /**
      * Load a fallback placeholder image (inline SVG as data URL)
      * This ensures the character is always visible even if the main image fails
-     * @returns {Promise<void>}
      */
-    loadFallbackImage() {
+    loadFallbackImage(): Promise<void> {
         return new Promise((resolve, reject) => {
             // Simple placeholder SVG: gray circle with question mark
             const fallbackSvg = `
@@ -148,7 +219,7 @@ export class Character {
             const dataUrl = 'data:image/svg+xml;base64,' + btoa(fallbackSvg);
             const img = new Image();
 
-            img.onload = () => {
+            img.onload = (): void => {
                 this.image = img;
                 this.imageLoaded = true;
                 // Keep square dimensions for fallback
@@ -158,7 +229,7 @@ export class Character {
                 resolve();
             };
 
-            img.onerror = () => {
+            img.onerror = (): void => {
                 logger.error('Failed to load fallback image');
                 reject(new Error('Failed to load fallback image'));
             };
@@ -167,7 +238,7 @@ export class Character {
         });
     }
 
-    update(canvas, deltaTime = 0.016) {
+    update(canvas: CanvasSize, deltaTime: number = 0.016): void {
         // Default deltaTime is ~60fps if not provided (for backward compatibility)
         const currentTime = Date.now();
 
@@ -216,7 +287,7 @@ export class Character {
         CharacterUtils.updateChatBubble(this);
     }
 
-    render(ctx) {
+    render(ctx: CanvasRenderingContext2D): void {
         // Calculate hit flash intensity using utility
         const hitFlashIntensity = CharacterUtils.calculateHitFlashIntensity(
             this.hitFlashTime,
@@ -305,7 +376,7 @@ export class Character {
 
     // renderInfoAbove is now handled by CharacterUtils.renderInfoAbove
 
-    renderAttackEffect(ctx) {
+    renderAttackEffect(ctx: CanvasRenderingContext2D): void {
         if (!this.isAttacking) return;
 
         // Calculate animation progress (0 to 1)
@@ -338,11 +409,11 @@ export class Character {
 
     // renderChatBubble is now handled by CharacterUtils.renderChatBubble
 
-    getPosition() {
+    getPosition(): Position {
         return { x: this.x, y: this.y };
     }
 
-    getBounds() {
+    getBounds(): Bounds {
         return {
             left: this.x - this.width / 2,
             right: this.x + this.width / 2,
@@ -351,23 +422,23 @@ export class Character {
         };
     }
 
-    getLevel() {
+    getLevel(): number {
         return this.level;
     }
 
-    getExperience() {
+    getExperience(): number {
         return this.experience;
     }
 
     // Calculate shards required for next level
     // Level n->n+1 requires: 10 + (n-1) * 2 shards
-    getRequiredExperience() {
+    getRequiredExperience(): number {
         if (this.level >= this.maxLevel) return 0;
         return 10 + (this.level - 1) * 2;
     }
 
     // Add experience and check for level up
-    addExperience(amount) {
+    addExperience(amount: number): boolean {
         if (this.level >= this.maxLevel) {
             logger.debug('Max level reached!');
             return false;
@@ -388,12 +459,12 @@ export class Character {
     }
 
     // Legacy method for compatibility
-    levelUp() {
+    levelUp(): void {
         this.addExperience(this.getRequiredExperience());
     }
 
     // Attack method
-    attack() {
+    attack(): AttackArea {
         const currentTime = Date.now();
         this.lastAttackTime = currentTime;
         this.isAttacking = true;
@@ -403,7 +474,7 @@ export class Character {
     }
 
     // Get attack area (circle around character)
-    getAttackArea() {
+    getAttackArea(): AttackArea {
         return {
             x: this.x,
             y: this.y,
@@ -413,7 +484,7 @@ export class Character {
 
     // Take damage (with invincibility frame to prevent multi-hit)
     // Also immune during knockback
-    takeDamage(amount) {
+    takeDamage(amount: number): boolean {
         const currentTime = Date.now();
         const invincibilityDuration = GAME_CONFIG.PLAYER.INVINCIBILITY_MS;
 
@@ -443,12 +514,12 @@ export class Character {
     }
 
     // Check if character is alive
-    isAlive() {
+    isAlive(): boolean {
         return this.currentHP > 0;
     }
 
     // Respawn character (for dummies)
-    respawn() {
+    respawn(): void {
         this.currentHP = this.maxHP;
         this.x = this.initialX;
         this.y = this.initialY;
@@ -457,34 +528,34 @@ export class Character {
     }
 
     // Check if ready to respawn
-    canRespawn() {
+    canRespawn(): boolean {
         if (this.deathTime === 0) return false;
         return Date.now() - this.deathTime >= this.respawnDelay;
     }
 
     // Set chat message to display in bubble
-    setChatMessage(message) {
+    setChatMessage(message: string): void {
         CharacterUtils.setChatMessage(this, message);
     }
 
     // Start knockback from an attacker position
     // attackerX, attackerY: position of the attacker
     // endX, endY: final position after knockback (from server)
-    startKnockback(attackerX, attackerY, endX, endY) {
+    startKnockback(attackerX: number, attackerY: number, endX: number, endY: number): void {
         CharacterUtils.startKnockback(this, attackerX, attackerY, endX, endY);
     }
 
     // Calculate knockback distance based on distance from attacker
     // Closer = more knockback
     static calculateKnockbackDistance(
-        attackerX,
-        attackerY,
-        targetX,
-        targetY,
-        attackRange,
-        minKnockback = 30,
-        maxKnockback = 100
-    ) {
+        attackerX: number,
+        attackerY: number,
+        targetX: number,
+        targetY: number,
+        attackRange: number,
+        minKnockback: number = 30,
+        maxKnockback: number = 100
+    ): number {
         const dx = targetX - attackerX;
         const dy = targetY - attackerY;
         const distance = Math.sqrt(dx * dx + dy * dy);
@@ -497,14 +568,14 @@ export class Character {
 
     // Calculate knockback end position
     static calculateKnockbackEndPosition(
-        attackerX,
-        attackerY,
-        targetX,
-        targetY,
-        knockbackDistance,
-        canvasWidth,
-        canvasHeight
-    ) {
+        attackerX: number,
+        attackerY: number,
+        targetX: number,
+        targetY: number,
+        knockbackDistance: number,
+        canvasWidth: number,
+        canvasHeight: number
+    ): Position {
         let dirX = targetX - attackerX;
         let dirY = targetY - attackerY;
         const distance = Math.sqrt(dirX * dirX + dirY * dirY);

@@ -29,4 +29,4 @@ import './network/index.js';
 // Main game logic (must be last - depends on all other modules)
 import './game.js';
 
-console.log('[main.js] All modules loaded');
+console.log('[main.ts] All modules loaded');

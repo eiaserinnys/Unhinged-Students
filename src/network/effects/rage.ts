@@ -1,28 +1,47 @@
 // Rage Effect Mixin for RemotePlayer (Hulk Sister E skill)
 // This mixin adds rage effect rendering capabilities to RemotePlayer
 
+/**
+ * Interface for objects that can have rage effects applied
+ */
+export interface RageEffectState {
+    x: number;
+    y: number;
+    rageActive: boolean;
+    rageStartTime: number;
+    rageDuration: number;
+}
+
 export const RageEffectMixin = {
-    // Initialize rage effect state
-    initRageEffect() {
+    /**
+     * Initialize rage effect state
+     */
+    initRageEffect(this: RageEffectState): void {
         this.rageActive = false;
         this.rageStartTime = 0;
         this.rageDuration = 5000; // 5 seconds default
     },
 
-    // Start rage effect
-    startRage(duration) {
+    /**
+     * Start rage effect
+     */
+    startRage(this: RageEffectState, duration?: number): void {
         this.rageActive = true;
         this.rageStartTime = Date.now();
         this.rageDuration = duration || 5000;
     },
 
-    // End rage effect
-    endRage() {
+    /**
+     * End rage effect
+     */
+    endRage(this: RageEffectState): void {
         this.rageActive = false;
     },
 
-    // Update rage effect
-    updateRage() {
+    /**
+     * Update rage effect
+     */
+    updateRage(this: RageEffectState): void {
         if (!this.rageActive) return;
 
         const elapsed = Date.now() - this.rageStartTime;
@@ -31,8 +50,10 @@ export const RageEffectMixin = {
         }
     },
 
-    // Render rage effect
-    renderRage(ctx) {
+    /**
+     * Render rage effect
+     */
+    renderRage(this: RageEffectState, ctx: CanvasRenderingContext2D): void {
         if (!this.rageActive) return;
 
         const elapsed = Date.now() - this.rageStartTime;
@@ -66,7 +87,7 @@ export const RageEffectMixin = {
             ctx.font = '16px sans-serif';
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
-            ctx.fillText('🔥', px, py);
+            ctx.fillText('\u{1F525}', px, py);
         }
 
         // Rage indicator above head
@@ -87,4 +108,9 @@ export const RageEffectMixin = {
 };
 
 // Backward compatibility: expose to window
+declare global {
+    interface Window {
+        RageEffectMixin: typeof RageEffectMixin;
+    }
+}
 window.RageEffectMixin = RageEffectMixin;

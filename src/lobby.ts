@@ -1,13 +1,35 @@
 // Lobby system for Unhinged Students
 
 import { logger } from './utils/logger.js';
+import type { CharacterType, ILobbyManager } from './types/index.js';
 
-export class LobbyManager {
+interface CharacterInfo {
+    stats: string;
+    skills: string;
+}
+
+interface GameStartData {
+    character: CharacterType;
+    playerName: string;
+}
+
+export class LobbyManager implements ILobbyManager {
+    container: HTMLElement | null;
+    nameInput: HTMLInputElement | null;
+    startButton: HTMLButtonElement | null;
+    characterOptions: NodeListOf<Element>;
+    characterStats: HTMLElement | null;
+    characterSkills: HTMLElement | null;
+    selectedCharacter: CharacterType | null;
+    playerName: string;
+    isActive: boolean;
+    onGameStart: ((data: GameStartData) => void) | null;
+
     constructor() {
         // DOM elements
         this.container = document.getElementById('lobbyContainer');
-        this.nameInput = document.getElementById('playerNameInput');
-        this.startButton = document.getElementById('startGameBtn');
+        this.nameInput = document.getElementById('playerNameInput') as HTMLInputElement | null;
+        this.startButton = document.getElementById('startGameBtn') as HTMLButtonElement | null;
         this.characterOptions = document.querySelectorAll('.character-option');
         this.characterStats = document.querySelector('.character-stats');
         this.characterSkills = document.querySelector('.character-skills');
@@ -31,18 +53,18 @@ export class LobbyManager {
     }
 
     // Get the initially selected character from DOM
-    getInitialSelectedCharacter() {
-        const selectedOption = document.querySelector('.character-option.selected');
+    getInitialSelectedCharacter(): CharacterType | null {
+        const selectedOption = document.querySelector('.character-option.selected') as HTMLElement | null;
         console.log('[LobbyManager] getInitialSelectedCharacter - selectedOption:', selectedOption);
-        if (selectedOption && selectedOption.dataset.character) {
+        if (selectedOption?.dataset.character) {
             console.log('[LobbyManager] Initial character:', selectedOption.dataset.character);
-            return selectedOption.dataset.character;
+            return selectedOption.dataset.character as CharacterType;
         }
         console.log('[LobbyManager] No initial character selected');
         return null; // No character selected
     }
 
-    setupEventListeners() {
+    setupEventListeners(): void {
         console.log('[LobbyManager] setupEventListeners called');
         console.log('[LobbyManager] characterOptions count:', this.characterOptions.length);
         console.log('[LobbyManager] startButton:', this.startButton);
@@ -53,43 +75,47 @@ export class LobbyManager {
             console.log(
                 '[LobbyManager] Adding click listener to character option',
                 index,
-                option.dataset.character
+                (option as HTMLElement).dataset.character
             );
             option.addEventListener('click', () => {
-                console.log('[LobbyManager] Character option clicked:', option.dataset.character);
+                console.log('[LobbyManager] Character option clicked:', (option as HTMLElement).dataset.character);
                 this.selectCharacter(option);
             });
         });
 
         // Name input
-        this.nameInput.addEventListener('input', () => {
-            console.log('[LobbyManager] Name input changed:', this.nameInput.value);
-            this.validateInput();
-        });
+        if (this.nameInput) {
+            this.nameInput.addEventListener('input', () => {
+                console.log('[LobbyManager] Name input changed:', this.nameInput?.value);
+                this.validateInput();
+            });
 
-        // Enter key to start game
-        this.nameInput.addEventListener('keypress', (e) => {
-            console.log('[LobbyManager] Keypress:', e.key);
-            if (e.key === 'Enter' && this.canStartGame()) {
-                this.startGame();
-            }
-        });
+            // Enter key to start game
+            this.nameInput.addEventListener('keypress', (e: KeyboardEvent) => {
+                console.log('[LobbyManager] Keypress:', e.key);
+                if (e.key === 'Enter' && this.canStartGame()) {
+                    this.startGame();
+                }
+            });
+
+            // Focus name input on load
+            setTimeout(() => {
+                this.nameInput?.focus();
+            }, 100);
+        }
 
         // Start button
-        this.startButton.addEventListener('click', () => {
-            console.log('[LobbyManager] Start button clicked, canStartGame:', this.canStartGame());
-            if (this.canStartGame()) {
-                this.startGame();
-            }
-        });
-
-        // Focus name input on load
-        setTimeout(() => {
-            this.nameInput.focus();
-        }, 100);
+        if (this.startButton) {
+            this.startButton.addEventListener('click', () => {
+                console.log('[LobbyManager] Start button clicked, canStartGame:', this.canStartGame());
+                if (this.canStartGame()) {
+                    this.startGame();
+                }
+            });
+        }
     }
 
-    selectCharacter(option) {
+    selectCharacter(option: Element): void {
         // Remove selected class from all options
         this.characterOptions.forEach((opt) => {
             opt.classList.remove('selected');
@@ -99,7 +125,8 @@ export class LobbyManager {
         option.classList.add('selected');
 
         // Update selected character
-        this.selectedCharacter = option.dataset.character;
+        const htmlOption = option as HTMLElement;
+        this.selectedCharacter = (htmlOption.dataset.character as CharacterType) || null;
         logger.debug(`Selected character: ${this.selectedCharacter}`);
 
         // Update character info display
@@ -109,7 +136,7 @@ export class LobbyManager {
         this.validateInput();
     }
 
-    updateCharacterInfo() {
+    updateCharacterInfo(): void {
         if (!this.selectedCharacter) return;
 
         const info = LobbyManager.getCharacterInfo(this.selectedCharacter);
@@ -121,8 +148,8 @@ export class LobbyManager {
         }
     }
 
-    validateInput() {
-        this.playerName = this.nameInput.value.trim();
+    validateInput(): void {
+        this.playerName = this.nameInput?.value.trim() ?? '';
 
         // Enable button if name is not empty and character is selected
         const canStart = this.canStartGame();
@@ -134,15 +161,17 @@ export class LobbyManager {
             'canStart:',
             canStart
         );
-        this.startButton.disabled = !canStart;
-        console.log('[LobbyManager] startButton.disabled =', this.startButton.disabled);
+        if (this.startButton) {
+            this.startButton.disabled = !canStart;
+            console.log('[LobbyManager] startButton.disabled =', this.startButton.disabled);
+        }
     }
 
-    canStartGame() {
+    canStartGame(): boolean {
         return this.playerName.length > 0 && this.selectedCharacter !== null;
     }
 
-    startGame() {
+    startGame(): void {
         if (!this.canStartGame()) return;
 
         logger.info(
@@ -153,7 +182,7 @@ export class LobbyManager {
         this.hide();
 
         // Call game start callback
-        if (this.onGameStart) {
+        if (this.onGameStart && this.selectedCharacter) {
             this.onGameStart({
                 character: this.selectedCharacter,
                 playerName: this.playerName,
@@ -161,31 +190,37 @@ export class LobbyManager {
         }
     }
 
-    hide() {
+    hide(): void {
         this.isActive = false;
-        this.container.classList.add('hidden');
+        if (this.container) {
+            this.container.classList.add('hidden');
 
-        // Remove from DOM after animation
-        setTimeout(() => {
-            this.container.style.display = 'none';
-        }, 500);
+            // Remove from DOM after animation
+            setTimeout(() => {
+                if (this.container) {
+                    this.container.style.display = 'none';
+                }
+            }, 500);
+        }
     }
 
-    show() {
+    show(): void {
         this.isActive = true;
-        this.container.style.display = 'flex';
-        this.container.classList.remove('hidden');
-        this.nameInput.focus();
+        if (this.container) {
+            this.container.style.display = 'flex';
+            this.container.classList.remove('hidden');
+        }
+        this.nameInput?.focus();
     }
 
     // Set callback for game start
-    setOnGameStart(callback) {
+    setOnGameStart(callback: (data: GameStartData) => void): void {
         this.onGameStart = callback;
     }
 
     // Get character image path based on character ID
-    static getCharacterImagePath(characterId) {
-        const characterImages = {
+    static getCharacterImagePath(characterId: CharacterType): string {
+        const characterImages: Record<CharacterType, string> = {
             alien: 'asset/image/alien.png',
             'crazy-eyes': 'asset/image/crazy-eyes.png',
             'curry-bear': 'asset/image/curry-bear.png',
@@ -197,8 +232,8 @@ export class LobbyManager {
     }
 
     // Get character display name
-    static getCharacterName(characterId) {
-        const characterNames = {
+    static getCharacterName(characterId: CharacterType): string {
+        const characterNames: Record<CharacterType, string> = {
             alien: '외계인',
             'crazy-eyes': '눈 돌아가는 사람',
             'curry-bear': '카레 곰돌이',
@@ -210,8 +245,8 @@ export class LobbyManager {
     }
 
     // Get character info (stats and skills)
-    static getCharacterInfo(characterId) {
-        const characterInfo = {
+    static getCharacterInfo(characterId: CharacterType): CharacterInfo {
+        const characterInfo: Record<CharacterType, CharacterInfo> = {
             alien: {
                 stats: '❤️ 체력: 보통 | ⚡ 속도: 빠름',
                 skills: '🎇 레이저 | 💫 순간이동 | 👽 텔레파시',

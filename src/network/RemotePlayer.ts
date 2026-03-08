@@ -2,19 +2,190 @@
 
 import { logger } from '../utils/logger.js';
 import { CharacterUtils } from '../characterUtils.js';
+import type {
+    CharacterType,
+    TeamType,
+    IRemotePlayer,
+    Position,
+    Bounds,
+} from '../types/index.js';
 
 // Import effect mixins
-import { LaserEffectMixin } from './effects/laser.js';
-import { TeleportEffectMixin, TelepathyEffectMixin } from './effects/teleport.js';
-import { WaveEffectMixin } from './effects/wave.js';
-import { PotSmashEffectMixin } from './effects/potSmash.js';
-import { CurryRecoveryEffectMixin } from './effects/curryRecovery.js';
-import { SpinThrowEffectMixin } from './effects/spinThrow.js';
-import { RageEffectMixin } from './effects/rage.js';
+import { LaserEffectMixin, type LaserEffectState } from './effects/laser.js';
+import {
+    TeleportEffectMixin,
+    TelepathyEffectMixin,
+    type TeleportEffectState,
+    type TelepathyEffectState,
+} from './effects/teleport.js';
+import { WaveEffectMixin, type WaveEffectState } from './effects/wave.js';
+import { PotSmashEffectMixin, type PotSmashEffectState } from './effects/potSmash.js';
+import { CurryRecoveryEffectMixin, type CurryRecoveryEffectState } from './effects/curryRecovery.js';
+import { SpinThrowEffectMixin, type SpinThrowEffectState } from './effects/spinThrow.js';
+import { RageEffectMixin, type RageEffectState } from './effects/rage.js';
 
-export class RemotePlayer {
-    constructor(playerId, x, y, playerName, level, experience = 0, characterId = 'alien') {
-        this.playerId = playerId;
+/**
+ * Character image paths mapping
+ */
+const CHARACTER_IMAGES: Record<CharacterType, string> = {
+    alien: 'asset/image/alien.png',
+    'crazy-eyes': 'asset/image/crazy-eyes.png',
+    'curry-bear': 'asset/image/curry-bear.png',
+    'big-sis-hulk': 'asset/image/big-sis-hulk.png',
+    teacher: 'asset/image/teacher.png',
+    'squeak-squeak': 'asset/image/squeak-squeak.png',
+};
+
+/**
+ * Represents a remote player (other players in the game)
+ */
+export class RemotePlayer
+    implements
+        IRemotePlayer,
+        LaserEffectState,
+        TeleportEffectState,
+        TelepathyEffectState,
+        WaveEffectState,
+        PotSmashEffectState,
+        CurryRecoveryEffectState,
+        SpinThrowEffectState,
+        RageEffectState
+{
+    // Core properties
+    id: string;
+    x: number;
+    y: number;
+    targetX: number;
+    targetY: number;
+    playerName: string;
+    level: number;
+    experience: number;
+    maxLevel: number;
+    characterId: CharacterType;
+
+    // Visual properties
+    displaySize: number;
+    width: number;
+    height: number;
+    image: HTMLImageElement | null;
+    imageLoaded: boolean;
+
+    // Interpolation
+    private interpolationSpeed: number;
+
+    // Chat bubble system
+    chatMessage: string | null;
+    chatMessageTime: number;
+    chatMessageDuration: number;
+
+    // HP system
+    maxHP: number;
+    currentHP: number;
+
+    // Death state
+    isDead: boolean;
+
+    // Team
+    team: TeamType | null;
+
+    // Hit flash effect
+    hitFlashTime: number;
+    hitFlashDuration: number;
+
+    // Knockback system
+    isKnockedBack: boolean;
+    knockbackStartTime: number;
+    knockbackDuration: number;
+    knockbackStartX: number;
+    knockbackStartY: number;
+    knockbackEndX: number;
+    knockbackEndY: number;
+
+    // Attack effect system
+    private isAttacking: boolean;
+    private attackStartTime: number;
+    private attackAnimationTime: number;
+    private attackX: number;
+    private attackY: number;
+    private attackRange: number;
+
+    // Madness state (Crazy-Eyes E skill)
+    madnessActive: boolean;
+
+    // Laser effect state
+    laserActive: boolean;
+    laserPhase: 'aiming' | 'firing' | 'none';
+    laserStartTime: number;
+    laserAimDuration: number;
+    laserFireDuration: number;
+    laserDirX: number;
+    laserDirY: number;
+
+    // Teleport effect state
+    teleportActive: boolean;
+    teleportPhase: 'disappear' | 'appear' | 'none';
+    teleportStartTime: number;
+    teleportDisappearDuration: number;
+    teleportAppearDuration: number;
+    teleportStartX: number;
+    teleportStartY: number;
+    teleportEndX: number;
+    teleportEndY: number;
+    teleportDamageRadius: number;
+
+    // Telepathy effect state
+    telepathyActive: boolean;
+    telepathyStartTime: number;
+    telepathyDuration: number;
+    telepathyX: number;
+    telepathyY: number;
+    telepathyRadius: number;
+
+    // Wave effect state
+    waveActive: boolean;
+    waveStartTime: number;
+    waveExpandDuration: number;
+    waveMaxRadius: number;
+
+    // Pot smash effect state
+    potSmashActive: boolean;
+    potSmashStartTime: number;
+    potSmashDuration: number;
+    potSmashDirX: number;
+    potSmashDirY: number;
+    potSmashRange: number;
+    potSmashAngle: number;
+
+    // Curry recovery effect state
+    curryRecoveryActive: boolean;
+    curryRecoveryStartTime: number;
+    curryRecoveryDuration: number;
+    curryRecoveryHealAmount: number;
+
+    // Spin throw effect state
+    spinThrowActive: boolean;
+    spinThrowStartTime: number;
+    spinThrowDuration: number;
+    spinThrowStartX: number;
+    spinThrowStartY: number;
+    spinThrowEndX: number;
+    spinThrowEndY: number;
+
+    // Rage effect state
+    rageActive: boolean;
+    rageStartTime: number;
+    rageDuration: number;
+
+    constructor(
+        playerId: string,
+        x: number,
+        y: number,
+        playerName: string,
+        level: number,
+        experience: number = 0,
+        characterId: CharacterType = 'alien'
+    ) {
+        this.id = playerId;
         this.x = x;
         this.y = y;
         this.targetX = x;
@@ -28,7 +199,6 @@ export class RemotePlayer {
         this.characterId = characterId;
 
         // Visual properties
-        // Use same display size calculation as Character
         const canvasHeight = 1080; // Game world height
         this.displaySize = canvasHeight / 8;
         this.width = this.displaySize;
@@ -53,7 +223,10 @@ export class RemotePlayer {
         // Death state
         this.isDead = false;
 
-        // Hit flash effect (micro reaction)
+        // Team
+        this.team = null;
+
+        // Hit flash effect
         this.hitFlashTime = 0;
         this.hitFlashDuration = 100; // 100ms flash duration
 
@@ -73,6 +246,66 @@ export class RemotePlayer {
         this.attackX = 0;
         this.attackY = 0;
         this.attackRange = 150;
+
+        // Madness state
+        this.madnessActive = false;
+
+        // Initialize effect states with defaults
+        this.laserActive = false;
+        this.laserPhase = 'none';
+        this.laserStartTime = 0;
+        this.laserAimDuration = 1000;
+        this.laserFireDuration = 200;
+        this.laserDirX = 0;
+        this.laserDirY = 0;
+
+        this.teleportActive = false;
+        this.teleportPhase = 'none';
+        this.teleportStartTime = 0;
+        this.teleportDisappearDuration = 150;
+        this.teleportAppearDuration = 200;
+        this.teleportStartX = 0;
+        this.teleportStartY = 0;
+        this.teleportEndX = 0;
+        this.teleportEndY = 0;
+        this.teleportDamageRadius = 100;
+
+        this.telepathyActive = false;
+        this.telepathyStartTime = 0;
+        this.telepathyDuration = 3000;
+        this.telepathyX = 0;
+        this.telepathyY = 0;
+        this.telepathyRadius = 180;
+
+        this.waveActive = false;
+        this.waveStartTime = 0;
+        this.waveExpandDuration = 500;
+        this.waveMaxRadius = 250;
+
+        this.potSmashActive = false;
+        this.potSmashStartTime = 0;
+        this.potSmashDuration = 300;
+        this.potSmashDirX = 0;
+        this.potSmashDirY = 0;
+        this.potSmashRange = 120;
+        this.potSmashAngle = 90;
+
+        this.curryRecoveryActive = false;
+        this.curryRecoveryStartTime = 0;
+        this.curryRecoveryDuration = 500;
+        this.curryRecoveryHealAmount = 0;
+
+        this.spinThrowActive = false;
+        this.spinThrowStartTime = 0;
+        this.spinThrowDuration = 500;
+        this.spinThrowStartX = 0;
+        this.spinThrowStartY = 0;
+        this.spinThrowEndX = 0;
+        this.spinThrowEndY = 0;
+
+        this.rageActive = false;
+        this.rageStartTime = 0;
+        this.rageDuration = 5000;
 
         // Initialize effect systems from mixins
         if (window.LaserEffectMixin) {
@@ -104,40 +337,43 @@ export class RemotePlayer {
         this.loadCharacterImage(characterId);
     }
 
-    // Get character image path (same logic as LobbyManager)
-    static getCharacterImagePath(characterId) {
-        const characterImages = {
-            alien: 'asset/image/alien.png',
-            'crazy-eyes': 'asset/image/crazy-eyes.png',
-            'curry-bear': 'asset/image/curry-bear.png',
-            'big-sis-hulk': 'asset/image/big-sis-hulk.png',
-            teacher: 'asset/image/teacher.png',
-            'squeak-squeak': 'asset/image/squeak-squeak.png',
-        };
-        return characterImages[characterId] || characterImages['alien'];
+    /**
+     * Get character image path (same logic as LobbyManager)
+     */
+    static getCharacterImagePath(characterId: CharacterType): string {
+        return CHARACTER_IMAGES[characterId] || CHARACTER_IMAGES['alien'];
     }
 
-    // Load character image by characterId
-    loadCharacterImage(characterId) {
+    /**
+     * Load character image by characterId
+     */
+    private loadCharacterImage(characterId: CharacterType): void {
         const imagePath = RemotePlayer.getCharacterImagePath(characterId);
         this.characterId = characterId;
         this.loadImage(imagePath);
     }
 
-    // Change character (reload image if different)
-    setCharacter(characterId) {
+    /**
+     * Change character (reload image if different)
+     */
+    setCharacter(characterId: CharacterType): void {
         if (this.characterId !== characterId) {
             logger.debug(
-                `RemotePlayer ${this.playerId} changed character: ${this.characterId} -> ${characterId}`
+                `RemotePlayer ${this.id} changed character: ${this.characterId} -> ${characterId}`
             );
             this.loadCharacterImage(characterId);
         }
     }
 
-    loadImage(path) {
+    /**
+     * Load an image from the given path
+     */
+    private loadImage(path: string): void {
         this.image = new Image();
         this.image.onload = () => {
             this.imageLoaded = true;
+
+            if (!this.image) return;
 
             // Calculate dimensions maintaining aspect ratio
             const aspectRatio = this.image.width / this.image.height;
@@ -160,12 +396,18 @@ export class RemotePlayer {
         this.image.src = path;
     }
 
-    updatePosition(x, y) {
+    /**
+     * Update target position for interpolation
+     */
+    updatePosition(x: number, y: number): void {
         this.targetX = x;
         this.targetY = y;
     }
 
-    update() {
+    /**
+     * Update the remote player state
+     */
+    update(): void {
         const currentTime = Date.now();
 
         // Handle knockback animation using utility
@@ -216,7 +458,10 @@ export class RemotePlayer {
         }
     }
 
-    render(ctx) {
+    /**
+     * Render the remote player
+     */
+    render(ctx: CanvasRenderingContext2D): void {
         // Skip rendering if player is dead (or render as ghost)
         if (this.isDead) {
             ctx.save();
@@ -315,8 +560,10 @@ export class RemotePlayer {
         }
     }
 
-    // Render attack effect for remote player
-    renderAttackEffect(ctx) {
+    /**
+     * Render attack effect for remote player
+     */
+    private renderAttackEffect(ctx: CanvasRenderingContext2D): void {
         if (!this.isAttacking) return;
 
         // Calculate animation progress (0 to 1)
@@ -347,13 +594,17 @@ export class RemotePlayer {
         ctx.restore();
     }
 
-    // Set chat message to display in bubble
-    setChatMessage(message) {
+    /**
+     * Set chat message to display in bubble
+     */
+    setChatMessage(message: string): void {
         CharacterUtils.setChatMessage(this, message);
     }
 
-    // Take damage
-    takeDamage(amount) {
+    /**
+     * Take damage
+     */
+    private takeDamage(amount: number): boolean {
         this.currentHP = Math.max(0, this.currentHP - amount);
         logger.debug(
             `${this.playerName} took ${amount} damage! HP: ${this.currentHP}/${this.maxHP}`
@@ -366,13 +617,17 @@ export class RemotePlayer {
         return false;
     }
 
-    // Check if character is alive
-    isAlive() {
+    /**
+     * Check if character is alive
+     */
+    private isAlive(): boolean {
         return this.currentHP > 0;
     }
 
-    // Get bounds for collision detection
-    getBounds() {
+    /**
+     * Get bounds for collision detection
+     */
+    private getBounds(): Bounds {
         return {
             left: this.x - this.width / 2,
             right: this.x + this.width / 2,
@@ -381,18 +636,24 @@ export class RemotePlayer {
         };
     }
 
-    // Get position
-    getPosition() {
+    /**
+     * Get position
+     */
+    private getPosition(): Position {
         return { x: this.x, y: this.y };
     }
 
-    // Start knockback from an attacker position
-    startKnockback(attackerX, attackerY, endX, endY) {
+    /**
+     * Start knockback from an attacker position
+     */
+    startKnockback(attackerX: number, attackerY: number, endX: number, endY: number): void {
         CharacterUtils.startKnockback(this, attackerX, attackerY, endX, endY);
     }
 
-    // Start attack effect for visual display
-    startAttackEffect(x, y, range) {
+    /**
+     * Start attack effect for visual display
+     */
+    startAttackEffect(x: number, y: number, range: number): void {
         this.isAttacking = true;
         this.attackStartTime = Date.now();
         this.attackX = x;
@@ -401,61 +662,61 @@ export class RemotePlayer {
     }
 
     // Effect methods delegated to mixins
-    startLaserAiming(x, y, dirX, dirY) {
+    startLaserAiming(x: number, y: number, dirX: number, dirY: number): void {
         if (window.LaserEffectMixin) {
             window.LaserEffectMixin.startLaserAiming.call(this, x, y, dirX, dirY);
         }
     }
 
-    fireLaser() {
+    fireLaser(): void {
         if (window.LaserEffectMixin) {
             window.LaserEffectMixin.fireLaser.call(this);
         }
     }
 
-    startTeleport(startX, startY, endX, endY) {
+    startTeleport(startX: number, startY: number, endX: number, endY: number): void {
         if (window.TeleportEffectMixin) {
             window.TeleportEffectMixin.startTeleport.call(this, startX, startY, endX, endY);
         }
     }
 
-    startTelepathy(x, y, radius) {
+    startTelepathy(x: number, y: number, radius: number): void {
         if (window.TelepathyEffectMixin) {
             window.TelepathyEffectMixin.startTelepathy.call(this, x, y, radius);
         }
     }
 
-    startWave() {
+    startWave(): void {
         if (window.WaveEffectMixin) {
             window.WaveEffectMixin.startWave.call(this);
         }
     }
 
-    startPotSmash(dirX, dirY) {
+    startPotSmash(dirX: number, dirY: number): void {
         if (window.PotSmashEffectMixin) {
             window.PotSmashEffectMixin.startPotSmash.call(this, dirX, dirY);
         }
     }
 
-    startCurryRecovery(healAmount) {
+    startCurryRecovery(healAmount: number): void {
         if (window.CurryRecoveryEffectMixin) {
             window.CurryRecoveryEffectMixin.startCurryRecovery.call(this, healAmount);
         }
     }
 
-    startSpinThrow(startX, startY, endX, endY) {
+    startSpinThrow(startX: number, startY: number, endX: number, endY: number): void {
         if (window.SpinThrowEffectMixin) {
             window.SpinThrowEffectMixin.startSpinThrow.call(this, startX, startY, endX, endY);
         }
     }
 
-    startRage(duration) {
+    startRage(duration: number): void {
         if (window.RageEffectMixin) {
             window.RageEffectMixin.startRage.call(this, duration);
         }
     }
 
-    endRage() {
+    endRage(): void {
         if (window.RageEffectMixin) {
             window.RageEffectMixin.endRage.call(this);
         }
@@ -463,4 +724,9 @@ export class RemotePlayer {
 }
 
 // Backward compatibility: expose to window
+declare global {
+    interface Window {
+        RemotePlayer: typeof RemotePlayer;
+    }
+}
 window.RemotePlayer = RemotePlayer;

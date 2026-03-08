@@ -1,8 +1,9 @@
 // Input handling system
 
 import { logger } from './utils/logger.js';
+import type { InputState, MouseState, TouchState, Position } from './types/index.js';
 
-export const Input = {
+export const Input: InputState = {
     keys: {},
     keysJustPressed: {}, // Track keys that were just pressed this frame
     keysPrevious: {}, // Previous frame's key state
@@ -23,33 +24,33 @@ export const Input = {
 };
 
 // Store event handler references for cleanup
-let inputCanvas = null;
-let keydownHandler = null;
-let keyupHandler = null;
-let mousedownHandler = null;
-let mouseupHandler = null;
-let mousemoveHandler = null;
-let touchstartHandler = null;
-let touchendHandler = null;
-let touchmoveHandler = null;
+let inputCanvas: HTMLCanvasElement | null = null;
+let keydownHandler: ((e: KeyboardEvent) => void) | null = null;
+let keyupHandler: ((e: KeyboardEvent) => void) | null = null;
+let mousedownHandler: ((e: MouseEvent) => void) | null = null;
+let mouseupHandler: (() => void) | null = null;
+let mousemoveHandler: ((e: MouseEvent) => void) | null = null;
+let touchstartHandler: ((e: TouchEvent) => void) | null = null;
+let touchendHandler: ((e: TouchEvent) => void) | null = null;
+let touchmoveHandler: ((e: TouchEvent) => void) | null = null;
 
 // Initialize input handlers
-export function initInput(canvas) {
+export function initInput(canvas: HTMLCanvasElement): void {
     inputCanvas = canvas;
 
     // Keyboard input
-    keydownHandler = (e) => {
+    keydownHandler = (e: KeyboardEvent): void => {
         Input.keys[e.key.toLowerCase()] = true;
     };
     window.addEventListener('keydown', keydownHandler);
 
-    keyupHandler = (e) => {
+    keyupHandler = (e: KeyboardEvent): void => {
         Input.keys[e.key.toLowerCase()] = false;
     };
     window.addEventListener('keyup', keyupHandler);
 
     // Mouse input
-    mousedownHandler = (e) => {
+    mousedownHandler = (e: MouseEvent): void => {
         const rect = canvas.getBoundingClientRect();
         Input.mouse.x = e.clientX - rect.left;
         Input.mouse.y = e.clientY - rect.top;
@@ -58,13 +59,13 @@ export function initInput(canvas) {
     };
     canvas.addEventListener('mousedown', mousedownHandler);
 
-    mouseupHandler = () => {
+    mouseupHandler = (): void => {
         Input.mouse.pressed = false;
         Input.mouse.button = -1;
     };
     canvas.addEventListener('mouseup', mouseupHandler);
 
-    mousemoveHandler = (e) => {
+    mousemoveHandler = (e: MouseEvent): void => {
         const rect = canvas.getBoundingClientRect();
         Input.mouse.x = e.clientX - rect.left;
         Input.mouse.y = e.clientY - rect.top;
@@ -72,7 +73,7 @@ export function initInput(canvas) {
     canvas.addEventListener('mousemove', mousemoveHandler);
 
     // Touch input
-    touchstartHandler = (e) => {
+    touchstartHandler = (e: TouchEvent): void => {
         e.preventDefault();
         const rect = canvas.getBoundingClientRect();
         const touch = e.touches[0];
@@ -82,13 +83,13 @@ export function initInput(canvas) {
     };
     canvas.addEventListener('touchstart', touchstartHandler);
 
-    touchendHandler = (e) => {
+    touchendHandler = (e: TouchEvent): void => {
         e.preventDefault();
         Input.touch.active = false;
     };
     canvas.addEventListener('touchend', touchendHandler);
 
-    touchmoveHandler = (e) => {
+    touchmoveHandler = (e: TouchEvent): void => {
         e.preventDefault();
         const rect = canvas.getBoundingClientRect();
         const touch = e.touches[0];
@@ -101,7 +102,7 @@ export function initInput(canvas) {
 }
 
 // Cleanup input handlers to prevent memory leaks
-export function cleanupInput() {
+export function cleanupInput(): void {
     if (keydownHandler) {
         window.removeEventListener('keydown', keydownHandler);
         keydownHandler = null;
@@ -149,7 +150,7 @@ export function cleanupInput() {
 }
 
 // Update input state (call once per frame before checking inputs)
-export function updateInput() {
+export function updateInput(): void {
     // Calculate which keys were just pressed this frame
     for (const key in Input.keys) {
         Input.keysJustPressed[key] = Input.keys[key] && !Input.keysPrevious[key];
@@ -159,23 +160,23 @@ export function updateInput() {
 }
 
 // Confusion effect functions
-export function setConfused(duration) {
+export function setConfused(duration: number): void {
     Input.isConfused = true;
     Input.confusionEndTime = Date.now() + duration;
 }
 
-export function updateConfusion() {
+export function updateConfusion(): void {
     if (Input.isConfused && Date.now() >= Input.confusionEndTime) {
         Input.isConfused = false;
     }
 }
 
-export function isConfused() {
+export function isConfused(): boolean {
     return Input.isConfused;
 }
 
 // Map to reverse direction keys when confused
-const confusionKeyMap = {
+const confusionKeyMap: Record<string, string> = {
     arrowup: 'arrowdown',
     arrowdown: 'arrowup',
     arrowleft: 'arrowright',
@@ -183,7 +184,7 @@ const confusionKeyMap = {
 };
 
 // Helper functions
-export function isKeyPressed(key) {
+export function isKeyPressed(key: string): boolean {
     let actualKey = key.toLowerCase();
     // Reverse direction if confused
     if (Input.isConfused && confusionKeyMap[actualKey]) {
@@ -193,22 +194,22 @@ export function isKeyPressed(key) {
 }
 
 // Check if key was just pressed this frame (not held)
-export function isKeyJustPressed(key) {
+export function isKeyJustPressed(key: string): boolean {
     return Input.keysJustPressed[key.toLowerCase()] === true;
 }
 
-export function isMousePressed() {
+export function isMousePressed(): boolean {
     return Input.mouse.pressed;
 }
 
-export function getMousePosition() {
+export function getMousePosition(): Position {
     return { x: Input.mouse.x, y: Input.mouse.y };
 }
 
-export function isTouchActive() {
+export function isTouchActive(): boolean {
     return Input.touch.active;
 }
 
-export function getTouchPosition() {
+export function getTouchPosition(): Position {
     return { x: Input.touch.x, y: Input.touch.y };
 }

@@ -1,9 +1,26 @@
 // Spin Throw Effect Mixin for RemotePlayer (Hulk Sister Q skill)
 // This mixin adds spin throw effect rendering capabilities to RemotePlayer
 
+/**
+ * Interface for objects that can have spin throw effects applied
+ */
+export interface SpinThrowEffectState {
+    x: number;
+    y: number;
+    spinThrowActive: boolean;
+    spinThrowStartTime: number;
+    spinThrowDuration: number;
+    spinThrowStartX: number;
+    spinThrowStartY: number;
+    spinThrowEndX: number;
+    spinThrowEndY: number;
+}
+
 export const SpinThrowEffectMixin = {
-    // Initialize spin throw effect state
-    initSpinThrowEffect() {
+    /**
+     * Initialize spin throw effect state
+     */
+    initSpinThrowEffect(this: SpinThrowEffectState): void {
         this.spinThrowActive = false;
         this.spinThrowStartTime = 0;
         this.spinThrowDuration = 500; // 500ms effect duration
@@ -13,8 +30,16 @@ export const SpinThrowEffectMixin = {
         this.spinThrowEndY = 0;
     },
 
-    // Start spin throw effect
-    startSpinThrow(startX, startY, endX, endY) {
+    /**
+     * Start spin throw effect
+     */
+    startSpinThrow(
+        this: SpinThrowEffectState,
+        startX: number,
+        startY: number,
+        endX: number,
+        endY: number
+    ): void {
         this.spinThrowActive = true;
         this.spinThrowStartTime = Date.now();
         this.spinThrowStartX = startX;
@@ -23,8 +48,10 @@ export const SpinThrowEffectMixin = {
         this.spinThrowEndY = endY;
     },
 
-    // Update spin throw effect
-    updateSpinThrow() {
+    /**
+     * Update spin throw effect
+     */
+    updateSpinThrow(this: SpinThrowEffectState): void {
         if (!this.spinThrowActive) return;
 
         const elapsed = Date.now() - this.spinThrowStartTime;
@@ -33,8 +60,10 @@ export const SpinThrowEffectMixin = {
         }
     },
 
-    // Render spin throw effect
-    renderSpinThrow(ctx) {
+    /**
+     * Render spin throw effect
+     */
+    renderSpinThrow(this: SpinThrowEffectState, ctx: CanvasRenderingContext2D): void {
         if (!this.spinThrowActive) return;
 
         const elapsed = Date.now() - this.spinThrowStartTime;
@@ -86,11 +115,16 @@ export const SpinThrowEffectMixin = {
         ctx.font = '32px sans-serif';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        ctx.fillText('🌀', this.x, this.y - 50);
+        ctx.fillText('\u{1F300}', this.x, this.y - 50);
 
         ctx.restore();
     },
 };
 
 // Backward compatibility: expose to window
+declare global {
+    interface Window {
+        SpinThrowEffectMixin: typeof SpinThrowEffectMixin;
+    }
+}
 window.SpinThrowEffectMixin = SpinThrowEffectMixin;

@@ -8,17 +8,25 @@
 
 import { gameState } from '../core/gameState.js';
 
+type EnemyType = 'dummy' | 'player' | 'none';
+
+interface EnemyInfo {
+    x: number;
+    y: number;
+    type: EnemyType;
+}
+
 /**
  * Find the nearest enemy to the player
- * @param {boolean} playersOnly - If true, only target other players (not dummies)
- * @returns {Object|null} Enemy object with x, y, type properties or default position
+ * @param playersOnly - If true, only target other players (not dummies)
+ * @returns Enemy object with x, y, type properties or default position
  */
-export function findNearestEnemy(playersOnly = false) {
+export function findNearestEnemy(playersOnly: boolean = false): EnemyInfo | null {
     const player = gameState.player;
     if (!player) return null;
 
     const playerPos = player.getPosition();
-    let nearestEnemy = null;
+    let nearestEnemy: EnemyInfo | null = null;
     let nearestDistance = Infinity;
 
     // Check dummies (skip if playersOnly)
@@ -39,7 +47,7 @@ export function findNearestEnemy(playersOnly = false) {
     // Check remote players
     if (gameState.networkManager) {
         gameState.networkManager.remotePlayers.forEach((remotePlayer) => {
-            if (remotePlayer.isAlive()) {
+            if (!remotePlayer.isDead) {
                 const dx = remotePlayer.x - playerPos.x;
                 const dy = remotePlayer.y - playerPos.y;
                 const distance = Math.sqrt(dx * dx + dy * dy);
@@ -62,10 +70,10 @@ export function findNearestEnemy(playersOnly = false) {
 
 /**
  * Find a random enemy (dummy or remote player) for teleport targeting
- * @returns {Object|null} Enemy object with x, y, type properties or null
+ * @returns Enemy object with x, y, type properties or null
  */
-export function findRandomEnemy() {
-    const enemies = [];
+export function findRandomEnemy(): EnemyInfo | null {
+    const enemies: EnemyInfo[] = [];
 
     // Collect all alive dummies
     gameState.dummies.forEach((dummy) => {
@@ -77,7 +85,7 @@ export function findRandomEnemy() {
     // Collect all alive remote players
     if (gameState.networkManager) {
         gameState.networkManager.remotePlayers.forEach((remotePlayer) => {
-            if (remotePlayer.isAlive()) {
+            if (!remotePlayer.isDead) {
                 enemies.push({ x: remotePlayer.x, y: remotePlayer.y, type: 'player' });
             }
         });
@@ -92,5 +100,12 @@ export function findRandomEnemy() {
 }
 
 // Expose to global scope
+declare global {
+    interface Window {
+        findNearestEnemy: typeof findNearestEnemy;
+        findRandomEnemy: typeof findRandomEnemy;
+    }
+}
+
 window.findNearestEnemy = findNearestEnemy;
 window.findRandomEnemy = findRandomEnemy;

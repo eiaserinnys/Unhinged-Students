@@ -2,14 +2,45 @@
 
 import { logger } from './utils/logger.js';
 
+/**
+ * Entity interface for shared character/player properties
+ */
+interface CharacterEntity {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+    playerName: string;
+    level: number;
+    maxLevel: number;
+    currentHP: number;
+    maxHP: number;
+    experience: number;
+    chatMessage: string | null;
+    chatMessageTime: number;
+    chatMessageDuration: number;
+    isKnockedBack: boolean;
+    knockbackStartTime: number;
+    knockbackDuration: number;
+    knockbackStartX: number;
+    knockbackStartY: number;
+    knockbackEndX: number;
+    knockbackEndY: number;
+}
+
+interface RenderInfoOptions {
+    showExpBar?: boolean;
+    isDummy?: boolean;
+}
+
 export const CharacterUtils = {
     /**
      * Calculate hit flash intensity based on elapsed time
-     * @param {number} hitFlashTime - Timestamp when hit occurred
-     * @param {number} hitFlashDuration - Duration of flash effect in ms
-     * @returns {number} Flash intensity from 0 to 1
+     * @param hitFlashTime - Timestamp when hit occurred
+     * @param hitFlashDuration - Duration of flash effect in ms
+     * @returns Flash intensity from 0 to 1
      */
-    calculateHitFlashIntensity(hitFlashTime, hitFlashDuration) {
+    calculateHitFlashIntensity(hitFlashTime: number, hitFlashDuration: number): number {
         if (hitFlashTime <= 0) return 0;
         const elapsed = Date.now() - hitFlashTime;
         if (elapsed < hitFlashDuration) {
@@ -20,16 +51,25 @@ export const CharacterUtils = {
 
     /**
      * Render hit flash overlay
-     * @param {CanvasRenderingContext2D} ctx - Canvas context
-     * @param {number} x - Entity center X
-     * @param {number} y - Entity center Y
-     * @param {number} width - Entity width
-     * @param {number} height - Entity height
-     * @param {number} hitFlashIntensity - Flash intensity from 0 to 1
-     * @param {string} color - Flash color (default: red)
-     * @param {number} maxAlpha - Maximum alpha value (default: 0.6)
+     * @param ctx - Canvas context
+     * @param x - Entity center X
+     * @param y - Entity center Y
+     * @param width - Entity width
+     * @param height - Entity height
+     * @param hitFlashIntensity - Flash intensity from 0 to 1
+     * @param color - Flash color (default: red)
+     * @param maxAlpha - Maximum alpha value (default: 0.6)
      */
-    renderHitFlash(ctx, x, y, width, height, hitFlashIntensity, color = '#ff0000', maxAlpha = 0.6) {
+    renderHitFlash(
+        ctx: CanvasRenderingContext2D,
+        x: number,
+        y: number,
+        width: number,
+        height: number,
+        hitFlashIntensity: number,
+        color: string = '#ff0000',
+        maxAlpha: number = 0.6
+    ): void {
         if (hitFlashIntensity <= 0) return;
 
         ctx.save();
@@ -41,11 +81,15 @@ export const CharacterUtils = {
 
     /**
      * Render character info above (HP bar, EXP bar, name)
-     * @param {CanvasRenderingContext2D} ctx - Canvas context
-     * @param {Object} entity - Entity with x, y, width, height, playerName, level, etc.
-     * @param {Object} options - Rendering options
+     * @param ctx - Canvas context
+     * @param entity - Entity with x, y, width, height, playerName, level, etc.
+     * @param options - Rendering options
      */
-    renderInfoAbove(ctx, entity, options = {}) {
+    renderInfoAbove(
+        ctx: CanvasRenderingContext2D,
+        entity: CharacterEntity,
+        options: RenderInfoOptions = {}
+    ): void {
         const { showExpBar = true, isDummy = false } = options;
 
         const infoY = entity.y - entity.height / 2 - 15;
@@ -122,10 +166,10 @@ export const CharacterUtils = {
 
     /**
      * Render chat bubble above character
-     * @param {CanvasRenderingContext2D} ctx - Canvas context
-     * @param {Object} entity - Entity with x, y, width, height, chatMessage
+     * @param ctx - Canvas context
+     * @param entity - Entity with x, y, width, height, chatMessage
      */
-    renderChatBubble(ctx, entity) {
+    renderChatBubble(ctx: CanvasRenderingContext2D, entity: CharacterEntity): void {
         if (!entity.chatMessage) return;
 
         // Calculate where the name text ends (above HP bar)
@@ -205,21 +249,21 @@ export const CharacterUtils = {
 
     /**
      * Calculate required experience for next level
-     * @param {number} level - Current level
-     * @param {number} maxLevel - Maximum level
-     * @returns {number} Required experience
+     * @param level - Current level
+     * @param maxLevel - Maximum level
+     * @returns Required experience
      */
-    getRequiredExperience(level, maxLevel = 30) {
+    getRequiredExperience(level: number, maxLevel: number = 30): number {
         if (level >= maxLevel) return 0;
         return 10 + (level - 1) * 2;
     },
 
     /**
      * Update knockback animation
-     * @param {Object} entity - Entity with knockback properties
-     * @returns {boolean} True if knockback is active
+     * @param entity - Entity with knockback properties
+     * @returns True if knockback is active
      */
-    updateKnockback(entity) {
+    updateKnockback(entity: CharacterEntity): boolean {
         if (!entity.isKnockedBack) return false;
 
         const currentTime = Date.now();
@@ -245,13 +289,19 @@ export const CharacterUtils = {
 
     /**
      * Start knockback animation
-     * @param {Object} entity - Entity to knockback
-     * @param {number} attackerX - Attacker X position
-     * @param {number} attackerY - Attacker Y position
-     * @param {number} endX - End X position (from server)
-     * @param {number} endY - End Y position (from server)
+     * @param entity - Entity to knockback
+     * @param attackerX - Attacker X position
+     * @param attackerY - Attacker Y position
+     * @param endX - End X position (from server)
+     * @param endY - End Y position (from server)
      */
-    startKnockback(entity, attackerX, attackerY, endX, endY) {
+    startKnockback(
+        entity: CharacterEntity,
+        attackerX: number,
+        attackerY: number,
+        endX: number,
+        endY: number
+    ): void {
         entity.isKnockedBack = true;
         entity.knockbackStartTime = Date.now();
         entity.knockbackStartX = entity.x;
@@ -266,9 +316,9 @@ export const CharacterUtils = {
 
     /**
      * Update chat bubble - remove message after duration
-     * @param {Object} entity - Entity with chatMessage, chatMessageTime, chatMessageDuration
+     * @param entity - Entity with chatMessage, chatMessageTime, chatMessageDuration
      */
-    updateChatBubble(entity) {
+    updateChatBubble(entity: CharacterEntity): void {
         if (
             entity.chatMessage &&
             Date.now() - entity.chatMessageTime > entity.chatMessageDuration
@@ -279,10 +329,10 @@ export const CharacterUtils = {
 
     /**
      * Set chat message to display in bubble
-     * @param {Object} entity - Entity to set message on
-     * @param {string} message - Message to display
+     * @param entity - Entity to set message on
+     * @param message - Message to display
      */
-    setChatMessage(entity, message) {
+    setChatMessage(entity: CharacterEntity, message: string): void {
         entity.chatMessage = message;
         entity.chatMessageTime = Date.now();
     },

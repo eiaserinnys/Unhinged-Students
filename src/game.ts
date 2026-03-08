@@ -1,7 +1,7 @@
 // 미친 제자들 (Unhinged Students) - Main Game File
 //
 // Note: canvas, ctx, GAME_WIDTH, GAME_HEIGHT, scale, offset variables
-// are defined in src/core/gameState.js and accessed via getters/setters
+// are defined in src/core/gameState.ts and accessed via getters/setters
 // Use getCanvas() and getCtx() to access canvas and context
 
 import { GAME_CONFIG } from './config.js';
@@ -12,9 +12,7 @@ import {
     GAME_HEIGHT,
     getScale,
     setScale,
-    getOffsetX,
     setOffsetX,
-    getOffsetY,
     setOffsetY,
     getCanvas,
     setCanvas,
@@ -35,7 +33,6 @@ import {
 } from './input.js';
 import { LobbyManager } from './lobby.js';
 import { Character } from './character.js';
-import { CharacterUtils } from './characterUtils.js';
 import { ShardManager } from './shard.js';
 import { ChatManager } from './chat.js';
 import {
@@ -47,22 +44,77 @@ import {
     SkillUI,
 } from './skill.js';
 import { NetworkManager } from './network/NetworkManager.js';
-import {
-    renderHitVignette as renderHitVignetteUI,
-    renderDeathScreen as renderDeathScreenUI,
-    triggerHitVignette,
-} from './rendering/uiRenderer.js';
+import { triggerHitVignette } from './rendering/uiRenderer.js';
 import { findNearestEnemy, findRandomEnemy } from './combat/enemyFinder.js';
+import type { CharacterType, TeamType } from './types/index.js';
+
+// Module-level references to concrete types (avoid casting issues)
+let laserBeamEffect: LaserBeamEffect | null = null;
+let teleportEffect: TeleportEffect | null = null;
+let telepathyEffect: TelepathyEffect | null = null;
+let shardManager: ShardManager | null = null;
+let chatManager: ChatManager | null = null;
+let skillManager: SkillManager | null = null;
+
+// Local wave effect interface
+interface WaveEffectState {
+    active: boolean;
+    x: number;
+    y: number;
+    startTime: number;
+    duration: number;
+    maxRadius: number;
+}
+
+// Local pot smash effect interface
+interface PotSmashEffectState {
+    active: boolean;
+    x: number;
+    y: number;
+    dirX: number;
+    dirY: number;
+    startTime: number;
+    duration: number;
+    range: number;
+    angle: number;
+}
+
+// Local spin throw effect interface
+interface SpinThrowEffectState {
+    active: boolean;
+    x: number;
+    y: number;
+    targetX: number;
+    targetY: number;
+    startTime: number;
+    duration: number;
+}
+
+// Module-level effect states
+let waveEffect: WaveEffectState | null = null;
+let potSmashEffect: PotSmashEffectState | null = null;
+let spinThrowEffect: SpinThrowEffectState | null = null;
+
+// Enemy info from findNearestEnemy
+interface EnemyTarget {
+    x: number;
+    y: number;
+    type: string;
+    playerId?: string;
+}
 
 // Resize canvas to fill window while maintaining 16:9 aspect ratio
-function resizeCanvas() {
+function resizeCanvas(): void {
     const canvas = getCanvas();
+    if (!canvas) return;
+
     const windowWidth = window.innerWidth;
     const windowHeight = window.innerHeight;
     const windowAspectRatio = windowWidth / windowHeight;
     const gameAspectRatio = GAME_WIDTH / GAME_HEIGHT;
 
-    let newOffsetX, newOffsetY;
+    let newOffsetX: number;
+    let newOffsetY: number;
 
     if (windowAspectRatio > gameAspectRatio) {
         // Window is wider - fit to height
@@ -97,13 +149,23 @@ function resizeCanvas() {
 }
 
 // Initialize game (called on page load)
-function init() {
-    console.log('[game.js] init() called');
+function init(): void {
+    console.log('[game.ts] init() called');
     logger.info('Initializing...');
 
     // Initialize canvas references from DOM and register with global state
-    const canvasElement = document.getElementById('gameCanvas');
+    const canvasElement = document.getElementById('gameCanvas') as HTMLCanvasElement | null;
+    if (!canvasElement) {
+        console.error('[game.ts] Canvas element not found!');
+        return;
+    }
+
     const ctxElement = canvasElement.getContext('2d');
+    if (!ctxElement) {
+        console.error('[game.ts] Could not get 2D context!');
+        return;
+    }
+
     setCanvas(canvasElement);
     setCtx(ctxElement);
 
@@ -113,14 +175,14 @@ function init() {
     window.addEventListener('resize', resizeCanvas);
 
     // Initialize input system
-    initInput(getCanvas());
+    initInput(canvasElement);
 
     // Initialize lobby manager
-    console.log('[game.js] Creating LobbyManager...');
+    console.log('[game.ts] Creating LobbyManager...');
     gameState.lobbyManager = new LobbyManager();
-    console.log('[game.js] LobbyManager created:', gameState.lobbyManager);
+    console.log('[game.ts] LobbyManager created:', gameState.lobbyManager);
     gameState.lobbyManager.setOnGameStart((selection) => {
-        console.log('[game.js] onGameStart callback fired with:', selection);
+        console.log('[game.ts] onGameStart callback fired with:', selection);
         // Store player selection
         gameState.selectedCharacter = selection.character;
         gameState.playerName = selection.playerName;
@@ -129,12 +191,12 @@ function init() {
         startGame();
     });
 
-    console.log('[game.js] init() complete');
+    console.log('[game.ts] init() complete');
     logger.info('Lobby initialized - waiting for player input');
 }
 
 // Start game after lobby selection
-function startGame() {
+function startGame(): void {
     logger.info(
         `Starting game with character: ${gameState.selectedCharacter}, name: ${gameState.playerName}`
     );
@@ -190,42 +252,53 @@ function startGame() {
     logger.debug(`Created ${gameState.dummies.length} test dummies`);
 
     // Initialize skill system
-    gameState.skillManager = new SkillManager();
+    skillManager = new SkillManager();
+    gameState.skillManager = skillManager;
 
     // Add skills based on selected character
     initializeCharacterSkills(gameState.selectedCharacter);
 
     // Initialize skill UI
-    gameState.skillUI = new SkillUI(gameState.skillManager);
+    gameState.skillUI = new SkillUI(skillManager);
 
     // Initialize laser beam effect
-    gameState.laserBeamEffect = new LaserBeamEffect();
+    laserBeamEffect = new LaserBeamEffect();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    gameState.laserBeamEffect = laserBeamEffect as any;
 
     // Initialize teleport effect
-    gameState.teleportEffect = new TeleportEffect();
+    teleportEffect = new TeleportEffect();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    gameState.teleportEffect = teleportEffect as any;
 
     // Initialize telepathy effect
-    gameState.telepathyEffect = new TelepathyEffect();
+    telepathyEffect = new TelepathyEffect();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    gameState.telepathyEffect = telepathyEffect as any;
 
     logger.debug('Skill system initialized');
 
     // Create shard manager (will be populated by server)
-    gameState.shardManager = new ShardManager();
-    gameState.shardManager.enableServerMode();
+    shardManager = new ShardManager();
+    shardManager.enableServerMode();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    gameState.shardManager = shardManager as any;
 
     // Initialize chat manager
-    gameState.chatManager = new ChatManager();
-    gameState.chatManager.setPlayer(gameState.player);
+    chatManager = new ChatManager();
+    chatManager.setPlayer(gameState.player);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    gameState.chatManager = chatManager as any;
 
     // Initialize network manager and connect to server
     // Auto-detects server address from window.location.hostname
     gameState.networkManager = new NetworkManager();
-    gameState.networkManager.setShardManager(gameState.shardManager);
+    gameState.networkManager.setShardManager(shardManager);
     gameState.networkManager.setLocalPlayer(gameState.player);
     gameState.networkManager.setDummies(gameState.dummies);
 
     // Set team assignment callback
-    gameState.networkManager.onTeamAssigned = (team) => {
+    gameState.networkManager.onTeamAssigned = (team: TeamType) => {
         gameState.team = team;
         gameState.screen = 'teamAnnounce';
         gameState.teamAnnounceStartTime = Date.now();
@@ -236,20 +309,20 @@ function startGame() {
 
     // Connect chat to network after socket is ready
     setTimeout(() => {
-        if (gameState.networkManager.socket) {
-            gameState.chatManager.setSocket(gameState.networkManager.socket);
-            gameState.chatManager.addSystemMessage('Connected to server. Press Enter to chat.');
+        if (gameState.networkManager?.socket && chatManager) {
+            chatManager.setSocket(gameState.networkManager.socket);
+            chatManager.addSystemMessage('Connected to server. Press Enter to chat.');
         }
     }, 500);
 
     gameState.running = true;
-    gameLoop();
+    gameLoop(0);
 }
 
 // Update game logic
-function update(deltaTime) {
+function update(deltaTime: number): void {
     // Don't update player movement if chat is focused or player is dead
-    const isChatting = gameState.chatManager && gameState.chatManager.isChatInputFocused();
+    const isChatting = chatManager && chatManager.isChatInputFocused();
     const isPlayerDead = gameState.player && gameState.player.isDead;
 
     if (gameState.player && !isChatting && !isPlayerDead) {
@@ -270,11 +343,11 @@ function update(deltaTime) {
         }
     }
 
-    if (gameState.shardManager) {
-        gameState.shardManager.update();
+    if (shardManager && gameState.player) {
+        shardManager.update();
 
         // Check for shard collisions
-        const collectedShards = gameState.shardManager.checkCollisions(gameState.player);
+        const collectedShards = shardManager.checkCollisions(gameState.player);
         if (collectedShards.length > 0) {
             gameState.stats.shardsCollected += collectedShards.length;
             logger.debug(
@@ -288,7 +361,7 @@ function update(deltaTime) {
             if (gameState.networkManager) {
                 collectedShards.forEach((shard) => {
                     if (shard.id !== null) {
-                        gameState.networkManager.sendShardCollection(shard.id);
+                        gameState.networkManager?.sendShardCollection(shard.id);
                     }
                 });
             }
@@ -335,15 +408,15 @@ function update(deltaTime) {
     }
 
     // Update skill manager (check for ready flashes)
-    if (gameState.skillManager) {
-        gameState.skillManager.update();
+    if (skillManager) {
+        skillManager.update();
     }
 
     // Update wave effect (for local player)
-    if (gameState.waveEffect && gameState.waveEffect.active) {
-        const elapsed = Date.now() - gameState.waveEffect.startTime;
-        if (elapsed >= gameState.waveEffect.duration) {
-            gameState.waveEffect.active = false;
+    if (waveEffect && waveEffect.active) {
+        const elapsed = Date.now() - waveEffect.startTime;
+        if (elapsed >= waveEffect.duration) {
+            waveEffect.active = false;
         }
     }
 
@@ -395,14 +468,14 @@ function update(deltaTime) {
     }
 
     // Handle skill input (Q, W, E) - only when not chatting and player is alive
-    if (gameState.skillManager && !isChatting && !isPlayerDead) {
+    if (skillManager && !isChatting && !isPlayerDead) {
         // Q - Character-specific basic attack skill
         if (isKeyJustPressed('q')) {
             handleQSkill();
         }
 
         // W - Teleport (to random enemy) - Only for characters with teleport skill
-        if (isKeyJustPressed('w') && !gameState.teleportEffect.active) {
+        if (isKeyJustPressed('w') && teleportEffect && !teleportEffect.active) {
             handleWSkill();
         }
 
@@ -413,65 +486,69 @@ function update(deltaTime) {
     }
 
     // Update laser beam effect
-    if (gameState.laserBeamEffect && gameState.laserBeamEffect.active) {
-        const playerPos = gameState.player.getPosition();
-        gameState.laserBeamEffect.update(playerPos.x, playerPos.y);
+    if (laserBeamEffect && laserBeamEffect.active) {
+        const playerPos = gameState.player?.getPosition();
+        if (playerPos) {
+            laserBeamEffect.update(playerPos.x, playerPos.y);
+        }
 
         // Check if laser should deal damage (when firing phase starts)
-        if (gameState.laserBeamEffect.shouldDealDamage()) {
+        if (laserBeamEffect.shouldDealDamage()) {
             // Send laser attack to server
-            const line = gameState.laserBeamEffect.getLaserLine();
+            const line = laserBeamEffect.getLaserLine();
             if (line && gameState.networkManager) {
                 gameState.networkManager.sendLaserAttack(
                     line.x1,
                     line.y1,
                     line.x2,
                     line.y2,
-                    gameState.laserBeamEffect.damage
+                    laserBeamEffect.damage
                 );
             }
         }
     }
 
     // Update teleport effect
-    if (gameState.teleportEffect && gameState.teleportEffect.active) {
-        const teleportResult = gameState.teleportEffect.update();
+    if (teleportEffect && teleportEffect.active) {
+        const teleportResult = teleportEffect.update();
 
         // Move player when teleport completes
-        if (teleportResult && teleportResult.teleported) {
+        if (teleportResult && teleportResult.teleported && gameState.player) {
             gameState.player.x = teleportResult.x;
             gameState.player.y = teleportResult.y;
         }
 
         // Check if teleport should deal damage
-        if (gameState.teleportEffect.shouldDealDamage()) {
-            const area = gameState.teleportEffect.getDamageArea();
-            if (gameState.networkManager) {
+        if (teleportEffect.shouldDealDamage()) {
+            const area = teleportEffect.getDamageArea();
+            if (area && gameState.networkManager) {
                 gameState.networkManager.sendTeleportDamage(
                     area.x,
                     area.y,
                     area.radius,
-                    area.damage
+                    area.damage ?? GAME_CONFIG.SKILL_TELEPORT.DAMAGE
                 );
             }
         }
     }
 
     // Update telepathy effect
-    if (gameState.telepathyEffect && gameState.telepathyEffect.active) {
-        const playerPos = gameState.player.getPosition();
-        gameState.telepathyEffect.update(playerPos.x, playerPos.y);
+    if (telepathyEffect && telepathyEffect.active) {
+        const playerPos = gameState.player?.getPosition();
+        if (playerPos) {
+            telepathyEffect.update(playerPos.x, playerPos.y);
+        }
 
         // Check if telepathy should deal damage and heal
-        if (gameState.telepathyEffect.shouldDealDamage()) {
-            const area = gameState.telepathyEffect.getDamageArea();
-            if (gameState.networkManager) {
+        if (telepathyEffect.shouldDealDamage()) {
+            const area = telepathyEffect.getDamageArea();
+            if (area && gameState.networkManager) {
                 gameState.networkManager.sendTelepathyDamage(
                     area.x,
                     area.y,
                     area.radius,
-                    area.damagePerTarget,
-                    area.maxHeal
+                    area.damagePerTarget ?? GAME_CONFIG.SKILL_TELEPATHY.DAMAGE_PER_TICK,
+                    area.maxHeal ?? GAME_CONFIG.SKILL_TELEPATHY.MAX_HEAL_PER_TICK
                 );
             }
         }
@@ -479,11 +556,13 @@ function update(deltaTime) {
 }
 
 // Game loop
-function gameLoop(currentTime) {
+function gameLoop(currentTime: number): void {
     if (!gameState.running) return;
 
     const ctx = getCtx();
     const canvas = getCanvas();
+
+    if (!ctx || !canvas) return;
 
     // Calculate delta time (in seconds)
     if (gameState.lastFrameTime === 0) {
@@ -529,7 +608,7 @@ function gameLoop(currentTime) {
 }
 
 // Render hit vignette effect (red screen edges when damaged)
-function renderHitVignette(ctx) {
+function renderHitVignette(ctx: CanvasRenderingContext2D): void {
     if (gameState.hitVignetteTime === 0) return;
 
     const elapsed = Date.now() - gameState.hitVignetteTime;
@@ -569,7 +648,7 @@ function renderHitVignette(ctx) {
 }
 
 // Render waiting for team assignment screen
-function renderWaitingTeam(ctx) {
+function renderWaitingTeam(ctx: CanvasRenderingContext2D): void {
     ctx.save();
 
     // Dark background
@@ -592,7 +671,7 @@ function renderWaitingTeam(ctx) {
 }
 
 // Render team announcement screen
-function renderTeamAnnounce(ctx) {
+function renderTeamAnnounce(ctx: CanvasRenderingContext2D): void {
     const team = gameState.team;
     const elapsed = Date.now() - gameState.teamAnnounceStartTime;
     const duration = gameState.teamAnnounceDuration;
@@ -650,7 +729,7 @@ function renderTeamAnnounce(ctx) {
 }
 
 // Render death screen with respawn timer
-function renderDeathScreen(ctx) {
+function renderDeathScreen(ctx: CanvasRenderingContext2D): void {
     // Dark overlay
     ctx.save();
     ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
@@ -658,6 +737,11 @@ function renderDeathScreen(ctx) {
 
     // Calculate remaining respawn time
     const player = gameState.player;
+    if (!player) {
+        ctx.restore();
+        return;
+    }
+
     const elapsedTime = Date.now() - player.deathTime;
     const remainingTime = Math.max(0, (player.respawnDelay - elapsedTime) / 1000);
 
@@ -689,8 +773,10 @@ function renderDeathScreen(ctx) {
 }
 
 // Render function
-function render() {
+function render(): void {
     const ctx = getCtx();
+    if (!ctx) return;
+
     // Draw title (in game world coordinates)
     ctx.fillStyle = '#00D9FF';
     ctx.font = '600 28px Jua, sans-serif';
@@ -710,8 +796,8 @@ function render() {
     ctx.fillText(`${connectionStatus} | Players: ${playerCount}`, GAME_WIDTH / 2, 70);
 
     // Draw shards
-    if (gameState.shardManager) {
-        gameState.shardManager.render(ctx);
+    if (shardManager) {
+        shardManager.render(ctx);
     }
 
     // Draw remote players
@@ -765,28 +851,28 @@ function render() {
         }
     }
 
-    if (gameState.shardManager) {
+    if (shardManager) {
         ctx.fillText(`Shards Collected: ${gameState.stats.shardsCollected}`, 10, 60);
         ctx.fillText(
-            `Active Shards: ${gameState.shardManager.getActiveShardCount()}/${gameState.shardManager.maxActiveShards}`,
+            `Active Shards: ${shardManager.getActiveShardCount()}/${shardManager.getMaxActiveShards()}`,
             10,
             80
         );
     }
 
     // Draw laser beam effect (above players)
-    if (gameState.laserBeamEffect) {
-        gameState.laserBeamEffect.render(ctx);
+    if (laserBeamEffect) {
+        laserBeamEffect.render(ctx);
     }
 
     // Draw teleport effect
-    if (gameState.teleportEffect) {
-        gameState.teleportEffect.render(ctx);
+    if (teleportEffect) {
+        teleportEffect.render(ctx);
     }
 
     // Draw telepathy effect
-    if (gameState.telepathyEffect) {
-        gameState.telepathyEffect.render(ctx);
+    if (telepathyEffect) {
+        telepathyEffect.render(ctx);
     }
 
     // Draw wave effect (local player)
@@ -822,14 +908,14 @@ function render() {
 }
 
 // Render wave effect for local player (Crazy-Eyes Q skill)
-function renderWaveEffect(ctx) {
-    if (!gameState.waveEffect || !gameState.waveEffect.active) return;
+function renderWaveEffect(ctx: CanvasRenderingContext2D): void {
+    if (!waveEffect || !waveEffect.active) return;
 
-    const elapsed = Date.now() - gameState.waveEffect.startTime;
-    const progress = Math.min(elapsed / gameState.waveEffect.duration, 1);
+    const elapsed = Date.now() - waveEffect.startTime;
+    const progress = Math.min(elapsed / waveEffect.duration, 1);
 
     // Current radius (expanding outward)
-    const currentRadius = gameState.waveEffect.maxRadius * progress;
+    const currentRadius = waveEffect.maxRadius * progress;
 
     // Opacity fades as it expands
     const opacity = 1 - progress * 0.7;
@@ -838,14 +924,14 @@ function renderWaveEffect(ctx) {
 
     // Outer glow
     ctx.beginPath();
-    ctx.arc(gameState.waveEffect.x, gameState.waveEffect.y, currentRadius, 0, Math.PI * 2);
+    ctx.arc(waveEffect.x, waveEffect.y, currentRadius, 0, Math.PI * 2);
     ctx.strokeStyle = `rgba(255, 105, 180, ${opacity * 0.5})`;
     ctx.lineWidth = 15;
     ctx.stroke();
 
     // Inner ring
     ctx.beginPath();
-    ctx.arc(gameState.waveEffect.x, gameState.waveEffect.y, currentRadius, 0, Math.PI * 2);
+    ctx.arc(waveEffect.x, waveEffect.y, currentRadius, 0, Math.PI * 2);
     ctx.strokeStyle = `rgba(255, 255, 255, ${opacity})`;
     ctx.lineWidth = 4;
     ctx.stroke();
@@ -859,12 +945,12 @@ function renderWaveEffect(ctx) {
 
         ctx.beginPath();
         ctx.moveTo(
-            gameState.waveEffect.x + Math.cos(angle) * innerR,
-            gameState.waveEffect.y + Math.sin(angle) * innerR
+            waveEffect.x + Math.cos(angle) * innerR,
+            waveEffect.y + Math.sin(angle) * innerR
         );
         ctx.lineTo(
-            gameState.waveEffect.x + Math.cos(angle) * outerR,
-            gameState.waveEffect.y + Math.sin(angle) * outerR
+            waveEffect.x + Math.cos(angle) * outerR,
+            waveEffect.y + Math.sin(angle) * outerR
         );
         ctx.strokeStyle = `rgba(255, 182, 193, ${opacity * 0.7})`;
         ctx.lineWidth = 3;
@@ -875,21 +961,20 @@ function renderWaveEffect(ctx) {
 }
 
 // Render pot smash effect for local player (Curry-Bear Q skill)
-function renderPotSmashEffect(ctx) {
-    if (!gameState.potSmashEffect || !gameState.potSmashEffect.active) return;
+function renderPotSmashEffect(ctx: CanvasRenderingContext2D): void {
+    if (!potSmashEffect || !potSmashEffect.active) return;
 
-    const elapsed = Date.now() - gameState.potSmashEffect.startTime;
-    const progress = Math.min(elapsed / gameState.potSmashEffect.duration, 1);
+    const elapsed = Date.now() - potSmashEffect.startTime;
+    const progress = Math.min(elapsed / potSmashEffect.duration, 1);
 
     // End effect when done
     if (progress >= 1) {
-        gameState.potSmashEffect.active = false;
+        potSmashEffect.active = false;
         return;
     }
 
-    const effect = gameState.potSmashEffect;
-    const halfAngleRad = ((effect.angle / 2) * Math.PI) / 180;
-    const baseAngle = Math.atan2(effect.dirY, effect.dirX);
+    const halfAngleRad = ((potSmashEffect.angle / 2) * Math.PI) / 180;
+    const baseAngle = Math.atan2(potSmashEffect.dirY, potSmashEffect.dirX);
     const startAngle = baseAngle - halfAngleRad;
     const endAngle = baseAngle + halfAngleRad;
 
@@ -901,8 +986,8 @@ function renderPotSmashEffect(ctx) {
 
     // Fill cone
     ctx.beginPath();
-    ctx.moveTo(effect.x, effect.y);
-    ctx.arc(effect.x, effect.y, effect.range, startAngle, endAngle);
+    ctx.moveTo(potSmashEffect.x, potSmashEffect.y);
+    ctx.arc(potSmashEffect.x, potSmashEffect.y, potSmashEffect.range, startAngle, endAngle);
     ctx.closePath();
     ctx.fillStyle = '#FFD700'; // Gold (curry color)
     ctx.fill();
@@ -914,9 +999,9 @@ function renderPotSmashEffect(ctx) {
     ctx.stroke();
 
     // Draw pot emoji at the edge
-    const emojiDist = effect.range * 0.6 * (1 - progress * 0.3);
-    const emojiX = effect.x + Math.cos(baseAngle) * emojiDist;
-    const emojiY = effect.y + Math.sin(baseAngle) * emojiDist;
+    const emojiDist = potSmashEffect.range * 0.6 * (1 - progress * 0.3);
+    const emojiX = potSmashEffect.x + Math.cos(baseAngle) * emojiDist;
+    const emojiY = potSmashEffect.y + Math.sin(baseAngle) * emojiDist;
 
     ctx.globalAlpha = opacity * 1.5;
     ctx.font = '40px serif';
@@ -928,9 +1013,9 @@ function renderPotSmashEffect(ctx) {
     const particleCount = 5;
     for (let i = 0; i < particleCount; i++) {
         const particleAngle = startAngle + (endAngle - startAngle) * (i / (particleCount - 1));
-        const particleDist = effect.range * (0.3 + progress * 0.7);
-        const px = effect.x + Math.cos(particleAngle) * particleDist;
-        const py = effect.y + Math.sin(particleAngle) * particleDist;
+        const particleDist = potSmashEffect.range * (0.3 + progress * 0.7);
+        const px = potSmashEffect.x + Math.cos(particleAngle) * particleDist;
+        const py = potSmashEffect.y + Math.sin(particleAngle) * particleDist;
 
         ctx.beginPath();
         ctx.arc(px, py, 10 * (1 - progress), 0, Math.PI * 2);
@@ -942,7 +1027,7 @@ function renderPotSmashEffect(ctx) {
 }
 
 // Render madness walk effect (Crazy-Eyes E skill)
-function renderMadnessEffect(ctx) {
+function renderMadnessEffect(ctx: CanvasRenderingContext2D): void {
     if (!gameState.madnessActive || !gameState.player) return;
 
     const playerPos = gameState.player.getPosition();
@@ -1007,7 +1092,7 @@ function renderMadnessEffect(ctx) {
 }
 
 // Render rage effect (Hulk Sister E skill)
-function renderRageEffect(ctx) {
+function renderRageEffect(ctx: CanvasRenderingContext2D): void {
     if (!gameState.rageActive || !gameState.player) return;
 
     const playerPos = gameState.player.getPosition();
@@ -1085,7 +1170,7 @@ function renderRageEffect(ctx) {
 }
 
 // Render confusion effect when player is confused (reversed controls)
-function renderConfusionEffect(ctx) {
+function renderConfusionEffect(ctx: CanvasRenderingContext2D): void {
     if (typeof isConfused !== 'function' || !isConfused()) return;
 
     // Pink tint overlay
@@ -1124,7 +1209,7 @@ function renderConfusionEffect(ctx) {
 }
 
 // Render curry recovery effect (Curry-Bear E skill)
-function renderCurryRecoveryEffect(ctx) {
+function renderCurryRecoveryEffect(ctx: CanvasRenderingContext2D): void {
     if (!gameState.curryRecoveryActive || !gameState.player) return;
 
     const playerPos = gameState.player.getPosition();
@@ -1196,7 +1281,7 @@ function renderCurryRecoveryEffect(ctx) {
 }
 
 // Render stored damage UI for curry-bear
-function renderStoredDamageUI(ctx) {
+function renderStoredDamageUI(ctx: CanvasRenderingContext2D): void {
     // Always show for curry-bear (even when 0)
     ctx.save();
 
@@ -1238,13 +1323,13 @@ function renderStoredDamageUI(ctx) {
 // Note: triggerHitVignette is imported from rendering/uiRenderer.js
 
 // Update stored damage for curry-bear (called from network.js)
-function updateStoredDamage(storedDamage, maxStored) {
+function updateStoredDamage(storedDamage: number, maxStored: number): void {
     gameState.storedDamage = storedDamage;
     gameState.maxStoredDamage = maxStored;
 }
 
 // Trigger curry recovery visual effect (called from network.js)
-function triggerCurryRecoveryEffect(healAmount) {
+function triggerCurryRecoveryEffect(_healAmount: number): void {
     gameState.curryRecoveryActive = true;
     gameState.curryRecoveryStartTime = Date.now();
     gameState.storedDamage = 0; // Reset stored damage after recovery
@@ -1261,14 +1346,16 @@ window.findNearestEnemy = findNearestEnemy;
 window.findRandomEnemy = findRandomEnemy;
 
 // Handle Q skill based on selected character
-function handleQSkill() {
+function handleQSkill(): void {
+    if (!gameState.player || !skillManager) return;
+
     const playerPos = gameState.player.getPosition();
 
     switch (gameState.selectedCharacter) {
         case 'crazy-eyes': {
             // 눈 돌아가는 사람 - 이상한 파동
             // Wave attack doesn't have a visual effect that blocks input
-            const waveSkill = gameState.skillManager.useSkill('q');
+            const waveSkill = skillManager.useSkill('q');
             if (waveSkill) {
                 logger.debug(`Used skill: ${waveSkill.name} - wave attack`);
 
@@ -1278,8 +1365,8 @@ function handleQSkill() {
                 }
 
                 // Show local wave effect (create if not exists)
-                if (!gameState.waveEffect) {
-                    gameState.waveEffect = {
+                if (!waveEffect) {
+                    waveEffect = {
                         active: false,
                         x: 0,
                         y: 0,
@@ -1288,22 +1375,22 @@ function handleQSkill() {
                         maxRadius: GAME_CONFIG.SKILL_WAVE.RADIUS,
                     };
                 }
-                gameState.waveEffect.active = true;
-                gameState.waveEffect.x = playerPos.x;
-                gameState.waveEffect.y = playerPos.y;
-                gameState.waveEffect.startTime = Date.now();
+                waveEffect.active = true;
+                waveEffect.x = playerPos.x;
+                waveEffect.y = playerPos.y;
+                waveEffect.startTime = Date.now();
             }
             break;
         }
 
         case 'curry-bear': {
             // 카레 곰돌이 - 냄비 내려치기
-            const potSkill = gameState.skillManager.useSkill('q');
+            const potSkill = skillManager.useSkill('q');
             if (potSkill) {
                 // Get attack direction (toward nearest enemy or last movement direction)
-                let dirX = 1,
-                    dirY = 0;
-                const target = findNearestEnemy(false);
+                let dirX = 1;
+                let dirY = 0;
+                const target = findNearestEnemy(false) as EnemyTarget | null;
                 if (target) {
                     dirX = target.x - playerPos.x;
                     dirY = target.y - playerPos.y;
@@ -1322,8 +1409,8 @@ function handleQSkill() {
                 }
 
                 // Show local pot smash effect
-                if (!gameState.potSmashEffect) {
-                    gameState.potSmashEffect = {
+                if (!potSmashEffect) {
+                    potSmashEffect = {
                         active: false,
                         x: 0,
                         y: 0,
@@ -1335,23 +1422,23 @@ function handleQSkill() {
                         angle: GAME_CONFIG.SKILL_POT_SMASH.ANGLE,
                     };
                 }
-                gameState.potSmashEffect.active = true;
-                gameState.potSmashEffect.x = playerPos.x;
-                gameState.potSmashEffect.y = playerPos.y;
-                gameState.potSmashEffect.dirX = dirX;
-                gameState.potSmashEffect.dirY = dirY;
-                gameState.potSmashEffect.startTime = Date.now();
+                potSmashEffect.active = true;
+                potSmashEffect.x = playerPos.x;
+                potSmashEffect.y = playerPos.y;
+                potSmashEffect.dirX = dirX;
+                potSmashEffect.dirY = dirY;
+                potSmashEffect.startTime = Date.now();
             }
             break;
         }
 
         case 'big-sis-hulk': {
             // 헐크 언니 - 돌려 던지기
-            const throwSkill = gameState.skillManager.useSkill('q');
+            const throwSkill = skillManager.useSkill('q');
             if (throwSkill) {
                 // Find nearest enemy to grab
-                const target = findNearestEnemy(true); // players only
-                if (target) {
+                const target = findNearestEnemy(true) as EnemyTarget | null; // players only
+                if (target && target.playerId) {
                     const dx = target.x - playerPos.x;
                     const dy = target.y - playerPos.y;
                     const distance = Math.sqrt(dx * dx + dy * dy);
@@ -1369,8 +1456,8 @@ function handleQSkill() {
                         }
 
                         // Show local effect
-                        if (!gameState.spinThrowEffect) {
-                            gameState.spinThrowEffect = {
+                        if (!spinThrowEffect) {
+                            spinThrowEffect = {
                                 active: false,
                                 x: 0,
                                 y: 0,
@@ -1380,12 +1467,12 @@ function handleQSkill() {
                                 duration: GAME_CONFIG.SKILL_SPIN_THROW.EFFECT_DURATION_MS,
                             };
                         }
-                        gameState.spinThrowEffect.active = true;
-                        gameState.spinThrowEffect.x = playerPos.x;
-                        gameState.spinThrowEffect.y = playerPos.y;
-                        gameState.spinThrowEffect.targetX = target.x;
-                        gameState.spinThrowEffect.targetY = target.y;
-                        gameState.spinThrowEffect.startTime = Date.now();
+                        spinThrowEffect.active = true;
+                        spinThrowEffect.x = playerPos.x;
+                        spinThrowEffect.y = playerPos.y;
+                        spinThrowEffect.targetX = target.x;
+                        spinThrowEffect.targetY = target.y;
+                        spinThrowEffect.startTime = Date.now();
                     } else {
                         logger.debug('Enemy too far to grab');
                     }
@@ -1397,13 +1484,13 @@ function handleQSkill() {
         }
 
         case 'alien': // 외계인 - 레이저 빔
-        default:
-            if (!gameState.laserBeamEffect.active) {
-                const laserSkill = gameState.skillManager.useSkill('q');
+        default: {
+            if (laserBeamEffect && !laserBeamEffect.active) {
+                const laserSkill = skillManager.useSkill('q');
                 if (laserSkill) {
-                    const target = findNearestEnemy(true); // playersOnly = true
+                    const target = findNearestEnemy(true) as EnemyTarget | null; // playersOnly = true
                     if (target) {
-                        gameState.laserBeamEffect.start(
+                        laserBeamEffect.start(
                             playerPos.x,
                             playerPos.y,
                             target.x,
@@ -1418,19 +1505,22 @@ function handleQSkill() {
                             gameState.networkManager.sendLaserAiming(
                                 playerPos.x,
                                 playerPos.y,
-                                gameState.laserBeamEffect.dirX,
-                                gameState.laserBeamEffect.dirY
+                                laserBeamEffect.dirX,
+                                laserBeamEffect.dirY
                             );
                         }
                     }
                 }
             }
             break;
+        }
     }
 }
 
 // Handle W skill based on selected character
-function handleWSkill() {
+function handleWSkill(): void {
+    if (!gameState.player || !skillManager) return;
+
     const playerPos = gameState.player.getPosition();
 
     switch (gameState.selectedCharacter) {
@@ -1441,13 +1531,13 @@ function handleWSkill() {
 
         case 'alien': // 외계인 - 순간이동
         default: {
-            const skill = gameState.skillManager.useSkill('w');
-            if (skill) {
-                const target = findRandomEnemy();
+            const skill = skillManager.useSkill('w');
+            if (skill && teleportEffect) {
+                const target = findRandomEnemy() as EnemyTarget | null;
 
                 if (target) {
                     // Teleport to near the target enemy
-                    gameState.teleportEffect.start(
+                    teleportEffect.start(
                         playerPos.x,
                         playerPos.y,
                         GAME_WIDTH,
@@ -1460,7 +1550,7 @@ function handleWSkill() {
                     );
                 } else {
                     // No enemies, teleport randomly
-                    gameState.teleportEffect.start(
+                    teleportEffect.start(
                         playerPos.x,
                         playerPos.y,
                         GAME_WIDTH,
@@ -1472,10 +1562,10 @@ function handleWSkill() {
                 // Send teleport event to server for sync
                 if (gameState.networkManager) {
                     gameState.networkManager.sendTeleport(
-                        gameState.teleportEffect.startX,
-                        gameState.teleportEffect.startY,
-                        gameState.teleportEffect.endX,
-                        gameState.teleportEffect.endY
+                        teleportEffect.startX,
+                        teleportEffect.startY,
+                        teleportEffect.endX,
+                        teleportEffect.endY
                     );
                 }
             }
@@ -1485,7 +1575,9 @@ function handleWSkill() {
 }
 
 // Handle E skill based on selected character
-function handleESkill() {
+function handleESkill(): void {
+    if (!gameState.player || !skillManager) return;
+
     const playerPos = gameState.player.getPosition();
 
     switch (gameState.selectedCharacter) {
@@ -1496,7 +1588,7 @@ function handleESkill() {
                 return;
             }
 
-            const curryRecoverySkill = gameState.skillManager.useSkill('e');
+            const curryRecoverySkill = skillManager.useSkill('e');
             if (curryRecoverySkill) {
                 logger.debug(
                     `Used skill: ${curryRecoverySkill.name} - recovering ${gameState.storedDamage} HP`
@@ -1519,7 +1611,7 @@ function handleESkill() {
             // Don't allow if rage is already active
             if (gameState.rageActive) return;
 
-            const rageSkill = gameState.skillManager.useSkill('e');
+            const rageSkill = skillManager.useSkill('e');
             if (rageSkill) {
                 logger.debug(`Used skill: ${rageSkill.name} - RAGE activated!`);
 
@@ -1541,7 +1633,7 @@ function handleESkill() {
             // Don't allow if madness is already active
             if (gameState.madnessActive) return;
 
-            const madnessSkill = gameState.skillManager.useSkill('e');
+            const madnessSkill = skillManager.useSkill('e');
             if (madnessSkill) {
                 logger.debug(`Used skill: ${madnessSkill.name} - madness walk activated`);
 
@@ -1562,11 +1654,11 @@ function handleESkill() {
         }
 
         case 'alien': // 외계인 - 텔레파시
-        default:
-            if (!gameState.telepathyEffect.active) {
-                const telepathySkill = gameState.skillManager.useSkill('e');
+        default: {
+            if (telepathyEffect && !telepathyEffect.active) {
+                const telepathySkill = skillManager.useSkill('e');
                 if (telepathySkill) {
-                    gameState.telepathyEffect.start(playerPos.x, playerPos.y);
+                    telepathyEffect.start(playerPos.x, playerPos.y);
                     logger.debug(`Used skill: ${telepathySkill.name}`);
 
                     // Send telepathy event to server for sync
@@ -1574,25 +1666,28 @@ function handleESkill() {
                         gameState.networkManager.sendTelepathy(
                             playerPos.x,
                             playerPos.y,
-                            gameState.telepathyEffect.radius
+                            telepathyEffect.radius
                         );
                     }
                 }
             }
             break;
+        }
     }
 }
 
 // Initialize skills based on selected character
-function initializeCharacterSkills(characterId) {
+function initializeCharacterSkills(characterId: CharacterType): void {
+    if (!skillManager) return;
+
     // Clear existing skills (skills is a Map, skillOrder is an array)
-    gameState.skillManager.skills.clear();
-    gameState.skillManager.skillOrder = [];
+    skillManager.skills.clear();
+    skillManager.skillOrder = [];
 
     switch (characterId) {
         case 'crazy-eyes': // 눈 돌아가는 사람
             // Q = 이상한 파동 (Wave Attack) - 기본 공격
-            gameState.skillManager.addSkill(
+            skillManager.addSkill(
                 new Skill(
                     '이상한 파동',
                     'q',
@@ -1602,7 +1697,7 @@ function initializeCharacterSkills(characterId) {
                 )
             );
             // E = 광기 산책
-            gameState.skillManager.addSkill(
+            skillManager.addSkill(
                 new Skill(
                     '광기 산책',
                     'e',
@@ -1616,7 +1711,7 @@ function initializeCharacterSkills(characterId) {
 
         case 'curry-bear': // 카레 곰돌이
             // Q = 냄비 내려치기
-            gameState.skillManager.addSkill(
+            skillManager.addSkill(
                 new Skill(
                     '냄비 내려치기',
                     'q',
@@ -1626,7 +1721,7 @@ function initializeCharacterSkills(characterId) {
                 )
             );
             // E = 카레 회복
-            gameState.skillManager.addSkill(
+            skillManager.addSkill(
                 new Skill(
                     '카레 회복',
                     'e',
@@ -1640,7 +1735,7 @@ function initializeCharacterSkills(characterId) {
 
         case 'big-sis-hulk': // 헐크 언니
             // Q = 돌려 던지기
-            gameState.skillManager.addSkill(
+            skillManager.addSkill(
                 new Skill(
                     '돌려 던지기',
                     'q',
@@ -1650,7 +1745,7 @@ function initializeCharacterSkills(characterId) {
                 )
             );
             // E = 폭주
-            gameState.skillManager.addSkill(
+            skillManager.addSkill(
                 new Skill(
                     '폭주',
                     'e',
@@ -1665,7 +1760,7 @@ function initializeCharacterSkills(characterId) {
         case 'alien': // 외계인 (기본)
         default:
             // Q = 레이저 빔
-            gameState.skillManager.addSkill(
+            skillManager.addSkill(
                 new Skill(
                     '레이저',
                     'q',
@@ -1675,7 +1770,7 @@ function initializeCharacterSkills(characterId) {
                 )
             );
             // W = 순간이동
-            gameState.skillManager.addSkill(
+            skillManager.addSkill(
                 new Skill(
                     '순간이동',
                     'w',
@@ -1685,7 +1780,7 @@ function initializeCharacterSkills(characterId) {
                 )
             );
             // E = 텔레파시
-            gameState.skillManager.addSkill(
+            skillManager.addSkill(
                 new Skill(
                     '텔레파시',
                     'e',
@@ -1700,7 +1795,7 @@ function initializeCharacterSkills(characterId) {
 }
 
 // Cleanup game resources to prevent memory leaks
-function cleanupGame() {
+function cleanupGame(): void {
     // Stop game loop
     gameState.running = false;
 
@@ -1719,7 +1814,7 @@ function cleanupGame() {
     const currentResizeHandler = getResizeHandler();
     if (currentResizeHandler) {
         window.removeEventListener('resize', currentResizeHandler);
-        setResizeHandler(null);
+        setResizeHandler(() => {});
     }
 
     // Clear game state objects
@@ -1734,7 +1829,26 @@ function cleanupGame() {
     gameState.telepathyEffect = null;
     gameState.dummies = [];
 
+    // Clear module-level references
+    laserBeamEffect = null;
+    teleportEffect = null;
+    telepathyEffect = null;
+    shardManager = null;
+    chatManager = null;
+    skillManager = null;
+    waveEffect = null;
+    potSmashEffect = null;
+    spinThrowEffect = null;
+
     logger.info('Game cleaned up');
+}
+
+// Extend Window interface for global functions
+declare global {
+    interface Window {
+        updateStoredDamage: typeof updateStoredDamage;
+        triggerCurryRecoveryEffect: typeof triggerCurryRecoveryEffect;
+    }
 }
 
 // Start game when page loads

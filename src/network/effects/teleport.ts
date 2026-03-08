@@ -1,9 +1,37 @@
 // Teleport Effect Mixin for RemotePlayer
+
+/**
+ * Teleport phase types
+ */
+export type TeleportPhase = 'disappear' | 'appear' | 'none';
+
+/**
+ * Interface for objects that can have teleport effects applied
+ */
+export interface TeleportEffectState {
+    x: number;
+    y: number;
+    targetX: number;
+    targetY: number;
+    teleportActive: boolean;
+    teleportPhase: TeleportPhase;
+    teleportStartTime: number;
+    teleportDisappearDuration: number;
+    teleportAppearDuration: number;
+    teleportStartX: number;
+    teleportStartY: number;
+    teleportEndX: number;
+    teleportEndY: number;
+    teleportDamageRadius: number;
+}
+
 export const TeleportEffectMixin = {
-    // Initialize teleport effect properties
-    initTeleportEffect() {
+    /**
+     * Initialize teleport effect properties
+     */
+    initTeleportEffect(this: TeleportEffectState): void {
         this.teleportActive = false;
-        this.teleportPhase = 'none'; // 'disappear', 'appear', 'none'
+        this.teleportPhase = 'none';
         this.teleportStartTime = 0;
         this.teleportDisappearDuration = 150;
         this.teleportAppearDuration = 200;
@@ -14,8 +42,16 @@ export const TeleportEffectMixin = {
         this.teleportDamageRadius = 100;
     },
 
-    // Start teleport effect
-    startTeleport(startX, startY, endX, endY) {
+    /**
+     * Start teleport effect
+     */
+    startTeleport(
+        this: TeleportEffectState,
+        startX: number,
+        startY: number,
+        endX: number,
+        endY: number
+    ): void {
         this.teleportActive = true;
         this.teleportPhase = 'disappear';
         this.teleportStartTime = Date.now();
@@ -25,8 +61,10 @@ export const TeleportEffectMixin = {
         this.teleportEndY = endY;
     },
 
-    // Update teleport effect state
-    updateTeleport() {
+    /**
+     * Update teleport effect state
+     */
+    updateTeleport(this: TeleportEffectState): void {
         if (!this.teleportActive) return;
 
         const currentTime = Date.now();
@@ -50,8 +88,10 @@ export const TeleportEffectMixin = {
         }
     },
 
-    // Render teleport effect
-    renderTeleport(ctx) {
+    /**
+     * Render teleport effect
+     */
+    renderTeleport(this: TeleportEffectState, ctx: CanvasRenderingContext2D): void {
         if (!this.teleportActive) return;
 
         const elapsed = Date.now() - this.teleportStartTime;
@@ -126,10 +166,26 @@ export const TeleportEffectMixin = {
     },
 };
 
+/**
+ * Interface for objects that can have telepathy effects applied
+ */
+export interface TelepathyEffectState {
+    x: number;
+    y: number;
+    telepathyActive: boolean;
+    telepathyStartTime: number;
+    telepathyDuration: number;
+    telepathyX: number;
+    telepathyY: number;
+    telepathyRadius: number;
+}
+
 // Telepathy Effect Mixin for RemotePlayer
 export const TelepathyEffectMixin = {
-    // Initialize telepathy effect properties
-    initTelepathyEffect() {
+    /**
+     * Initialize telepathy effect properties
+     */
+    initTelepathyEffect(this: TelepathyEffectState): void {
         this.telepathyActive = false;
         this.telepathyStartTime = 0;
         this.telepathyDuration = 3000;
@@ -138,8 +194,10 @@ export const TelepathyEffectMixin = {
         this.telepathyRadius = 180;
     },
 
-    // Start telepathy effect
-    startTelepathy(x, y, radius) {
+    /**
+     * Start telepathy effect
+     */
+    startTelepathy(this: TelepathyEffectState, x: number, y: number, radius: number): void {
         this.telepathyActive = true;
         this.telepathyStartTime = Date.now();
         this.telepathyX = x;
@@ -147,8 +205,10 @@ export const TelepathyEffectMixin = {
         this.telepathyRadius = radius;
     },
 
-    // Update telepathy effect state
-    updateTelepathy() {
+    /**
+     * Update telepathy effect state
+     */
+    updateTelepathy(this: TelepathyEffectState): void {
         if (!this.telepathyActive) return;
 
         const elapsed = Date.now() - this.telepathyStartTime;
@@ -161,8 +221,10 @@ export const TelepathyEffectMixin = {
         this.telepathyY = this.y;
     },
 
-    // Render telepathy effect
-    renderTelepathy(ctx) {
+    /**
+     * Render telepathy effect
+     */
+    renderTelepathy(this: TelepathyEffectState, ctx: CanvasRenderingContext2D): void {
         if (!this.telepathyActive) return;
 
         const elapsed = Date.now() - this.telepathyStartTime;
@@ -194,5 +256,11 @@ export const TelepathyEffectMixin = {
 };
 
 // Backward compatibility: expose to window
+declare global {
+    interface Window {
+        TeleportEffectMixin: typeof TeleportEffectMixin;
+        TelepathyEffectMixin: typeof TelepathyEffectMixin;
+    }
+}
 window.TeleportEffectMixin = TeleportEffectMixin;
 window.TelepathyEffectMixin = TelepathyEffectMixin;

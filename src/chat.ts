@@ -1,36 +1,53 @@
 // Chat system for multiplayer
+
+import type { ICharacter, SocketIOClient } from './types/index.js';
+
+interface ChatMessageData {
+    playerName: string;
+    message: string;
+}
+
 export class ChatManager {
+    chatInput: HTMLInputElement | null;
+    chatMessages: HTMLElement | null;
+    socket: SocketIOClient | null;
+    isInputFocused: boolean;
+    maxMessages: number;
+    localPlayer: ICharacter | null; // Reference to local player for chat bubbles
+
     constructor() {
-        this.chatInput = document.getElementById('chatInput');
+        this.chatInput = document.getElementById('chatInput') as HTMLInputElement | null;
         this.chatMessages = document.getElementById('chatMessages');
         this.socket = null;
         this.isInputFocused = false;
         this.maxMessages = 50;
-        this.localPlayer = null; // Reference to local player for chat bubbles
+        this.localPlayer = null;
 
         this.setupEventListeners();
     }
 
-    setupEventListeners() {
+    setupEventListeners(): void {
         // Handle Enter key to send message
-        this.chatInput.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter') {
-                e.preventDefault();
-                this.sendMessage();
-            }
-        });
+        if (this.chatInput) {
+            this.chatInput.addEventListener('keydown', (e: KeyboardEvent) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    this.sendMessage();
+                }
+            });
 
-        // Track input focus state
-        this.chatInput.addEventListener('focus', () => {
-            this.isInputFocused = true;
-        });
+            // Track input focus state
+            this.chatInput.addEventListener('focus', () => {
+                this.isInputFocused = true;
+            });
 
-        this.chatInput.addEventListener('blur', () => {
-            this.isInputFocused = false;
-        });
+            this.chatInput.addEventListener('blur', () => {
+                this.isInputFocused = false;
+            });
+        }
 
         // Press Enter anywhere to focus chat input (if not already focused)
-        document.addEventListener('keydown', (e) => {
+        document.addEventListener('keydown', (e: KeyboardEvent) => {
             if (e.key === 'Enter' && !this.isInputFocused) {
                 e.preventDefault();
                 this.focusInput();
@@ -38,24 +55,26 @@ export class ChatManager {
         });
     }
 
-    setSocket(socket) {
+    setSocket(socket: SocketIOClient): void {
         this.socket = socket;
 
         // Listen for chat messages from server
-        this.socket.on('chatMessage', (data) => {
-            this.displayMessage(data);
+        this.socket.on('chatMessage', (data: unknown) => {
+            this.displayMessage(data as ChatMessageData);
         });
     }
 
-    setPlayer(player) {
+    setPlayer(player: ICharacter): void {
         this.localPlayer = player;
     }
 
-    focusInput() {
-        this.chatInput.focus();
+    focusInput(): void {
+        this.chatInput?.focus();
     }
 
-    sendMessage() {
+    sendMessage(): void {
+        if (!this.chatInput) return;
+
         const message = this.chatInput.value.trim();
 
         if (message && this.socket && message.length > 0) {
@@ -75,7 +94,9 @@ export class ChatManager {
         this.chatInput.blur();
     }
 
-    displayMessage(data) {
+    displayMessage(data: ChatMessageData): void {
+        if (!this.chatMessages) return;
+
         const messageDiv = document.createElement('div');
         messageDiv.className = 'chatMessage';
 
@@ -97,11 +118,16 @@ export class ChatManager {
 
         // Limit number of messages
         while (this.chatMessages.children.length > this.maxMessages) {
-            this.chatMessages.removeChild(this.chatMessages.firstChild);
+            const firstChild = this.chatMessages.firstChild;
+            if (firstChild) {
+                this.chatMessages.removeChild(firstChild);
+            }
         }
     }
 
-    addSystemMessage(message) {
+    addSystemMessage(message: string): void {
+        if (!this.chatMessages) return;
+
         const messageDiv = document.createElement('div');
         messageDiv.className = 'chatMessage';
         messageDiv.style.color = '#A78BFA';
@@ -112,7 +138,7 @@ export class ChatManager {
         this.chatMessages.scrollTop = this.chatMessages.scrollHeight;
     }
 
-    isChatInputFocused() {
+    isChatInputFocused(): boolean {
         return this.isInputFocused;
     }
 }

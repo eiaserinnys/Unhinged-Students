@@ -10,9 +10,9 @@ import { gameState, GAME_WIDTH, GAME_HEIGHT } from '../core/gameState.js';
 
 /**
  * Render hit vignette effect (red screen edges when damaged)
- * @param {CanvasRenderingContext2D} ctx - Canvas 2D context
+ * @param ctx - Canvas 2D context
  */
-export function renderHitVignette(ctx) {
+export function renderHitVignette(ctx: CanvasRenderingContext2D): void {
     if (gameState.hitVignetteTime === 0) return;
 
     const elapsed = Date.now() - gameState.hitVignetteTime;
@@ -53,16 +53,18 @@ export function renderHitVignette(ctx) {
 
 /**
  * Render death screen with respawn timer
- * @param {CanvasRenderingContext2D} ctx - Canvas 2D context
+ * @param ctx - Canvas 2D context
  */
-export function renderDeathScreen(ctx) {
+export function renderDeathScreen(ctx: CanvasRenderingContext2D): void {
+    const player = gameState.player;
+    if (!player) return;
+
     // Dark overlay
     ctx.save();
     ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
     ctx.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
 
     // Calculate remaining respawn time
-    const player = gameState.player;
     const elapsedTime = Date.now() - player.deathTime;
     const remainingTime = Math.max(0, (player.respawnDelay - elapsedTime) / 1000);
 
@@ -96,11 +98,20 @@ export function renderDeathScreen(ctx) {
 /**
  * Trigger hit vignette effect (called from network.js when local player takes damage)
  */
-export function triggerHitVignette() {
+export function triggerHitVignette(): void {
     gameState.hitVignetteTime = Date.now();
 }
 
-// Expose to global scope
+// Expose to global scope for backward compatibility
 window.renderHitVignette = renderHitVignette;
 window.renderDeathScreen = renderDeathScreen;
 window.triggerHitVignette = triggerHitVignette;
+
+// Extend Window interface for global functions
+declare global {
+    interface Window {
+        renderHitVignette: typeof renderHitVignette;
+        renderDeathScreen: typeof renderDeathScreen;
+        triggerHitVignette: typeof triggerHitVignette;
+    }
+}

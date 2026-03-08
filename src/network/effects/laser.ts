@@ -1,9 +1,32 @@
 // Laser Effect Mixin for RemotePlayer
+
+/**
+ * Laser phase types
+ */
+export type LaserPhase = 'aiming' | 'firing' | 'none';
+
+/**
+ * Interface for objects that can have laser effects applied
+ */
+export interface LaserEffectState {
+    x: number;
+    y: number;
+    laserActive: boolean;
+    laserPhase: LaserPhase;
+    laserStartTime: number;
+    laserAimDuration: number;
+    laserFireDuration: number;
+    laserDirX: number;
+    laserDirY: number;
+}
+
 export const LaserEffectMixin = {
-    // Initialize laser effect properties
-    initLaserEffect() {
+    /**
+     * Initialize laser effect properties
+     */
+    initLaserEffect(this: LaserEffectState): void {
         this.laserActive = false;
-        this.laserPhase = 'none'; // 'aiming', 'firing', 'none'
+        this.laserPhase = 'none';
         this.laserStartTime = 0;
         this.laserAimDuration = 1000; // 1 second aiming
         this.laserFireDuration = 200; // 0.2 second firing
@@ -11,8 +34,16 @@ export const LaserEffectMixin = {
         this.laserDirY = 0;
     },
 
-    // Start laser aiming effect
-    startLaserAiming(x, y, dirX, dirY) {
+    /**
+     * Start laser aiming effect
+     */
+    startLaserAiming(
+        this: LaserEffectState,
+        _x: number,
+        _y: number,
+        dirX: number,
+        dirY: number
+    ): void {
         this.laserActive = true;
         this.laserPhase = 'aiming';
         this.laserStartTime = Date.now();
@@ -20,16 +51,20 @@ export const LaserEffectMixin = {
         this.laserDirY = dirY;
     },
 
-    // Transition laser to firing phase
-    fireLaser() {
+    /**
+     * Transition laser to firing phase
+     */
+    fireLaser(this: LaserEffectState): void {
         if (this.laserActive) {
             this.laserPhase = 'firing';
             this.laserStartTime = Date.now();
         }
     },
 
-    // Update laser effect state
-    updateLaser() {
+    /**
+     * Update laser effect state
+     */
+    updateLaser(this: LaserEffectState): void {
         if (!this.laserActive) return;
 
         const currentTime = Date.now();
@@ -48,8 +83,10 @@ export const LaserEffectMixin = {
         }
     },
 
-    // Render laser effect
-    renderLaser(ctx) {
+    /**
+     * Render laser effect
+     */
+    renderLaser(this: LaserEffectState, ctx: CanvasRenderingContext2D): void {
         if (!this.laserActive) return;
 
         const elapsed = Date.now() - this.laserStartTime;
@@ -100,4 +137,9 @@ export const LaserEffectMixin = {
 };
 
 // Backward compatibility: expose to window
+declare global {
+    interface Window {
+        LaserEffectMixin: typeof LaserEffectMixin;
+    }
+}
 window.LaserEffectMixin = LaserEffectMixin;

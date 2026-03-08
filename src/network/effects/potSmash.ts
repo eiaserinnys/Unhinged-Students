@@ -1,9 +1,26 @@
 // Pot Smash Effect Mixin for RemotePlayer (Curry-Bear basic attack)
 // This mixin adds pot smash effect rendering capabilities to RemotePlayer
 
+/**
+ * Interface for objects that can have pot smash effects applied
+ */
+export interface PotSmashEffectState {
+    x: number;
+    y: number;
+    potSmashActive: boolean;
+    potSmashStartTime: number;
+    potSmashDuration: number;
+    potSmashDirX: number;
+    potSmashDirY: number;
+    potSmashRange: number;
+    potSmashAngle: number;
+}
+
 export const PotSmashEffectMixin = {
-    // Initialize pot smash effect state
-    initPotSmashEffect() {
+    /**
+     * Initialize pot smash effect state
+     */
+    initPotSmashEffect(this: PotSmashEffectState): void {
         this.potSmashActive = false;
         this.potSmashStartTime = 0;
         this.potSmashDuration = 300; // 300ms effect duration
@@ -13,16 +30,20 @@ export const PotSmashEffectMixin = {
         this.potSmashAngle = 90; // degrees
     },
 
-    // Start pot smash effect
-    startPotSmash(dirX, dirY) {
+    /**
+     * Start pot smash effect
+     */
+    startPotSmash(this: PotSmashEffectState, dirX: number, dirY: number): void {
         this.potSmashActive = true;
         this.potSmashStartTime = Date.now();
         this.potSmashDirX = dirX;
         this.potSmashDirY = dirY;
     },
 
-    // Update pot smash effect
-    updatePotSmash() {
+    /**
+     * Update pot smash effect
+     */
+    updatePotSmash(this: PotSmashEffectState): void {
         if (!this.potSmashActive) return;
 
         const elapsed = Date.now() - this.potSmashStartTime;
@@ -31,8 +52,10 @@ export const PotSmashEffectMixin = {
         }
     },
 
-    // Render pot smash effect
-    renderPotSmash(ctx) {
+    /**
+     * Render pot smash effect
+     */
+    renderPotSmash(this: PotSmashEffectState, ctx: CanvasRenderingContext2D): void {
         if (!this.potSmashActive) return;
 
         const elapsed = Date.now() - this.potSmashStartTime;
@@ -74,7 +97,7 @@ export const PotSmashEffectMixin = {
         ctx.font = '30px serif';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        ctx.fillText('🍲', emojiX, emojiY);
+        ctx.fillText('\u{1F372}', emojiX, emojiY);
 
         // Draw splash particles
         const particleCount = 5;
@@ -95,4 +118,9 @@ export const PotSmashEffectMixin = {
 };
 
 // Backward compatibility: expose to window
+declare global {
+    interface Window {
+        PotSmashEffectMixin: typeof PotSmashEffectMixin;
+    }
+}
 window.PotSmashEffectMixin = PotSmashEffectMixin;
