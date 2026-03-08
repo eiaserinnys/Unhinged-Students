@@ -200,3 +200,66 @@
 | 결과 | 승패 확인 |
 | 보상 | 성장 보상 |
 
+## 🏗️ 코드 구조
+
+### 폴더 구조
+
+```
+Unhinged-Students/
+├── shared/              # 클라이언트/서버 공유 모듈
+│   ├── config.js        # 게임 설정 SSOT (Single Source of Truth)
+│   ├── geometry.js      # 거리 계산, 충돌 감지 유틸리티
+│   └── combat.js        # 사망 처리 등 전투 유틸리티
+├── src/                 # 클라이언트 코드
+│   ├── game.js          # 메인 게임 루프 (~610줄)
+│   ├── character.js     # 캐릭터 클래스
+│   ├── skill.js         # 스킬 시스템
+│   ├── config.js        # 클라이언트 설정
+│   ├── core/            # 핵심 모듈
+│   │   └── gameState.js # 게임 상태 관리
+│   ├── combat/          # 전투 모듈
+│   │   └── enemyFinder.js # 적 탐색 로직
+│   ├── rendering/       # 렌더링 모듈
+│   │   └── uiRenderer.js # UI 렌더링
+│   └── network/         # 네트워크 모듈
+│       ├── NetworkManager.js
+│       ├── RemotePlayer.js
+│       └── effects/     # 스킬 이펙트
+├── server/              # 서버 코드
+│   ├── index.js         # 서버 진입점
+│   ├── config.js        # 서버 설정 (shared/config.js 확장)
+│   ├── validation.js    # 입력 검증 유틸리티
+│   ├── gameState.js     # 서버 게임 상태
+│   └── handlers/        # 이벤트 핸들러
+│       └── combatHandler.js # 전투 이벤트 처리
+└── test/                # 테스트 코드
+    ├── *.test.js        # 클라이언트 테스트
+    ├── server/          # 서버 테스트
+    └── shared/          # 공유 모듈 테스트
+```
+
+### 설정 관리 (SSOT)
+
+`shared/config.js`가 모든 게임 설정의 단일 진실 공급원(SSOT)입니다:
+- 서버와 클라이언트가 동일한 값 참조
+- 캐릭터 스킬, 전투, 월드 설정 포함
+- 서버 전용 설정은 `server/config.js`에서 확장
+
+### 보안 설계
+
+- **서버 권위적 (Server-Authoritative)**: 모든 게임 로직은 서버에서 검증
+- **입력 검증**: 클라이언트 데이터 무조건 검증
+- **레이트 리미팅**: 스팸 방지
+- **치트 로깅**: 의심스러운 행위 기록
+
+### 테스트
+
+```bash
+npm test            # 테스트 실행
+npm run test:coverage  # 커버리지 포함
+```
+
+- 클라이언트 테스트: jsdom 환경
+- 서버 테스트: Node.js 환경
+- 공유 모듈: 100% 커버리지
+
