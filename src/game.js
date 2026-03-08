@@ -348,33 +348,9 @@ function update(deltaTime) {
             handleQSkill();
         }
 
-        // W - Teleport (to random enemy)
+        // W - Teleport (to random enemy) - Only for characters with teleport skill
         if (isKeyJustPressed('w') && !gameState.teleportEffect.active) {
-            const skill = gameState.skillManager.useSkill('w');
-            if (skill) {
-                const playerPos = gameState.player.getPosition();
-                const target = findRandomEnemy();
-
-                if (target) {
-                    // Teleport to near the target enemy
-                    gameState.teleportEffect.start(playerPos.x, playerPos.y, GAME_WIDTH, GAME_HEIGHT, target.x, target.y);
-                    logger.debug(`Used skill: ${skill.name} - teleporting to ${target.type} at (${target.x.toFixed(0)}, ${target.y.toFixed(0)})`);
-                } else {
-                    // No enemies, teleport randomly
-                    gameState.teleportEffect.start(playerPos.x, playerPos.y, GAME_WIDTH, GAME_HEIGHT);
-                    logger.debug(`Used skill: ${skill.name} - random teleport (no enemies)`);
-                }
-
-                // Send teleport event to server for sync
-                if (gameState.networkManager) {
-                    gameState.networkManager.sendTeleport(
-                        gameState.teleportEffect.startX,
-                        gameState.teleportEffect.startY,
-                        gameState.teleportEffect.endX,
-                        gameState.teleportEffect.endY
-                    );
-                }
-            }
+            handleWSkill();
         }
 
         // E - Character-specific skill
@@ -1041,6 +1017,45 @@ function handleQSkill() {
     }
 }
 
+// Handle W skill based on selected character
+function handleWSkill() {
+    const playerPos = gameState.player.getPosition();
+
+    switch (gameState.selectedCharacter) {
+        case 'crazy-eyes': // 눈 돌아가는 사람 - W 스킬 없음
+            // 눈 돌아가는 사람은 W 스킬이 없음
+            break;
+
+        case 'alien': // 외계인 - 순간이동
+        default:
+            const skill = gameState.skillManager.useSkill('w');
+            if (skill) {
+                const target = findRandomEnemy();
+
+                if (target) {
+                    // Teleport to near the target enemy
+                    gameState.teleportEffect.start(playerPos.x, playerPos.y, GAME_WIDTH, GAME_HEIGHT, target.x, target.y);
+                    logger.debug(`Used skill: ${skill.name} - teleporting to ${target.type} at (${target.x.toFixed(0)}, ${target.y.toFixed(0)})`);
+                } else {
+                    // No enemies, teleport randomly
+                    gameState.teleportEffect.start(playerPos.x, playerPos.y, GAME_WIDTH, GAME_HEIGHT);
+                    logger.debug(`Used skill: ${skill.name} - random teleport (no enemies)`);
+                }
+
+                // Send teleport event to server for sync
+                if (gameState.networkManager) {
+                    gameState.networkManager.sendTeleport(
+                        gameState.teleportEffect.startX,
+                        gameState.teleportEffect.startY,
+                        gameState.teleportEffect.endX,
+                        gameState.teleportEffect.endY
+                    );
+                }
+            }
+            break;
+    }
+}
+
 // Handle E skill based on selected character
 function handleESkill() {
     const playerPos = gameState.player.getPosition();
@@ -1101,8 +1116,6 @@ function initializeCharacterSkills(characterId) {
         case 'crazy-eyes': // 눈 돌아가는 사람
             // Q = 이상한 파동 (Wave Attack) - 기본 공격
             gameState.skillManager.addSkill(new Skill('이상한 파동', 'q', GAME_CONFIG.SKILL_WAVE.COOLDOWN_MS, GAME_CONFIG.SKILL_WAVE.COLOR, '🌀'));
-            // W = 순간이동
-            gameState.skillManager.addSkill(new Skill('순간이동', 'w', GAME_CONFIG.SKILL_TELEPORT.COOLDOWN_MS, GAME_CONFIG.SKILL_TELEPORT.COLOR, '💫'));
             // E = 광기 산책
             gameState.skillManager.addSkill(new Skill('광기 산책', 'e', GAME_CONFIG.SKILL_MADNESS.COOLDOWN_MS, GAME_CONFIG.SKILL_MADNESS.COLOR, '👀'));
             logger.info('Initialized skills for 눈 돌아가는 사람');

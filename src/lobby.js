@@ -7,6 +7,8 @@ class LobbyManager {
         this.nameInput = document.getElementById('playerNameInput');
         this.startButton = document.getElementById('startGameBtn');
         this.characterOptions = document.querySelectorAll('.character-option');
+        this.characterStats = document.querySelector('.character-stats');
+        this.characterSkills = document.querySelector('.character-skills');
 
         // State - sync with DOM's initial selected character
         this.selectedCharacter = this.getInitialSelectedCharacter();
@@ -21,6 +23,9 @@ class LobbyManager {
 
         // Validate input to set initial button state
         this.validateInput();
+
+        // Update character info for initial selection
+        this.updateCharacterInfo();
     }
 
     // Get the initially selected character from DOM
@@ -78,8 +83,23 @@ class LobbyManager {
         this.selectedCharacter = option.dataset.character;
         logger.debug(`Selected character: ${this.selectedCharacter}`);
 
+        // Update character info display
+        this.updateCharacterInfo();
+
         // Validate input to update button state
         this.validateInput();
+    }
+
+    updateCharacterInfo() {
+        if (!this.selectedCharacter) return;
+
+        const info = LobbyManager.getCharacterInfo(this.selectedCharacter);
+        if (this.characterStats) {
+            this.characterStats.textContent = info.stats;
+        }
+        if (this.characterSkills) {
+            this.characterSkills.textContent = info.skills;
+        }
     }
 
     validateInput() {
@@ -157,5 +177,36 @@ class LobbyManager {
             'squeak-squeak': '찍찍찍찍찍'
         };
         return characterNames[characterId] || '외계인';
+    }
+
+    // Get character info (stats and skills)
+    static getCharacterInfo(characterId) {
+        const characterInfo = {
+            'alien': {
+                stats: '❤️ 체력: 보통 | ⚡ 속도: 빠름',
+                skills: '🎇 레이저 | 💫 순간이동 | 👽 텔레파시'
+            },
+            'crazy-eyes': {
+                stats: '❤️ 체력: 보통 | ⚡ 속도: 보통',
+                skills: '🌀 이상한 파동 | 👀 광기 산책'
+            },
+            'curry-bear': {
+                stats: '❤️ 체력: 높음 | ⚡ 속도: 느림',
+                skills: '🍲 냄비 내려치기 | 🍛 카레 회복'
+            },
+            'big-sis-hulk': {
+                stats: '❤️ 체력: 매우 높음 | ⚡ 속도: 느림',
+                skills: '🌀 던지기 | 🔥 폭주'
+            },
+            'teacher': {
+                stats: '❤️ 체력: 보통 | ⚡ 속도: 보통',
+                skills: '🎭 위장 능력'
+            },
+            'squeak-squeak': {
+                stats: '❤️ 체력: 낮음 | ⚡ 속도: 빠름',
+                skills: '👻 쥐 환상 | 😴 수면 가루 | 💣 쥐 폭탄'
+            }
+        };
+        return characterInfo[characterId] || characterInfo['alien'];
     }
 }
