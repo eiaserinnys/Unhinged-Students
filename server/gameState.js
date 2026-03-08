@@ -10,6 +10,9 @@ const {
     DUMMY_RESPAWN_DELAY,
 } = require('./config');
 
+// Team configuration
+const TEAM = SERVER_CONFIG.TEAM;
+
 // Store connected players
 const players = new Map();
 
@@ -20,6 +23,44 @@ let shardIdCounter = 0;
 
 // Dummy system (server-authoritative)
 const dummies = new Map(); // Map of dummyId -> {id, x, y, name, currentHP, maxHP, deathTime, respawnDelay}
+
+// ========================================
+// TEAM ASSIGNMENT SYSTEM
+// ========================================
+
+/**
+ * Get the count of players in each team
+ * @returns {{red: number, blue: number}}
+ */
+function getTeamCounts() {
+    let redCount = 0;
+    let blueCount = 0;
+
+    players.forEach(player => {
+        if (player.team === TEAM.RED) redCount++;
+        else if (player.team === TEAM.BLUE) blueCount++;
+    });
+
+    return { red: redCount, blue: blueCount };
+}
+
+/**
+ * Assign a team to a new player (balances teams)
+ * @returns {string} 'red' or 'blue'
+ */
+function assignTeam() {
+    const counts = getTeamCounts();
+
+    // Assign to the team with fewer players
+    // If equal, randomly assign
+    if (counts.red < counts.blue) {
+        return TEAM.RED;
+    } else if (counts.blue < counts.red) {
+        return TEAM.BLUE;
+    } else {
+        return Math.random() < 0.5 ? TEAM.RED : TEAM.BLUE;
+    }
+}
 
 // ========================================
 // RATE LIMITING SYSTEM
@@ -222,4 +263,6 @@ module.exports = {
     checkPlayerRespawn,
     checkShardRespawn,
     startRespawnTimers,
+    getTeamCounts,
+    assignTeam,
 };

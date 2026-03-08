@@ -3,6 +3,7 @@ class NetworkManager {
     constructor() {
         this.socket = null;
         this.playerId = null;
+        this.team = null; // Player's team ('red' or 'blue')
         this.connected = false;
         this.remotePlayers = new Map(); // Map of playerId -> RemotePlayer
         this.updateRate = 1000 / 20; // 20 updates per second
@@ -12,6 +13,7 @@ class NetworkManager {
         this.dummies = null; // Reference to dummies array for sync
         this.reconnectUI = null; // Reconnect UI manager
         this.serverUrl = null; // Store server URL for reconnection
+        this.onTeamAssigned = null; // Callback when team is assigned
     }
 
     setShardManager(shardManager) {
@@ -48,12 +50,18 @@ class NetworkManager {
         // Connection established
         this.socket.on('connected', (data) => {
             this.playerId = data.playerId;
+            this.team = data.team || 'red';
             this.connected = true;
-            logger.info(`Connected to server. Player ID: ${this.playerId}`);
+            logger.info(`Connected to server. Player ID: ${this.playerId}, Team: ${this.team}`);
 
             // Hide reconnect UI on successful connection
             if (this.reconnectUI && this.reconnectUI.isVisible) {
                 this.reconnectUI.onReconnectSuccess();
+            }
+
+            // Notify about team assignment
+            if (this.onTeamAssigned) {
+                this.onTeamAssigned(this.team);
             }
         });
 
@@ -486,6 +494,10 @@ class NetworkManager {
         }
         if (playerData.maxHP !== undefined) {
             remotePlayer.maxHP = playerData.maxHP;
+        }
+        // Set team if provided
+        if (playerData.team !== undefined) {
+            remotePlayer.team = playerData.team;
         }
         this.remotePlayers.set(playerData.playerId, remotePlayer);
     }

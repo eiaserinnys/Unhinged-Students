@@ -20,12 +20,20 @@ const {
     dummies,
     rateLimit,
     cleanupRateLimiter,
+    assignTeam,
+    getTeamCounts,
 } = require('../gameState');
 
 function registerPlayerHandlers(socket, io) {
-    // Send player their ID
+    // Assign team to new player
+    const team = assignTeam();
+    const teamCounts = getTeamCounts();
+    logger.info(`Assigned team ${team} to player ${socket.id} (Red: ${teamCounts.red}, Blue: ${teamCounts.blue})`);
+
+    // Send player their ID and team
     socket.emit('connected', {
-        playerId: socket.id
+        playerId: socket.id,
+        team: team
     });
 
     // Send existing players to new player
@@ -40,9 +48,10 @@ function registerPlayerHandlers(socket, io) {
     const aliveDummies = Array.from(dummies.values()).filter(d => d.currentHP > 0);
     socket.emit('existingDummies', aliveDummies);
 
-    // Initialize player data
+    // Initialize player data with team
     players.set(socket.id, {
         playerId: socket.id,
+        team: team,
         x: 960, // Center of game world
         y: 540,
         playerName: 'Player',
@@ -54,9 +63,10 @@ function registerPlayerHandlers(socket, io) {
         isDead: false
     });
 
-    // Notify others about new player
+    // Notify others about new player (include team)
     socket.broadcast.emit('playerJoined', {
         playerId: socket.id,
+        team: team,
         x: 960,
         y: 540,
         playerName: 'Player',
@@ -113,9 +123,10 @@ function registerPlayerHandlers(socket, io) {
         const level = isValidPositiveInt(data.level, 30) ? data.level : 1;
         const experience = isValidPositiveInt(data.experience, 10000) ? data.experience : 0;
 
-        // Update player data, preserving HP and death state
+        // Update player data, preserving HP, death state, and team
         players.set(socket.id, {
             playerId: socket.id,
+            team: existingPlayer ? existingPlayer.team : 'red',
             x: validX,
             y: validY,
             playerName: playerName,

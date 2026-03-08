@@ -19,7 +19,7 @@ let loadHandler = null;
 
 // Game state
 const gameState = {
-    screen: 'lobby', // 'lobby' | 'playing'
+    screen: 'lobby', // 'lobby' | 'teamAnnounce' | 'playing'
     running: false,
     player: null,
     lobbyManager: null, // Lobby UI manager
@@ -43,7 +43,11 @@ const gameState = {
     hitVignetteDuration: GAME_CONFIG.EFFECTS.HIT_VIGNETTE_DURATION_MS,
     // Player selection from lobby
     selectedCharacter: 'alien',
-    playerName: 'Player'
+    playerName: 'Player',
+    // Team info
+    team: null, // 'red' or 'blue'
+    teamAnnounceStartTime: 0,
+    teamAnnounceDuration: 2500 // 2.5 seconds to show team
 };
 
 // Resize canvas to fill window while maintaining 16:9 aspect ratio
@@ -187,6 +191,15 @@ function startGame() {
     gameState.networkManager.setShardManager(gameState.shardManager);
     gameState.networkManager.setLocalPlayer(gameState.player);
     gameState.networkManager.setDummies(gameState.dummies);
+
+    // Set team assignment callback
+    gameState.networkManager.onTeamAssigned = (team) => {
+        gameState.team = team;
+        gameState.screen = 'teamAnnounce';
+        gameState.teamAnnounceStartTime = Date.now();
+        logger.info(`Team assigned: ${team}`);
+    };
+
     gameState.networkManager.connect();
 
     // Connect chat to network after socket is ready
@@ -448,9 +461,17 @@ function gameLoop(currentTime) {
     ctx.save();
     ctx.scale(scale, scale);
 
-    // Update and render
-    update(gameState.deltaTime);
-    render();
+    // Check current screen state
+    if (gameState.screen === 'teamAnnounce') {
+        // Render team announcement (also runs game in background)
+        update(gameState.deltaTime);
+        render();
+        renderTeamAnnounce(ctx);
+    } else {
+        // Normal gameplay
+        update(gameState.deltaTime);
+        render();
+    }
 
     ctx.restore();
 
@@ -486,6 +507,64 @@ function renderHitVignette(ctx) {
 
     ctx.fillStyle = gradient;
     ctx.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
+
+    ctx.restore();
+}
+
+// Render team announcement screen
+function renderTeamAnnounce(ctx) {
+    const team = gameState.team;
+    const elapsed = Date.now() - gameState.teamAnnounceStartTime;
+    const duration = gameState.teamAnnounceDuration;
+
+    // Check if announcement is done
+    if (elapsed >= duration) {
+        gameState.screen = 'playing';
+        return;
+    }
+
+    // Calculate animation progress
+    const progress = elapsed / duration;
+
+    // Background with team color
+    const isRed = team === 'red';
+    const bgColor = isRed ? 'rgba(220, 38, 38, 0.9)' : 'rgba(37, 99, 235, 0.9)';
+
+    ctx.save();
+    ctx.fillStyle = bgColor;
+    ctx.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
+
+    // Team text
+    const teamText = isRed ? '레드팀!' : '블루팀!';
+    const teamEmoji = isRed ? '🔴' : '🔵';
+
+    // Scale animation (starts big, settles)
+    const scale = 1 + Math.max(0, (1 - progress * 2)) * 0.3;
+
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+
+    // Shadow
+    ctx.shadowColor = 'rgba(0, 0, 0, 0.5)';
+    ctx.shadowBlur = 20;
+    ctx.shadowOffsetX = 4;
+    ctx.shadowOffsetY = 4;
+
+    // Main text
+    ctx.fillStyle = '#ffffff';
+    ctx.font = `600 ${Math.round(120 * scale)}px Jua, sans-serif`;
+    ctx.fillText(teamText, GAME_WIDTH / 2, GAME_HEIGHT / 2 - 20);
+
+    // Emoji
+    ctx.font = `${Math.round(80 * scale)}px sans-serif`;
+    ctx.fillText(teamEmoji, GAME_WIDTH / 2, GAME_HEIGHT / 2 + 100);
+
+    // Fade out at the end
+    if (progress > 0.7) {
+        const fadeProgress = (progress - 0.7) / 0.3;
+        ctx.fillStyle = `rgba(26, 26, 26, ${fadeProgress})`;
+        ctx.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
+    }
 
     ctx.restore();
 }

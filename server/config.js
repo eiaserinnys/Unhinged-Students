@@ -10,6 +10,13 @@ const SERVER_CONFIG = {
         HEIGHT: 1080,
     },
 
+    // Team
+    TEAM: {
+        RED: 'red',
+        BLUE: 'blue',
+        MAX_PLAYERS_PER_TEAM: 5,
+    },
+
     // Player
     PLAYER: {
         SPEED: 300,                     // pixels per second
