@@ -1029,8 +1029,7 @@ function renderCurryRecoveryEffect(ctx) {
 
 // Render stored damage UI for curry-bear
 function renderStoredDamageUI(ctx) {
-    if (gameState.storedDamage <= 0) return;
-
+    // Always show for curry-bear (even when 0)
     ctx.save();
 
     // Position below the skill UI
