@@ -1,53 +1,25 @@
-// 미친 제자들 (Unhinged Students) - Main Game File
+/**
+ * 미친 제자들 (Unhinged Students) - Main Game File
+ *
+ * This is the entry point and game loop.
+ * Game state, UI rendering, and enemy finding are in separate modules:
+ * - src/core/gameState.js
+ * - src/rendering/uiRenderer.js
+ * - src/combat/enemyFinder.js
+ */
 
-// Canvas setup
-const canvas = document.getElementById('gameCanvas');
-const ctx = canvas.getContext('2d');
+// Initialize canvas (uses globals from gameState.js)
+(function initCanvas() {
+    const canvasElement = document.getElementById('gameCanvas');
+    setCanvas(canvasElement);
+    setCtx(canvasElement.getContext('2d'));
+})();
 
-// Game world constants (16:9 aspect ratio) - from config
-const GAME_WIDTH = GAME_CONFIG.WORLD.WIDTH;
-const GAME_HEIGHT = GAME_CONFIG.WORLD.HEIGHT;
-
-// Viewport/scaling variables
-let scale = 1;
-let offsetX = 0;
-let offsetY = 0;
-
-// Store event handler references for cleanup
-let resizeHandler = null;
-let loadHandler = null;
-
-// Game state
-const gameState = {
-    screen: 'lobby', // 'lobby' | 'playing'
-    running: false,
-    player: null,
-    lobbyManager: null, // Lobby UI manager
-    shardManager: null,
-    networkManager: null,
-    chatManager: null,
-    skillManager: null, // Skill system
-    skillUI: null, // Skill UI renderer
-    laserBeamEffect: null, // Laser beam (Q skill) effect
-    teleportEffect: null, // Teleport (W skill) effect
-    telepathyEffect: null, // Telepathy (E skill) effect
-    dummies: [], // Test dummies for combat practice
-    stats: {
-        shardsCollected: 0
-    },
-    lastFrameTime: 0,
-    deltaTime: 0,
-    lastAttackSentTime: 0, // Track last attack sent to server
-    // Hit vignette effect
-    hitVignetteTime: 0,
-    hitVignetteDuration: GAME_CONFIG.EFFECTS.HIT_VIGNETTE_DURATION_MS,
-    // Player selection from lobby
-    selectedCharacter: 'alien',
-    playerName: 'Player'
-};
-
-// Resize canvas to fill window while maintaining 16:9 aspect ratio
+/**
+ * Resize canvas to fill window while maintaining 16:9 aspect ratio
+ */
 function resizeCanvas() {
+    const canvas = getCanvas();
     const windowWidth = window.innerWidth;
     const windowHeight = window.innerHeight;
     const windowAspectRatio = windowWidth / windowHeight;
@@ -57,38 +29,40 @@ function resizeCanvas() {
         // Window is wider - fit to height
         canvas.height = windowHeight;
         canvas.width = windowHeight * gameAspectRatio;
-        offsetX = (windowWidth - canvas.width) / 2;
-        offsetY = 0;
+        setOffsetX((windowWidth - canvas.width) / 2);
+        setOffsetY(0);
     } else {
         // Window is taller - fit to width
         canvas.width = windowWidth;
         canvas.height = windowWidth / gameAspectRatio;
-        offsetX = 0;
-        offsetY = (windowHeight - canvas.height) / 2;
+        setOffsetX(0);
+        setOffsetY((windowHeight - canvas.height) / 2);
     }
 
     // Calculate scale factor for rendering
-    scale = canvas.width / GAME_WIDTH;
+    setScale(canvas.width / GAME_WIDTH);
 
     // Position canvas in center of window
     canvas.style.position = 'absolute';
-    canvas.style.left = offsetX + 'px';
-    canvas.style.top = offsetY + 'px';
+    canvas.style.left = getOffsetX() + 'px';
+    canvas.style.top = getOffsetY() + 'px';
 
-    logger.debug(`Canvas resized to ${canvas.width}x${canvas.height}, scale: ${scale.toFixed(2)}`);
+    logger.debug(`Canvas resized to ${canvas.width}x${canvas.height}, scale: ${getScale().toFixed(2)}`);
 }
 
-// Initialize game (called on page load)
+/**
+ * Initialize game (called on page load)
+ */
 function init() {
     logger.info('Initializing...');
 
     // Setup canvas size
     resizeCanvas();
-    resizeHandler = resizeCanvas;
-    window.addEventListener('resize', resizeHandler);
+    setResizeHandler(resizeCanvas);
+    window.addEventListener('resize', getResizeHandler());
 
     // Initialize input system
-    initInput(canvas);
+    initInput(getCanvas());
 
     // Initialize lobby manager
     gameState.lobbyManager = new LobbyManager();
@@ -104,7 +78,9 @@ function init() {
     logger.info('Lobby initialized - waiting for player input');
 }
 
-// Start game after lobby selection
+/**
+ * Start game after lobby selection
+ */
 function startGame() {
     logger.info(`Starting game with character: ${gameState.selectedCharacter}, name: ${gameState.playerName}`);
 
@@ -201,7 +177,10 @@ function startGame() {
     gameLoop();
 }
 
-// Update game logic
+/**
+ * Update game logic
+ * @param {number} deltaTime - Time since last frame in seconds
+ */
 function update(deltaTime) {
     // Don't update player movement if chat is focused or player is dead
     const isChatting = gameState.chatManager && gameState.chatManager.isChatInputFocused();
@@ -285,78 +264,93 @@ function update(deltaTime) {
 
     // Handle skill input (Q, W, E) - only when not chatting and player is alive
     if (gameState.skillManager && !isChatting && !isPlayerDead) {
-        // Q - Laser Beam (targets players only, not dummies)
-        if (isKeyJustPressed('q') && !gameState.laserBeamEffect.active) {
-            const skill = gameState.skillManager.useSkill('q');
-            if (skill) {
-                const playerPos = gameState.player.getPosition();
-                const target = findNearestEnemy(true); // playersOnly = true
-                if (target) {
-                    gameState.laserBeamEffect.start(playerPos.x, playerPos.y, target.x, target.y);
-                    logger.debug(`Used skill: ${skill.name} - targeting ${target.type} at (${target.x.toFixed(0)}, ${target.y.toFixed(0)})`);
+        handleSkillInput();
+    }
 
-                    // Send laser aiming to server for sync with other players
-                    if (gameState.networkManager) {
-                        gameState.networkManager.sendLaserAiming(
-                            playerPos.x,
-                            playerPos.y,
-                            gameState.laserBeamEffect.dirX,
-                            gameState.laserBeamEffect.dirY
-                        );
-                    }
-                }
-            }
-        }
+    // Update skill effects
+    updateSkillEffects();
+}
 
-        // W - Teleport (to random enemy)
-        if (isKeyJustPressed('w') && !gameState.teleportEffect.active) {
-            const skill = gameState.skillManager.useSkill('w');
-            if (skill) {
-                const playerPos = gameState.player.getPosition();
-                const target = findRandomEnemy();
+/**
+ * Handle skill input (Q, W, E keys)
+ */
+function handleSkillInput() {
+    // Q - Laser Beam (targets players only, not dummies)
+    if (isKeyJustPressed('q') && !gameState.laserBeamEffect.active) {
+        const skill = gameState.skillManager.useSkill('q');
+        if (skill) {
+            const playerPos = gameState.player.getPosition();
+            const target = findNearestEnemy(true); // playersOnly = true
+            if (target) {
+                gameState.laserBeamEffect.start(playerPos.x, playerPos.y, target.x, target.y);
+                logger.debug(`Used skill: ${skill.name} - targeting ${target.type} at (${target.x.toFixed(0)}, ${target.y.toFixed(0)})`);
 
-                if (target) {
-                    // Teleport to near the target enemy
-                    gameState.teleportEffect.start(playerPos.x, playerPos.y, GAME_WIDTH, GAME_HEIGHT, target.x, target.y);
-                    logger.debug(`Used skill: ${skill.name} - teleporting to ${target.type} at (${target.x.toFixed(0)}, ${target.y.toFixed(0)})`);
-                } else {
-                    // No enemies, teleport randomly
-                    gameState.teleportEffect.start(playerPos.x, playerPos.y, GAME_WIDTH, GAME_HEIGHT);
-                    logger.debug(`Used skill: ${skill.name} - random teleport (no enemies)`);
-                }
-
-                // Send teleport event to server for sync
+                // Send laser aiming to server for sync with other players
                 if (gameState.networkManager) {
-                    gameState.networkManager.sendTeleport(
-                        gameState.teleportEffect.startX,
-                        gameState.teleportEffect.startY,
-                        gameState.teleportEffect.endX,
-                        gameState.teleportEffect.endY
-                    );
-                }
-            }
-        }
-
-        // E - Telepathy
-        if (isKeyJustPressed('e') && !gameState.telepathyEffect.active) {
-            const skill = gameState.skillManager.useSkill('e');
-            if (skill) {
-                const playerPos = gameState.player.getPosition();
-                gameState.telepathyEffect.start(playerPos.x, playerPos.y);
-                logger.debug(`Used skill: ${skill.name}`);
-
-                // Send telepathy event to server for sync
-                if (gameState.networkManager) {
-                    gameState.networkManager.sendTelepathy(
+                    gameState.networkManager.sendLaserAiming(
                         playerPos.x,
                         playerPos.y,
-                        gameState.telepathyEffect.radius
+                        gameState.laserBeamEffect.dirX,
+                        gameState.laserBeamEffect.dirY
                     );
                 }
             }
         }
     }
 
+    // W - Teleport (to random enemy)
+    if (isKeyJustPressed('w') && !gameState.teleportEffect.active) {
+        const skill = gameState.skillManager.useSkill('w');
+        if (skill) {
+            const playerPos = gameState.player.getPosition();
+            const target = findRandomEnemy();
+
+            if (target) {
+                // Teleport to near the target enemy
+                gameState.teleportEffect.start(playerPos.x, playerPos.y, GAME_WIDTH, GAME_HEIGHT, target.x, target.y);
+                logger.debug(`Used skill: ${skill.name} - teleporting to ${target.type} at (${target.x.toFixed(0)}, ${target.y.toFixed(0)})`);
+            } else {
+                // No enemies, teleport randomly
+                gameState.teleportEffect.start(playerPos.x, playerPos.y, GAME_WIDTH, GAME_HEIGHT);
+                logger.debug(`Used skill: ${skill.name} - random teleport (no enemies)`);
+            }
+
+            // Send teleport event to server for sync
+            if (gameState.networkManager) {
+                gameState.networkManager.sendTeleport(
+                    gameState.teleportEffect.startX,
+                    gameState.teleportEffect.startY,
+                    gameState.teleportEffect.endX,
+                    gameState.teleportEffect.endY
+                );
+            }
+        }
+    }
+
+    // E - Telepathy
+    if (isKeyJustPressed('e') && !gameState.telepathyEffect.active) {
+        const skill = gameState.skillManager.useSkill('e');
+        if (skill) {
+            const playerPos = gameState.player.getPosition();
+            gameState.telepathyEffect.start(playerPos.x, playerPos.y);
+            logger.debug(`Used skill: ${skill.name}`);
+
+            // Send telepathy event to server for sync
+            if (gameState.networkManager) {
+                gameState.networkManager.sendTelepathy(
+                    playerPos.x,
+                    playerPos.y,
+                    gameState.telepathyEffect.radius
+                );
+            }
+        }
+    }
+}
+
+/**
+ * Update all skill effects
+ */
+function updateSkillEffects() {
     // Update laser beam effect
     if (gameState.laserBeamEffect && gameState.laserBeamEffect.active) {
         const playerPos = gameState.player.getPosition();
@@ -421,9 +415,16 @@ function update(deltaTime) {
     }
 }
 
-// Game loop
+/**
+ * Game loop
+ * @param {number} currentTime - Current timestamp from requestAnimationFrame
+ */
 function gameLoop(currentTime) {
     if (!gameState.running) return;
+
+    const canvas = getCanvas();
+    const ctx = getCtx();
+    const scale = getScale();
 
     // Calculate delta time (in seconds)
     if (gameState.lastFrameTime === 0) {
@@ -457,76 +458,12 @@ function gameLoop(currentTime) {
     requestAnimationFrame(gameLoop);
 }
 
-// Render hit vignette effect (red screen edges when damaged)
-function renderHitVignette(ctx) {
-    if (gameState.hitVignetteTime === 0) return;
-
-    const elapsed = Date.now() - gameState.hitVignetteTime;
-    if (elapsed >= gameState.hitVignetteDuration) {
-        gameState.hitVignetteTime = 0;
-        return;
-    }
-
-    // Calculate opacity (starts strong, fades out)
-    const progress = elapsed / gameState.hitVignetteDuration;
-    const opacity = (1 - progress) * 0.6;
-
-    ctx.save();
-
-    // Create radial gradient from center (transparent) to edges (red)
-    const centerX = GAME_WIDTH / 2;
-    const centerY = GAME_HEIGHT / 2;
-    const innerRadius = Math.min(GAME_WIDTH, GAME_HEIGHT) * 0.3;
-    const outerRadius = Math.max(GAME_WIDTH, GAME_HEIGHT) * 0.8;
-
-    const gradient = ctx.createRadialGradient(centerX, centerY, innerRadius, centerX, centerY, outerRadius);
-    gradient.addColorStop(0, 'rgba(255, 0, 0, 0)');
-    gradient.addColorStop(0.5, `rgba(255, 0, 0, ${opacity * 0.3})`);
-    gradient.addColorStop(1, `rgba(255, 0, 0, ${opacity})`);
-
-    ctx.fillStyle = gradient;
-    ctx.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
-
-    ctx.restore();
-}
-
-// Render death screen with respawn timer
-function renderDeathScreen(ctx) {
-    // Dark overlay
-    ctx.save();
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
-    ctx.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
-
-    // Calculate remaining respawn time
-    const player = gameState.player;
-    const elapsedTime = Date.now() - player.deathTime;
-    const remainingTime = Math.max(0, (player.respawnDelay - elapsedTime) / 1000);
-
-    // Death message
-    ctx.fillStyle = '#FF6B6B';
-    ctx.font = '600 72px Jua, sans-serif';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-
-    ctx.shadowColor = '#000000';
-    ctx.shadowBlur = 10;
-    ctx.shadowOffsetX = 2;
-    ctx.shadowOffsetY = 2;
-
-    ctx.fillText('YOU DIED', GAME_WIDTH / 2, GAME_HEIGHT / 2 - 50);
-
-    // Respawn timer
-    ctx.fillStyle = '#ffffff';
-    ctx.font = '600 36px Jua, sans-serif';
-    ctx.fillText(`Respawning in ${remainingTime.toFixed(1)}s`, GAME_WIDTH / 2, GAME_HEIGHT / 2 + 30);
-
-    ctx.shadowColor = 'transparent';
-    ctx.shadowBlur = 0;
-    ctx.restore();
-}
-
-// Render function
+/**
+ * Render function
+ */
 function render() {
+    const ctx = getCtx();
+
     // Draw title (in game world coordinates)
     ctx.fillStyle = '#00D9FF';
     ctx.font = '600 28px Jua, sans-serif';
@@ -625,89 +562,9 @@ function render() {
     renderHitVignette(ctx);
 }
 
-// Trigger hit vignette effect (called from network.js when local player takes damage)
-function triggerHitVignette() {
-    gameState.hitVignetteTime = Date.now();
-}
-
-// Find the nearest enemy to the player
-// playersOnly: if true, only target other players (not dummies)
-function findNearestEnemy(playersOnly = false) {
-    const player = gameState.player;
-    if (!player) return null;
-
-    const playerPos = player.getPosition();
-    let nearestEnemy = null;
-    let nearestDistance = Infinity;
-
-    // Check dummies (skip if playersOnly)
-    if (!playersOnly) {
-        gameState.dummies.forEach(dummy => {
-            if (dummy.isAlive()) {
-                const dx = dummy.x - playerPos.x;
-                const dy = dummy.y - playerPos.y;
-                const distance = Math.sqrt(dx * dx + dy * dy);
-                if (distance < nearestDistance) {
-                    nearestDistance = distance;
-                    nearestEnemy = { x: dummy.x, y: dummy.y, type: 'dummy' };
-                }
-            }
-        });
-    }
-
-    // Check remote players
-    if (gameState.networkManager) {
-        gameState.networkManager.remotePlayers.forEach(remotePlayer => {
-            if (remotePlayer.isAlive()) {
-                const dx = remotePlayer.x - playerPos.x;
-                const dy = remotePlayer.y - playerPos.y;
-                const distance = Math.sqrt(dx * dx + dy * dy);
-                if (distance < nearestDistance) {
-                    nearestDistance = distance;
-                    nearestEnemy = { x: remotePlayer.x, y: remotePlayer.y, type: 'player' };
-                }
-            }
-        });
-    }
-
-    // If no enemy found, return a point in front of the player (based on facing direction)
-    if (!nearestEnemy) {
-        // Default to right direction
-        return { x: playerPos.x + 500, y: playerPos.y, type: 'none' };
-    }
-
-    return nearestEnemy;
-}
-
-// Find a random enemy (dummy or remote player) for teleport targeting
-function findRandomEnemy() {
-    const enemies = [];
-
-    // Collect all alive dummies
-    gameState.dummies.forEach(dummy => {
-        if (dummy.isAlive()) {
-            enemies.push({ x: dummy.x, y: dummy.y, type: 'dummy' });
-        }
-    });
-
-    // Collect all alive remote players
-    if (gameState.networkManager) {
-        gameState.networkManager.remotePlayers.forEach(remotePlayer => {
-            if (remotePlayer.isAlive()) {
-                enemies.push({ x: remotePlayer.x, y: remotePlayer.y, type: 'player' });
-            }
-        });
-    }
-
-    // Return random enemy or null if none
-    if (enemies.length === 0) {
-        return null;
-    }
-
-    return enemies[Math.floor(Math.random() * enemies.length)];
-}
-
-// Cleanup game resources to prevent memory leaks
+/**
+ * Cleanup game resources to prevent memory leaks
+ */
 function cleanupGame() {
     // Stop game loop
     gameState.running = false;
@@ -724,9 +581,10 @@ function cleanupGame() {
     }
 
     // Remove resize handler
+    const resizeHandler = getResizeHandler();
     if (resizeHandler) {
         window.removeEventListener('resize', resizeHandler);
-        resizeHandler = null;
+        setResizeHandler(null);
     }
 
     // Clear game state objects
@@ -745,8 +603,8 @@ function cleanupGame() {
 }
 
 // Start game when page loads
-loadHandler = init;
-window.addEventListener('load', loadHandler);
+setLoadHandler(init);
+window.addEventListener('load', getLoadHandler());
 
 // Cleanup on page unload to prevent memory leaks
 window.addEventListener('beforeunload', cleanupGame);
