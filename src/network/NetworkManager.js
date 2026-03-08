@@ -92,6 +92,10 @@ class NetworkManager {
                 remotePlayer.level = data.level || 1;
                 remotePlayer.experience = data.experience || 0;
                 remotePlayer.playerName = data.playerName || 'Player';
+                // Update character if changed
+                if (data.characterId) {
+                    remotePlayer.setCharacter(data.characterId);
+                }
             }
         });
 
@@ -753,7 +757,8 @@ class NetworkManager {
             playerData.y || 0,
             playerData.playerName || 'Player',
             playerData.level || 1,
-            playerData.experience || 0
+            playerData.experience || 0,
+            playerData.characterId || 'alien' // 캐릭터 ID 전달
         );
         // Set HP if provided
         if (playerData.currentHP !== undefined) {
@@ -849,6 +854,20 @@ class NetworkManager {
             this.socket.off('dummyRespawned');
             this.socket.off('playerDied');
             this.socket.off('playerRespawned');
+            // Wave, Madness, PotSmash, CurryRecovery 관련 이벤트
+            this.socket.off('playerWave');
+            this.socket.off('waveDamage');
+            this.socket.off('playerMadnessStart');
+            this.socket.off('playerMadnessEnd');
+            this.socket.off('madnessTick');
+            this.socket.off('playerPotSmash');
+            this.socket.off('potSmashDamage');
+            this.socket.off('storedDamageUpdate');
+            this.socket.off('playerCurryRecovery');
+            // SpinThrow, Rage 관련 이벤트
+            this.socket.off('playerSpinThrow');
+            this.socket.off('playerRageStart');
+            this.socket.off('playerRageEnd');
 
             this.socket.disconnect();
             this.socket = null;

@@ -61,7 +61,8 @@ function registerPlayerHandlers(socket, io) {
         currentHP: 100,
         maxHP: 100,
         deathTime: 0,
-        isDead: false
+        isDead: false,
+        characterId: 'alien' // 기본 캐릭터 (playerMove에서 업데이트됨)
     });
 
     // Notify others about new player (include team)
@@ -75,7 +76,8 @@ function registerPlayerHandlers(socket, io) {
         experience: 0,
         currentHP: 100,
         maxHP: 100,
-        isDead: false
+        isDead: false,
+        characterId: 'alien' // 기본 캐릭터
     });
 
     // Handle player position updates
@@ -170,7 +172,8 @@ function registerPlayerHandlers(socket, io) {
             y: validY,
             playerName: playerName,
             level: level,
-            experience: experience
+            experience: experience,
+            characterId: characterId
         });
     });
 

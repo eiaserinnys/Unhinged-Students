@@ -1,6 +1,6 @@
 // Remote player class (represents other players)
 class RemotePlayer {
-    constructor(playerId, x, y, playerName, level, experience = 0) {
+    constructor(playerId, x, y, playerName, level, experience = 0, characterId = 'alien') {
         this.playerId = playerId;
         this.x = x;
         this.y = y;
@@ -10,6 +10,9 @@ class RemotePlayer {
         this.level = level;
         this.experience = experience;
         this.maxLevel = 30;
+
+        // Character identity
+        this.characterId = characterId;
 
         // Visual properties
         // Use same display size calculation as Character
@@ -77,9 +80,43 @@ class RemotePlayer {
         if (window.CurryRecoveryEffectMixin) {
             window.CurryRecoveryEffectMixin.initCurryRecoveryEffect.call(this);
         }
+        if (window.SpinThrowEffectMixin) {
+            window.SpinThrowEffectMixin.initSpinThrowEffect.call(this);
+        }
+        if (window.RageEffectMixin) {
+            window.RageEffectMixin.initRageEffect.call(this);
+        }
 
-        // Load alien image
-        this.loadImage('asset/image/alien.png');
+        // Load character image based on characterId
+        this.loadCharacterImage(characterId);
+    }
+
+    // Get character image path (same logic as LobbyManager)
+    static getCharacterImagePath(characterId) {
+        const characterImages = {
+            'alien': 'asset/image/alien.png',
+            'crazy-eyes': 'asset/image/crazy-eyes.png',
+            'curry-bear': 'asset/image/curry-bear.png',
+            'big-sis-hulk': 'asset/image/big-sis-hulk.png',
+            'teacher': 'asset/image/teacher.png',
+            'squeak-squeak': 'asset/image/squeak-squeak.png'
+        };
+        return characterImages[characterId] || characterImages['alien'];
+    }
+
+    // Load character image by characterId
+    loadCharacterImage(characterId) {
+        const imagePath = RemotePlayer.getCharacterImagePath(characterId);
+        this.characterId = characterId;
+        this.loadImage(imagePath);
+    }
+
+    // Change character (reload image if different)
+    setCharacter(characterId) {
+        if (this.characterId !== characterId) {
+            logger.debug(`RemotePlayer ${this.playerId} changed character: ${this.characterId} -> ${characterId}`);
+            this.loadCharacterImage(characterId);
+        }
     }
 
     loadImage(path) {
