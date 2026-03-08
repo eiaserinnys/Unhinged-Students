@@ -41,11 +41,7 @@ export function isValidCoordinate(x: number, y: number, margin = 0): boolean {
 /**
  * Clamp coordinates to game bounds
  */
-export function clampCoordinates(
-    x: number,
-    y: number,
-    margin = 50
-): { x: number; y: number } {
+export function clampCoordinates(x: number, y: number, margin = 50): { x: number; y: number } {
     return {
         x: Math.max(margin, Math.min(GAME_WIDTH - margin, x)),
         y: Math.max(margin, Math.min(GAME_HEIGHT - margin, y)),

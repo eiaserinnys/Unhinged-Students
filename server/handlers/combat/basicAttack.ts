@@ -2,12 +2,7 @@
  * @fileoverview Basic attack handler (spacebar attack)
  */
 import logger from '../../../logger';
-import {
-    ATTACK_POWER,
-    ATTACK_RANGE,
-    RATE_LIMIT_ATTACK,
-    PLAYER_RESPAWN_DELAY,
-} from '../../config';
+import { ATTACK_POWER, ATTACK_RANGE, RATE_LIMIT_ATTACK, PLAYER_RESPAWN_DELAY } from '../../config';
 import { players, rateLimit } from '../../gameState';
 import {
     processAreaDamageToPlayers,

@@ -43,7 +43,9 @@ const mockConfig = {
 
 // Mock validation
 const mockValidation = {
-    isValidNumber: jest.fn((val: unknown) => typeof val === 'number' && Number.isFinite(val as number)),
+    isValidNumber: jest.fn(
+        (val: unknown) => typeof val === 'number' && Number.isFinite(val as number)
+    ),
     clampCoordinates: jest.fn((x: number, y: number) => ({ x, y })),
     calculateDistance: jest.fn((x1: number, y1: number, x2: number, y2: number) =>
         Math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2)
@@ -155,7 +157,9 @@ describe('CombatHandler Security', () => {
             handlers.laserAiming(data);
 
             // Assert
-            expect(mockLogger.cheat).toHaveBeenCalledWith(expect.stringContaining('Invalid laser direction'));
+            expect(mockLogger.cheat).toHaveBeenCalledWith(
+                expect.stringContaining('Invalid laser direction')
+            );
             expect(socket.broadcast.emit).not.toHaveBeenCalled();
         });
 
@@ -172,7 +176,9 @@ describe('CombatHandler Security', () => {
             handlers.laserAiming(data);
 
             // Assert
-            expect(mockLogger.cheat).toHaveBeenCalledWith(expect.stringContaining('Invalid laser direction'));
+            expect(mockLogger.cheat).toHaveBeenCalledWith(
+                expect.stringContaining('Invalid laser direction')
+            );
             expect(socket.broadcast.emit).not.toHaveBeenCalled();
         });
 
@@ -189,7 +195,9 @@ describe('CombatHandler Security', () => {
             handlers.laserAiming(data);
 
             // Assert
-            expect(mockLogger.cheat).toHaveBeenCalledWith(expect.stringContaining('Invalid laser direction'));
+            expect(mockLogger.cheat).toHaveBeenCalledWith(
+                expect.stringContaining('Invalid laser direction')
+            );
             expect(socket.broadcast.emit).not.toHaveBeenCalled();
         });
 
@@ -294,7 +302,9 @@ describe('CombatHandler Security', () => {
             handlers.telepathyDamage({});
 
             // Assert
-            expect(mockLogger.cheat).toHaveBeenCalledWith(expect.stringContaining('Telepathy tick too fast'));
+            expect(mockLogger.cheat).toHaveBeenCalledWith(
+                expect.stringContaining('Telepathy tick too fast')
+            );
             // Should not process damage
             expect(io.emit).not.toHaveBeenCalledWith('telepathyTick', expect.any(Object));
         });
@@ -319,7 +329,9 @@ describe('CombatHandler Security', () => {
             handlers.telepathyDamage({});
 
             // Assert
-            expect(mockLogger.cheat).not.toHaveBeenCalledWith(expect.stringContaining('Telepathy tick too fast'));
+            expect(mockLogger.cheat).not.toHaveBeenCalledWith(
+                expect.stringContaining('Telepathy tick too fast')
+            );
         });
 
         it('should update last tick time after successful tick', () => {
@@ -345,7 +357,9 @@ describe('CombatHandler Security', () => {
             handlers.telepathyDamage({});
 
             // Assert
-            expect(mockLogger.cheat).not.toHaveBeenCalledWith(expect.stringContaining('Telepathy tick too fast'));
+            expect(mockLogger.cheat).not.toHaveBeenCalledWith(
+                expect.stringContaining('Telepathy tick too fast')
+            );
         });
 
         it('should use 90% of tick interval as minimum (tolerance for network latency)', () => {
@@ -359,7 +373,9 @@ describe('CombatHandler Security', () => {
             handlers.telepathyDamage({});
 
             // Assert
-            expect(mockLogger.cheat).not.toHaveBeenCalledWith(expect.stringContaining('Telepathy tick too fast'));
+            expect(mockLogger.cheat).not.toHaveBeenCalledWith(
+                expect.stringContaining('Telepathy tick too fast')
+            );
         });
 
         it('should reject tick at 80% of interval (below tolerance)', () => {
@@ -373,7 +389,9 @@ describe('CombatHandler Security', () => {
             handlers.telepathyDamage({});
 
             // Assert
-            expect(mockLogger.cheat).toHaveBeenCalledWith(expect.stringContaining('Telepathy tick too fast'));
+            expect(mockLogger.cheat).toHaveBeenCalledWith(
+                expect.stringContaining('Telepathy tick too fast')
+            );
         });
     });
 });

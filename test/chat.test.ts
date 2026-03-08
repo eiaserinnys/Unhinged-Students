@@ -509,7 +509,11 @@ describe('Server-side Chat Validation', () => {
         });
 
         test('should reject missing message field', () => {
-            const result = validateChatMessage({ text: 'hello' } as { message?: unknown }, 'socket1', rateLimits);
+            const result = validateChatMessage(
+                { text: 'hello' } as { message?: unknown },
+                'socket1',
+                rateLimits
+            );
             expect(result.valid).toBe(false);
             expect(result.reason).toBe('invalid_type');
         });
@@ -625,11 +629,7 @@ describe('Server-side Chat Validation', () => {
         });
 
         test('should accept mixed content', () => {
-            const result = validateChatMessage(
-                { message: 'Hello 世界 ' },
-                'socket22',
-                rateLimits
-            );
+            const result = validateChatMessage({ message: 'Hello 世界 ' }, 'socket22', rateLimits);
             expect(result.valid).toBe(true);
         });
     });

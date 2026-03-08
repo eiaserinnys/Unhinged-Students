@@ -2,12 +2,7 @@
 // PLAYER EVENT HANDLERS
 // ========================================
 import logger from '../../logger';
-import {
-    PLAYER_SPEED,
-    PLAYER_SPEED_TOLERANCE,
-    RATE_LIMIT_MOVE,
-    SERVER_CONFIG,
-} from '../config';
+import { PLAYER_SPEED, PLAYER_SPEED_TOLERANCE, RATE_LIMIT_MOVE, SERVER_CONFIG } from '../config';
 import {
     isValidNumber,
     isValidString,
@@ -26,7 +21,7 @@ import {
 } from '../gameState';
 import type { TypedSocket, TypedServer, PlayerMoveData, CharacterId } from '../types';
 
-export function registerPlayerHandlers(socket: TypedSocket, io: TypedServer): void {
+export function registerPlayerHandlers(socket: TypedSocket, _io: TypedServer): void {
     // Assign team to new player
     const team = assignTeam();
     const teamCounts = getTeamCounts();
@@ -135,7 +130,9 @@ export function registerPlayerHandlers(socket: TypedSocket, io: TypedServer): vo
         const playerName = isValidString(data.playerName, 30) ? data.playerName : 'Player';
         const level = isValidPositiveInt(data.level, 30) ? data.level : 1;
         const experience = isValidPositiveInt(data.experience, 10000) ? data.experience : 0;
-        const characterId = (isValidString(data.characterId, 20) ? data.characterId : 'alien') as CharacterId;
+        const characterId = (
+            isValidString(data.characterId, 20) ? data.characterId : 'alien'
+        ) as CharacterId;
 
         // Calculate maxHP based on character
         const characterMaxHP =

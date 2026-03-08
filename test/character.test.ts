@@ -929,7 +929,13 @@ describe('Image Loading System', () => {
 
         loadFallbackImage(): Promise<void> {
             return new Promise((resolve) => {
-                const img: MockImage = { onload: null, onerror: null, src: null, width: 100, height: 100 };
+                const img: MockImage = {
+                    onload: null,
+                    onerror: null,
+                    src: null,
+                    width: 100,
+                    height: 100,
+                };
                 this.image = img;
                 this.imageLoaded = true;
                 this.width = this.displaySize;

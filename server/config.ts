@@ -34,9 +34,10 @@ const SERVER_ONLY_CONFIG: ServerOnlyConfig = {
 
 // Extended server config type
 export interface ServerConfigType extends GameConfigType {
-    PLAYER: GameConfigType['PLAYER'] & ServerOnlyConfig['PLAYER'] & {
-        MAX_MOVE_DISTANCE_PER_TICK: number;
-    };
+    PLAYER: GameConfigType['PLAYER'] &
+        ServerOnlyConfig['PLAYER'] & {
+            MAX_MOVE_DISTANCE_PER_TICK: number;
+        };
     RATE_LIMIT: ServerOnlyConfig['RATE_LIMIT'];
 }
 

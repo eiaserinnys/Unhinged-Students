@@ -100,7 +100,12 @@ export class Shard implements IShard {
     color: string;
     pulsePhase: number;
 
-    constructor(x: number, y: number, size: number = GAME_CONFIG.SHARD.SIZE, id: string | null = null) {
+    constructor(
+        x: number,
+        y: number,
+        size: number = GAME_CONFIG.SHARD.SIZE,
+        id: string | null = null
+    ) {
         this.x = x;
         this.y = y;
         this.size = size;
@@ -242,7 +247,12 @@ export class ShardManager implements IShardManager {
         logger.debug('ShardManager: Server mode enabled');
     }
 
-    spawnShards(count: number, canvasWidth: number, canvasHeight: number, margin: number = GAME_CONFIG.SHARD.SPAWN_MARGIN): void {
+    spawnShards(
+        count: number,
+        canvasWidth: number,
+        canvasHeight: number,
+        margin: number = GAME_CONFIG.SHARD.SPAWN_MARGIN
+    ): void {
         this.canvasWidth = canvasWidth;
         this.canvasHeight = canvasHeight;
 

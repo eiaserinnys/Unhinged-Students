@@ -1,7 +1,7 @@
 // Input handling system
 
 import { logger } from './utils/logger.js';
-import type { InputState, MouseState, TouchState, Position } from './types/index.js';
+import type { InputState, Position } from './types/index.js';
 
 export const Input: InputState = {
     keys: {},

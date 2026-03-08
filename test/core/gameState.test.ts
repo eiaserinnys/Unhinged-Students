@@ -269,7 +269,12 @@ describe('GameState Module', () => {
     });
 
     describe('State Transitions', () => {
-        function createGameState(): { screen: string; running: boolean; selectedCharacter: string; playerName: string } {
+        function createGameState(): {
+            screen: string;
+            running: boolean;
+            selectedCharacter: string;
+            playerName: string;
+        } {
             return {
                 screen: 'lobby',
                 running: false,

@@ -404,7 +404,11 @@ export class NetworkManager implements INetworkManager {
                         this.localPlayer.hitFlashTime = Date.now();
                     }
                     // Apply confusion effect (reversed controls)
-                    if (hit.confused && typeof setConfused === 'function' && hit.confusionDuration) {
+                    if (
+                        hit.confused &&
+                        typeof setConfused === 'function' &&
+                        hit.confusionDuration
+                    ) {
                         setConfused(hit.confusionDuration);
                         logger.info(`Confused for ${hit.confusionDuration}ms! Controls reversed!`);
                     }
@@ -533,8 +537,13 @@ export class NetworkManager implements INetworkManager {
             };
             // Note: updateStoredDamage should be imported if used
             // Currently left as global check for compatibility
-            if (typeof (window as { updateStoredDamage?: (s: number, m: number) => void }).updateStoredDamage === 'function') {
-                (window as { updateStoredDamage: (s: number, m: number) => void }).updateStoredDamage(storedDamage, maxStored);
+            if (
+                typeof (window as { updateStoredDamage?: (s: number, m: number) => void })
+                    .updateStoredDamage === 'function'
+            ) {
+                (
+                    window as { updateStoredDamage: (s: number, m: number) => void }
+                ).updateStoredDamage(storedDamage, maxStored);
             }
         });
 
@@ -547,12 +556,22 @@ export class NetworkManager implements INetworkManager {
                     this.localPlayer.currentHP = recoveryData.currentHP;
                 }
                 // Update stored damage to 0
-                if (typeof (window as { updateStoredDamage?: (s: number, m: number) => void }).updateStoredDamage === 'function') {
-                    (window as { updateStoredDamage: (s: number, m: number) => void }).updateStoredDamage(0, recoveryData.maxHP);
+                if (
+                    typeof (window as { updateStoredDamage?: (s: number, m: number) => void })
+                        .updateStoredDamage === 'function'
+                ) {
+                    (
+                        window as { updateStoredDamage: (s: number, m: number) => void }
+                    ).updateStoredDamage(0, recoveryData.maxHP);
                 }
                 // Trigger recovery effect
-                if (typeof (window as { triggerCurryRecoveryEffect?: (h: number) => void }).triggerCurryRecoveryEffect === 'function') {
-                    (window as { triggerCurryRecoveryEffect: (h: number) => void }).triggerCurryRecoveryEffect(recoveryData.healAmount);
+                if (
+                    typeof (window as { triggerCurryRecoveryEffect?: (h: number) => void })
+                        .triggerCurryRecoveryEffect === 'function'
+                ) {
+                    (
+                        window as { triggerCurryRecoveryEffect: (h: number) => void }
+                    ).triggerCurryRecoveryEffect(recoveryData.healAmount);
                 }
                 logger.debug(`Curry recovery: healed ${recoveryData.healAmount} HP`);
             } else {

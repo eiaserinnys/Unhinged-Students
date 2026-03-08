@@ -33,8 +33,20 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Build
+      - name: Lint
+        run: npm run lint
+
+      - name: Type check
+        run: npm run typecheck
+
+      - name: Test
+        run: npm test
+
+      - name: Build client
         run: npm run build
+
+      - name: Build server
+        run: npm run build:server
 
       - name: Setup SSH
         run: |
@@ -68,6 +80,9 @@ jobs:
             --exclude 'docs' \
             --exclude '*.md' \
             --exclude 'src' \
+            --exclude 'server' \
+            --exclude 'shared' \
+            --exclude 'test' \
             -e "ssh -i ~/.ssh/id_ed25519" \
             ./ ${{ secrets.LINODE_USER }}@${{ secrets.LINODE_HOST }}:${RELEASE_DIR}/
 

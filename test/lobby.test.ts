@@ -121,13 +121,16 @@ document.getElementById = jest.fn((id: string) => {
 }) as Mock;
 
 document.querySelectorAll = jest.fn((selector: string) => {
-    if (selector === '.character-option') return mockCharacterOptions as unknown as NodeListOf<Element>;
+    if (selector === '.character-option')
+        return mockCharacterOptions as unknown as NodeListOf<Element>;
     return originalQuerySelectorAll(selector);
 }) as Mock;
 
 document.querySelector = jest.fn((selector: string) => {
     if (selector === '.character-option.selected') {
-        return mockCharacterOptions.find((opt) => opt.classList.contains('selected')) as unknown as Element | null;
+        return mockCharacterOptions.find((opt) =>
+            opt.classList.contains('selected')
+        ) as unknown as Element | null;
     }
     return originalQuerySelector(selector);
 }) as Mock;
@@ -147,7 +150,9 @@ class LobbyManager {
         this.container = document.getElementById('lobbyContainer') as unknown as MockContainer;
         this.nameInput = document.getElementById('playerNameInput') as unknown as MockNameInput;
         this.startButton = document.getElementById('startGameBtn') as unknown as MockStartButton;
-        this.characterOptions = document.querySelectorAll('.character-option') as unknown as MockCharacterOption[];
+        this.characterOptions = document.querySelectorAll(
+            '.character-option'
+        ) as unknown as MockCharacterOption[];
 
         this.selectedCharacter = this.getInitialSelectedCharacter();
         this.playerName = '';
@@ -158,7 +163,9 @@ class LobbyManager {
     }
 
     getInitialSelectedCharacter(): string | null {
-        const selectedOption = document.querySelector('.character-option.selected') as unknown as MockCharacterOption | null;
+        const selectedOption = document.querySelector(
+            '.character-option.selected'
+        ) as unknown as MockCharacterOption | null;
         if (selectedOption && selectedOption.dataset.character) {
             return selectedOption.dataset.character;
         }
@@ -292,7 +299,9 @@ describe('LobbyManager', () => {
             // Restore mock
             document.querySelector = jest.fn((selector: string) => {
                 if (selector === '.character-option.selected') {
-                    return mockCharacterOptions.find((opt) => opt.classList.contains('selected')) as unknown as Element | null;
+                    return mockCharacterOptions.find((opt) =>
+                        opt.classList.contains('selected')
+                    ) as unknown as Element | null;
                 }
                 return originalQuerySelector(selector);
             }) as Mock;

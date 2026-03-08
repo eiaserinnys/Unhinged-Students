@@ -35,6 +35,8 @@ function getAllowedOrigins(): string[] {
 }
 
 const io: TypedServer = new Server<ClientToServerEvents, ServerToClientEvents>(httpServer, {
+    // Use /game/socket.io path consistently for nginx proxy compatibility
+    path: '/game/socket.io',
     cors: {
         origin: getAllowedOrigins(),
         methods: ['GET', 'POST'],

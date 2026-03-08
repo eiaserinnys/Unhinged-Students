@@ -2,12 +2,7 @@
 // GAME STATE MANAGEMENT
 // ========================================
 import logger from '../logger';
-import {
-    SERVER_CONFIG,
-    GAME_WIDTH,
-    GAME_HEIGHT,
-    PLAYER_RESPAWN_DELAY,
-} from './config';
+import { SERVER_CONFIG, GAME_WIDTH, GAME_HEIGHT, PLAYER_RESPAWN_DELAY } from './config';
 import type { Player, Dummy, Shard, TypedServer, Team } from './types';
 
 // Team configuration
@@ -229,7 +224,16 @@ export function checkShardRespawn(io: TypedServer): void {
                 respawnedCount++;
 
                 // Broadcast respawned shard to all clients
-                io.emit('shardsSpawned', [{ id: shard.id, x: shard.x, y: shard.y, collected: false, collectedTime: 0, respawnDelay: 0 }]);
+                io.emit('shardsSpawned', [
+                    {
+                        id: shard.id,
+                        x: shard.x,
+                        y: shard.y,
+                        collected: false,
+                        collectedTime: 0,
+                        respawnDelay: 0,
+                    },
+                ]);
             }
         }
     });

@@ -2,12 +2,7 @@
  * @fileoverview Laser skill handler (Q skill)
  */
 import logger from '../../../logger';
-import {
-    SERVER_CONFIG,
-    LASER_DAMAGE,
-    LASER_MAX_LENGTH,
-    PLAYER_RESPAWN_DELAY,
-} from '../../config';
+import { SERVER_CONFIG, LASER_DAMAGE, LASER_MAX_LENGTH, PLAYER_RESPAWN_DELAY } from '../../config';
 import {
     isValidNumber,
     calculateDistance,

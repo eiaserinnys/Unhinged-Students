@@ -88,7 +88,9 @@ export class ReconnectUI implements IReconnectUI {
         if (this.overlay) {
             this.overlay.classList.add('visible');
         }
-        this.setStatus('\uC11C\uBC84\uC640\uC758 \uC5F0\uACB0\uC774 \uB04A\uC5B4\uC84C\uC2B5\uB2C8\uB2E4.');
+        this.setStatus(
+            '\uC11C\uBC84\uC640\uC758 \uC5F0\uACB0\uC774 \uB04A\uC5B4\uC84C\uC2B5\uB2C8\uB2E4.'
+        );
         if (this.reconnectBtn) {
             this.reconnectBtn.disabled = false;
         }
@@ -154,7 +156,9 @@ export class ReconnectUI implements IReconnectUI {
      */
     onReconnectFailed(): void {
         if (this.reconnectAttempts >= this.maxReconnectAttempts) {
-            this.setStatus('\uC7AC\uC5F0\uACB0 \uC2E4\uD328. \uC218\uB3D9\uC73C\uB85C \uB2E4\uC2DC \uC2DC\uB3C4\uD574\uC8FC\uC138\uC694.');
+            this.setStatus(
+                '\uC7AC\uC5F0\uACB0 \uC2E4\uD328. \uC218\uB3D9\uC73C\uB85C \uB2E4\uC2DC \uC2DC\uB3C4\uD574\uC8FC\uC138\uC694.'
+            );
             if (this.reconnectBtn) {
                 this.reconnectBtn.disabled = false;
             }

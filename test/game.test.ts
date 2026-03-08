@@ -199,7 +199,7 @@ describe('Canvas Resizing', () => {
         const windowAspectRatio = windowWidth / windowHeight;
         const gameAspectRatio = GAME_WIDTH / GAME_HEIGHT;
 
-        let canvasWidth: number, canvasHeight: number, offsetX: number, offsetY: number, scale: number;
+        let canvasWidth: number, canvasHeight: number, offsetX: number, offsetY: number;
 
         if (windowAspectRatio > gameAspectRatio) {
             // Window is wider - fit to height
@@ -215,7 +215,7 @@ describe('Canvas Resizing', () => {
             offsetY = (windowHeight - canvasHeight) / 2;
         }
 
-        scale = canvasWidth / GAME_WIDTH;
+        const scale = canvasWidth / GAME_WIDTH;
 
         return { canvasWidth, canvasHeight, offsetX, offsetY, scale };
     }

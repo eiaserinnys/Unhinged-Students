@@ -22,10 +22,12 @@ const mockValidation = {
         Math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2)
     ),
     calculateKnockbackDistance: jest.fn(() => 50),
-    calculateKnockbackEndPosition: jest.fn((_ax: number, _ay: number, tx: number, ty: number, dist: number) => ({
-        x: tx + dist,
-        y: ty,
-    })),
+    calculateKnockbackEndPosition: jest.fn(
+        (_ax: number, _ay: number, tx: number, ty: number, dist: number) => ({
+            x: tx + dist,
+            y: ty,
+        })
+    ),
     isValidNumber: jest.fn(() => true),
     isValidString: jest.fn(() => true),
     clampCoordinates: jest.fn((x: number, y: number) => ({ x, y })),
@@ -311,7 +313,13 @@ describe('DamageProcessor', () => {
                 knockbackDistance: 100,
             });
 
-            expect(mockValidation.calculateKnockbackEndPosition).toHaveBeenCalledWith(100, 100, 110, 100, 100);
+            expect(mockValidation.calculateKnockbackEndPosition).toHaveBeenCalledWith(
+                100,
+                100,
+                110,
+                100,
+                100
+            );
         });
     });
 

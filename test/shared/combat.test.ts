@@ -99,7 +99,13 @@ describe('shared/combat', () => {
         it('should return true if death occurred', () => {
             mockPlayer.currentHP = 0;
 
-            const result = checkAndHandleDeath(mockPlayer, 'player-1', attackerId, killedPlayers, respawnDelay);
+            const result = checkAndHandleDeath(
+                mockPlayer,
+                'player-1',
+                attackerId,
+                killedPlayers,
+                respawnDelay
+            );
 
             expect(result).toBe(true);
         });
@@ -107,7 +113,13 @@ describe('shared/combat', () => {
         it('should return false if no death occurred (HP > 0)', () => {
             mockPlayer.currentHP = 10;
 
-            const result = checkAndHandleDeath(mockPlayer, 'player-1', attackerId, killedPlayers, respawnDelay);
+            const result = checkAndHandleDeath(
+                mockPlayer,
+                'player-1',
+                attackerId,
+                killedPlayers,
+                respawnDelay
+            );
 
             expect(result).toBe(false);
         });
@@ -116,7 +128,13 @@ describe('shared/combat', () => {
             mockPlayer.currentHP = 0;
             mockPlayer.isDead = true;
 
-            const result = checkAndHandleDeath(mockPlayer, 'player-1', attackerId, killedPlayers, respawnDelay);
+            const result = checkAndHandleDeath(
+                mockPlayer,
+                'player-1',
+                attackerId,
+                killedPlayers,
+                respawnDelay
+            );
 
             expect(result).toBe(false);
         });

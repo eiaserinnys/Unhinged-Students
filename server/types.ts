@@ -15,11 +15,7 @@ export type Team = 'red' | 'blue';
 // CHARACTER TYPES
 // ========================================
 
-export type CharacterId =
-    | 'alien'
-    | 'crazy-eyes'
-    | 'curry-bear'
-    | 'big-sis-hulk';
+export type CharacterId = 'alien' | 'crazy-eyes' | 'curry-bear' | 'big-sis-hulk';
 
 // ========================================
 // PLAYER TYPES

@@ -1490,12 +1490,7 @@ function handleQSkill(): void {
                 if (laserSkill) {
                     const target = findNearestEnemy(true) as EnemyTarget | null; // playersOnly = true
                     if (target) {
-                        laserBeamEffect.start(
-                            playerPos.x,
-                            playerPos.y,
-                            target.x,
-                            target.y
-                        );
+                        laserBeamEffect.start(playerPos.x, playerPos.y, target.x, target.y);
                         logger.debug(
                             `Used skill: ${laserSkill.name} - targeting ${target.type} at (${target.x.toFixed(0)}, ${target.y.toFixed(0)})`
                         );
@@ -1550,12 +1545,7 @@ function handleWSkill(): void {
                     );
                 } else {
                     // No enemies, teleport randomly
-                    teleportEffect.start(
-                        playerPos.x,
-                        playerPos.y,
-                        GAME_WIDTH,
-                        GAME_HEIGHT
-                    );
+                    teleportEffect.start(playerPos.x, playerPos.y, GAME_WIDTH, GAME_HEIGHT);
                     logger.debug(`Used skill: ${skill.name} - random teleport (no enemies)`);
                 }
 

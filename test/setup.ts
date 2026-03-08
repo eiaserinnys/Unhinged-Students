@@ -127,17 +127,16 @@ document.createElement = ((tagName: string) => {
 }) as typeof document.createElement;
 
 // requestAnimationFrame mock
-(global as unknown as { requestAnimationFrame: typeof requestAnimationFrame }).requestAnimationFrame = jest.fn(
-    (callback: FrameRequestCallback) => {
-        return setTimeout(() => callback(performance.now()), 16) as unknown as number;
-    }
-) as typeof requestAnimationFrame;
+(
+    global as unknown as { requestAnimationFrame: typeof requestAnimationFrame }
+).requestAnimationFrame = jest.fn((callback: FrameRequestCallback) => {
+    return setTimeout(() => callback(performance.now()), 16) as unknown as number;
+}) as typeof requestAnimationFrame;
 
-(global as unknown as { cancelAnimationFrame: typeof cancelAnimationFrame }).cancelAnimationFrame = jest.fn(
-    (id: number) => {
+(global as unknown as { cancelAnimationFrame: typeof cancelAnimationFrame }).cancelAnimationFrame =
+    jest.fn((id: number) => {
         clearTimeout(id);
-    }
-) as typeof cancelAnimationFrame;
+    }) as typeof cancelAnimationFrame;
 
 // performance.now mock (if not available)
 if (typeof performance === 'undefined') {

@@ -15,10 +15,6 @@ const mockNow = jest.spyOn(Date, 'now');
 let currentTime = 1000000;
 mockNow.mockImplementation(() => currentTime);
 
-function advanceTime(ms: number): void {
-    currentTime += ms;
-}
-
 function resetTime(): void {
     currentTime = 1000000;
 }

@@ -54,7 +54,9 @@ export class LobbyManager implements ILobbyManager {
 
     // Get the initially selected character from DOM
     getInitialSelectedCharacter(): CharacterType | null {
-        const selectedOption = document.querySelector('.character-option.selected') as HTMLElement | null;
+        const selectedOption = document.querySelector(
+            '.character-option.selected'
+        ) as HTMLElement | null;
         console.log('[LobbyManager] getInitialSelectedCharacter - selectedOption:', selectedOption);
         if (selectedOption?.dataset.character) {
             console.log('[LobbyManager] Initial character:', selectedOption.dataset.character);
@@ -78,7 +80,10 @@ export class LobbyManager implements ILobbyManager {
                 (option as HTMLElement).dataset.character
             );
             option.addEventListener('click', () => {
-                console.log('[LobbyManager] Character option clicked:', (option as HTMLElement).dataset.character);
+                console.log(
+                    '[LobbyManager] Character option clicked:',
+                    (option as HTMLElement).dataset.character
+                );
                 this.selectCharacter(option);
             });
         });
@@ -107,7 +112,10 @@ export class LobbyManager implements ILobbyManager {
         // Start button
         if (this.startButton) {
             this.startButton.addEventListener('click', () => {
-                console.log('[LobbyManager] Start button clicked, canStartGame:', this.canStartGame());
+                console.log(
+                    '[LobbyManager] Start button clicked, canStartGame:',
+                    this.canStartGame()
+                );
                 if (this.canStartGame()) {
                     this.startGame();
                 }

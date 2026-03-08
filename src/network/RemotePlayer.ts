@@ -2,27 +2,16 @@
 
 import { logger } from '../utils/logger.js';
 import { CharacterUtils } from '../characterUtils.js';
-import type {
-    CharacterType,
-    TeamType,
-    IRemotePlayer,
-    Position,
-    Bounds,
-} from '../types/index.js';
+import type { CharacterType, TeamType, IRemotePlayer, Position, Bounds } from '../types/index.js';
 
-// Import effect mixins
-import { LaserEffectMixin, type LaserEffectState } from './effects/laser.js';
-import {
-    TeleportEffectMixin,
-    TelepathyEffectMixin,
-    type TeleportEffectState,
-    type TelepathyEffectState,
-} from './effects/teleport.js';
-import { WaveEffectMixin, type WaveEffectState } from './effects/wave.js';
-import { PotSmashEffectMixin, type PotSmashEffectState } from './effects/potSmash.js';
-import { CurryRecoveryEffectMixin, type CurryRecoveryEffectState } from './effects/curryRecovery.js';
-import { SpinThrowEffectMixin, type SpinThrowEffectState } from './effects/spinThrow.js';
-import { RageEffectMixin, type RageEffectState } from './effects/rage.js';
+// Import effect types only (mixins are used dynamically)
+import type { LaserEffectState } from './effects/laser.js';
+import type { TeleportEffectState, TelepathyEffectState } from './effects/teleport.js';
+import type { WaveEffectState } from './effects/wave.js';
+import type { PotSmashEffectState } from './effects/potSmash.js';
+import type { CurryRecoveryEffectState } from './effects/curryRecovery.js';
+import type { SpinThrowEffectState } from './effects/spinThrow.js';
+import type { RageEffectState } from './effects/rage.js';
 
 /**
  * Character image paths mapping
