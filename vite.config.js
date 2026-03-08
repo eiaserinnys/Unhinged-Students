@@ -2,6 +2,7 @@ import { defineConfig } from 'vite';
 
 export default defineConfig({
     root: '.', // index.html 위치
+    base: '/game/', // 프로덕션 base path (nginx에서 /game/으로 서빙)
     publicDir: 'asset', // 정적 파일 폴더 → dist/asset으로 복사됨
     build: {
         outDir: 'dist',

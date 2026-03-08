@@ -3,6 +3,11 @@
 
 import type { GameConfig } from './types/index.js';
 
+// Asset base path - automatically set by Vite based on build configuration
+// In development: '' (empty, relative paths work)
+// In production: '/game' (nginx serves from /game/)
+export const ASSET_BASE = import.meta.env.BASE_URL?.replace(/\/$/, '') || '';
+
 export const GAME_CONFIG: GameConfig = {
     // =====================================
     // WORLD

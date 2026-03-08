@@ -1,6 +1,7 @@
 // Lobby system for Unhinged Students
 
 import { logger } from './utils/logger.js';
+import { ASSET_BASE } from './config.js';
 import type { CharacterType, ILobbyManager } from './types/index.js';
 
 interface CharacterInfo {
@@ -229,12 +230,12 @@ export class LobbyManager implements ILobbyManager {
     // Get character image path based on character ID
     static getCharacterImagePath(characterId: CharacterType): string {
         const characterImages: Record<CharacterType, string> = {
-            alien: 'asset/image/alien.png',
-            'crazy-eyes': 'asset/image/crazy-eyes.png',
-            'curry-bear': 'asset/image/curry-bear.png',
-            'big-sis-hulk': 'asset/image/big-sis-hulk.png',
-            teacher: 'asset/image/teacher.png',
-            'squeak-squeak': 'asset/image/squeak-squeak.png',
+            alien: `${ASSET_BASE}/image/alien.png`,
+            'crazy-eyes': `${ASSET_BASE}/image/crazy-eyes.png`,
+            'curry-bear': `${ASSET_BASE}/image/curry-bear.png`,
+            'big-sis-hulk': `${ASSET_BASE}/image/big-sis-hulk.png`,
+            teacher: `${ASSET_BASE}/image/teacher.png`,
+            'squeak-squeak': `${ASSET_BASE}/image/squeak-squeak.png`,
         };
         return characterImages[characterId] || characterImages['alien'];
     }

@@ -4,7 +4,7 @@
 // are defined in src/core/gameState.ts and accessed via getters/setters
 // Use getCanvas() and getCtx() to access canvas and context
 
-import { GAME_CONFIG } from './config.js';
+import { GAME_CONFIG, ASSET_BASE } from './config.js';
 import { logger } from './utils/logger.js';
 import {
     gameState,
@@ -237,7 +237,7 @@ function startGame(): void {
         const dummy = new Character(
             pos.x,
             pos.y,
-            'asset/image/alien.png',
+            `${ASSET_BASE}/image/alien.png`,
             GAME_HEIGHT,
             pos.name,
             true // isDummy = true
