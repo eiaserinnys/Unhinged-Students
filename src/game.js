@@ -158,10 +158,8 @@ function startGame() {
     // Initialize skill system
     gameState.skillManager = new SkillManager();
 
-    // Add skills: Q = Laser Beam, W = Teleport, E = Telepathy
-    gameState.skillManager.addSkill(new Skill('레이저', 'q', GAME_CONFIG.SKILL_LASER.COOLDOWN_MS, GAME_CONFIG.SKILL_LASER.COLOR, '🎇'));
-    gameState.skillManager.addSkill(new Skill('순간이동', 'w', GAME_CONFIG.SKILL_TELEPORT.COOLDOWN_MS, GAME_CONFIG.SKILL_TELEPORT.COLOR, '💫'));
-    gameState.skillManager.addSkill(new Skill('텔레파시', 'e', GAME_CONFIG.SKILL_TELEPATHY.COOLDOWN_MS, GAME_CONFIG.SKILL_TELEPATHY.COLOR, '👽'));
+    // Add skills based on selected character
+    initializeCharacterSkills(gameState.selectedCharacter);
 
     // Initialize skill UI
     gameState.skillUI = new SkillUI(gameState.skillManager);
@@ -301,29 +299,19 @@ function update(deltaTime) {
         gameState.skillManager.update();
     }
 
+    // Update wave effect (for local player)
+    if (gameState.waveEffect && gameState.waveEffect.active) {
+        const elapsed = Date.now() - gameState.waveEffect.startTime;
+        if (elapsed >= gameState.waveEffect.duration) {
+            gameState.waveEffect.active = false;
+        }
+    }
+
     // Handle skill input (Q, W, E) - only when not chatting and player is alive
     if (gameState.skillManager && !isChatting && !isPlayerDead) {
-        // Q - Laser Beam (targets players only, not dummies)
-        if (isKeyJustPressed('q') && !gameState.laserBeamEffect.active) {
-            const skill = gameState.skillManager.useSkill('q');
-            if (skill) {
-                const playerPos = gameState.player.getPosition();
-                const target = findNearestEnemy(true); // playersOnly = true
-                if (target) {
-                    gameState.laserBeamEffect.start(playerPos.x, playerPos.y, target.x, target.y);
-                    logger.debug(`Used skill: ${skill.name} - targeting ${target.type} at (${target.x.toFixed(0)}, ${target.y.toFixed(0)})`);
-
-                    // Send laser aiming to server for sync with other players
-                    if (gameState.networkManager) {
-                        gameState.networkManager.sendLaserAiming(
-                            playerPos.x,
-                            playerPos.y,
-                            gameState.laserBeamEffect.dirX,
-                            gameState.laserBeamEffect.dirY
-                        );
-                    }
-                }
-            }
+        // Q - Character-specific basic attack skill
+        if (isKeyJustPressed('q')) {
+            handleQSkill();
         }
 
         // W - Teleport (to random enemy)
@@ -726,6 +714,9 @@ function render() {
         gameState.telepathyEffect.render(ctx);
     }
 
+    // Draw wave effect (local player)
+    renderWaveEffect(ctx);
+
     // Draw skill UI (above game elements, below vignette)
     if (gameState.skillUI) {
         gameState.skillUI.render(ctx, GAME_WIDTH, GAME_HEIGHT);
@@ -736,6 +727,59 @@ function render() {
 
     // Draw confusion effect (spinning spiral when confused)
     renderConfusionEffect(ctx);
+}
+
+// Render wave effect for local player (Crazy-Eyes Q skill)
+function renderWaveEffect(ctx) {
+    if (!gameState.waveEffect || !gameState.waveEffect.active) return;
+
+    const elapsed = Date.now() - gameState.waveEffect.startTime;
+    const progress = Math.min(elapsed / gameState.waveEffect.duration, 1);
+
+    // Current radius (expanding outward)
+    const currentRadius = gameState.waveEffect.maxRadius * progress;
+
+    // Opacity fades as it expands
+    const opacity = 1 - progress * 0.7;
+
+    ctx.save();
+
+    // Outer glow
+    ctx.beginPath();
+    ctx.arc(gameState.waveEffect.x, gameState.waveEffect.y, currentRadius, 0, Math.PI * 2);
+    ctx.strokeStyle = `rgba(255, 105, 180, ${opacity * 0.5})`;
+    ctx.lineWidth = 15;
+    ctx.stroke();
+
+    // Inner ring
+    ctx.beginPath();
+    ctx.arc(gameState.waveEffect.x, gameState.waveEffect.y, currentRadius, 0, Math.PI * 2);
+    ctx.strokeStyle = `rgba(255, 255, 255, ${opacity})`;
+    ctx.lineWidth = 4;
+    ctx.stroke();
+
+    // Spiral effect (rotating lines)
+    const spiralCount = 6;
+    for (let i = 0; i < spiralCount; i++) {
+        const angle = (i / spiralCount) * Math.PI * 2 + progress * Math.PI * 2;
+        const innerR = currentRadius * 0.3;
+        const outerR = currentRadius * 0.9;
+
+        ctx.beginPath();
+        ctx.moveTo(
+            gameState.waveEffect.x + Math.cos(angle) * innerR,
+            gameState.waveEffect.y + Math.sin(angle) * innerR
+        );
+        ctx.lineTo(
+            gameState.waveEffect.x + Math.cos(angle) * outerR,
+            gameState.waveEffect.y + Math.sin(angle) * outerR
+        );
+        ctx.strokeStyle = `rgba(255, 182, 193, ${opacity * 0.7})`;
+        ctx.lineWidth = 3;
+        ctx.stroke();
+    }
+
+    ctx.restore();
 }
 
 // Render confusion effect when player is confused (reversed controls)
@@ -857,6 +901,95 @@ function findRandomEnemy() {
     }
 
     return enemies[Math.floor(Math.random() * enemies.length)];
+}
+
+// Handle Q skill based on selected character
+function handleQSkill() {
+    const playerPos = gameState.player.getPosition();
+
+    switch (gameState.selectedCharacter) {
+        case 'crazy-eyes': // 눈 돌아가는 사람 - 이상한 파동
+            // Wave attack doesn't have a visual effect that blocks input
+            const waveSkill = gameState.skillManager.useSkill('q');
+            if (waveSkill) {
+                logger.debug(`Used skill: ${waveSkill.name} - wave attack`);
+
+                // Send wave attack to server
+                if (gameState.networkManager) {
+                    gameState.networkManager.sendWaveAttack();
+                }
+
+                // Show local wave effect (create if not exists)
+                if (!gameState.waveEffect) {
+                    gameState.waveEffect = {
+                        active: false,
+                        x: 0,
+                        y: 0,
+                        startTime: 0,
+                        duration: GAME_CONFIG.SKILL_WAVE.EXPAND_DURATION_MS,
+                        maxRadius: GAME_CONFIG.SKILL_WAVE.RADIUS
+                    };
+                }
+                gameState.waveEffect.active = true;
+                gameState.waveEffect.x = playerPos.x;
+                gameState.waveEffect.y = playerPos.y;
+                gameState.waveEffect.startTime = Date.now();
+            }
+            break;
+
+        case 'alien': // 외계인 - 레이저 빔
+        default:
+            if (!gameState.laserBeamEffect.active) {
+                const laserSkill = gameState.skillManager.useSkill('q');
+                if (laserSkill) {
+                    const target = findNearestEnemy(true); // playersOnly = true
+                    if (target) {
+                        gameState.laserBeamEffect.start(playerPos.x, playerPos.y, target.x, target.y);
+                        logger.debug(`Used skill: ${laserSkill.name} - targeting ${target.type} at (${target.x.toFixed(0)}, ${target.y.toFixed(0)})`);
+
+                        // Send laser aiming to server for sync with other players
+                        if (gameState.networkManager) {
+                            gameState.networkManager.sendLaserAiming(
+                                playerPos.x,
+                                playerPos.y,
+                                gameState.laserBeamEffect.dirX,
+                                gameState.laserBeamEffect.dirY
+                            );
+                        }
+                    }
+                }
+            }
+            break;
+    }
+}
+
+// Initialize skills based on selected character
+function initializeCharacterSkills(characterId) {
+    // Clear existing skills
+    gameState.skillManager.skills = [];
+
+    switch (characterId) {
+        case 'crazy-eyes': // 눈 돌아가는 사람
+            // Q = 이상한 파동 (Wave Attack) - 기본 공격
+            gameState.skillManager.addSkill(new Skill('이상한 파동', 'q', GAME_CONFIG.SKILL_WAVE.COOLDOWN_MS, GAME_CONFIG.SKILL_WAVE.COLOR, '🌀'));
+            // W = 순간이동
+            gameState.skillManager.addSkill(new Skill('순간이동', 'w', GAME_CONFIG.SKILL_TELEPORT.COOLDOWN_MS, GAME_CONFIG.SKILL_TELEPORT.COLOR, '💫'));
+            // E = 광기 산책 (TODO: 구현 예정)
+            gameState.skillManager.addSkill(new Skill('광기 산책', 'e', 10000, '#FF00FF', '👀'));
+            logger.info('Initialized skills for 눈 돌아가는 사람');
+            break;
+
+        case 'alien': // 외계인 (기본)
+        default:
+            // Q = 레이저 빔
+            gameState.skillManager.addSkill(new Skill('레이저', 'q', GAME_CONFIG.SKILL_LASER.COOLDOWN_MS, GAME_CONFIG.SKILL_LASER.COLOR, '🎇'));
+            // W = 순간이동
+            gameState.skillManager.addSkill(new Skill('순간이동', 'w', GAME_CONFIG.SKILL_TELEPORT.COOLDOWN_MS, GAME_CONFIG.SKILL_TELEPORT.COLOR, '💫'));
+            // E = 텔레파시
+            gameState.skillManager.addSkill(new Skill('텔레파시', 'e', GAME_CONFIG.SKILL_TELEPATHY.COOLDOWN_MS, GAME_CONFIG.SKILL_TELEPATHY.COLOR, '👽'));
+            logger.info('Initialized skills for 외계인');
+            break;
+    }
 }
 
 // Cleanup game resources to prevent memory leaks
