@@ -19,7 +19,7 @@ let loadHandler = null;
 
 // Game state
 const gameState = {
-    screen: 'lobby', // 'lobby' | 'teamAnnounce' | 'playing'
+    screen: 'lobby', // 'lobby' | 'waitingTeam' | 'teamAnnounce' | 'playing'
     running: false,
     player: null,
     lobbyManager: null, // Lobby UI manager
@@ -112,8 +112,8 @@ function init() {
 function startGame() {
     logger.info(`Starting game with character: ${gameState.selectedCharacter}, name: ${gameState.playerName}`);
 
-    // Screen state will change to 'teamAnnounce' when team is assigned via network
-    // Don't set to 'playing' here - wait for team assignment
+    // Show "waiting for team" state until server assigns team
+    gameState.screen = 'waitingTeam';
 
     // Get character image path
     const characterImage = LobbyManager.getCharacterImagePath(gameState.selectedCharacter);
@@ -462,7 +462,10 @@ function gameLoop(currentTime) {
     ctx.scale(scale, scale);
 
     // Check current screen state
-    if (gameState.screen === 'teamAnnounce') {
+    if (gameState.screen === 'waitingTeam') {
+        // Waiting for server to assign team - show loading
+        renderWaitingTeam(ctx);
+    } else if (gameState.screen === 'teamAnnounce') {
         // Render team announcement (also runs game in background)
         update(gameState.deltaTime);
         render();
@@ -507,6 +510,29 @@ function renderHitVignette(ctx) {
 
     ctx.fillStyle = gradient;
     ctx.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
+
+    ctx.restore();
+}
+
+// Render waiting for team assignment screen
+function renderWaitingTeam(ctx) {
+    ctx.save();
+
+    // Dark background
+    ctx.fillStyle = '#1a1a2e';
+    ctx.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
+
+    // Loading text
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillStyle = '#ffffff';
+    ctx.font = '600 48px Jua, sans-serif';
+    ctx.fillText('팀 배정 중...', GAME_WIDTH / 2, GAME_HEIGHT / 2);
+
+    // Animated dots
+    const dots = '.'.repeat(Math.floor(Date.now() / 500) % 4);
+    ctx.font = '600 48px Jua, sans-serif';
+    ctx.fillText(dots, GAME_WIDTH / 2 + 150, GAME_HEIGHT / 2);
 
     ctx.restore();
 }
