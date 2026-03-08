@@ -47,7 +47,14 @@ const gameState = {
     // Team info
     team: null, // 'red' or 'blue'
     teamAnnounceStartTime: 0,
-    teamAnnounceDuration: 2500 // 2.5 seconds to show team
+    teamAnnounceDuration: 2500, // 2.5 seconds to show team
+    // Madness walk (Crazy-Eyes E skill)
+    madnessActive: false,
+    madnessStartTime: 0,
+    madnessDuration: 0,
+    madnessLastTickTime: 0,
+    madnessTickInterval: 0,
+    madnessRadius: 0
 };
 
 // Resize canvas to fill window while maintaining 16:9 aspect ratio
@@ -307,6 +314,33 @@ function update(deltaTime) {
         }
     }
 
+    // Update madness walk (Crazy-Eyes E skill)
+    if (gameState.madnessActive) {
+        const currentTime = Date.now();
+        const elapsed = currentTime - gameState.madnessStartTime;
+
+        // Check if madness duration is over
+        if (elapsed >= gameState.madnessDuration) {
+            gameState.madnessActive = false;
+            logger.debug('Madness walk ended');
+            if (gameState.networkManager) {
+                gameState.networkManager.sendMadnessEnd();
+            }
+        } else {
+            // Check if player is moving (any arrow key pressed)
+            const isMoving = isKeyPressed('arrowup') || isKeyPressed('arrowdown') ||
+                           isKeyPressed('arrowleft') || isKeyPressed('arrowright');
+
+            // Send damage tick if moving and tick interval passed
+            if (isMoving && currentTime - gameState.madnessLastTickTime >= gameState.madnessTickInterval) {
+                gameState.madnessLastTickTime = currentTime;
+                if (gameState.networkManager) {
+                    gameState.networkManager.sendMadnessDamage();
+                }
+            }
+        }
+    }
+
     // Handle skill input (Q, W, E) - only when not chatting and player is alive
     if (gameState.skillManager && !isChatting && !isPlayerDead) {
         // Q - Character-specific basic attack skill
@@ -343,23 +377,9 @@ function update(deltaTime) {
             }
         }
 
-        // E - Telepathy
-        if (isKeyJustPressed('e') && !gameState.telepathyEffect.active) {
-            const skill = gameState.skillManager.useSkill('e');
-            if (skill) {
-                const playerPos = gameState.player.getPosition();
-                gameState.telepathyEffect.start(playerPos.x, playerPos.y);
-                logger.debug(`Used skill: ${skill.name}`);
-
-                // Send telepathy event to server for sync
-                if (gameState.networkManager) {
-                    gameState.networkManager.sendTelepathy(
-                        playerPos.x,
-                        playerPos.y,
-                        gameState.telepathyEffect.radius
-                    );
-                }
-            }
+        // E - Character-specific skill
+        if (isKeyJustPressed('e')) {
+            handleESkill();
         }
     }
 
@@ -717,6 +737,9 @@ function render() {
     // Draw wave effect (local player)
     renderWaveEffect(ctx);
 
+    // Draw madness walk effect (local player)
+    renderMadnessEffect(ctx);
+
     // Draw skill UI (above game elements, below vignette)
     if (gameState.skillUI) {
         gameState.skillUI.render(ctx, GAME_WIDTH, GAME_HEIGHT);
@@ -778,6 +801,61 @@ function renderWaveEffect(ctx) {
         ctx.lineWidth = 3;
         ctx.stroke();
     }
+
+    ctx.restore();
+}
+
+// Render madness walk effect (Crazy-Eyes E skill)
+function renderMadnessEffect(ctx) {
+    if (!gameState.madnessActive || !gameState.player) return;
+
+    const playerPos = gameState.player.getPosition();
+    const elapsed = Date.now() - gameState.madnessStartTime;
+    const progress = elapsed / gameState.madnessDuration;
+    const time = Date.now() / 1000;
+
+    ctx.save();
+
+    // Pulsing dark violet aura around player
+    const pulseScale = 1 + Math.sin(time * 5) * 0.1;
+    const radius = gameState.madnessRadius * pulseScale;
+
+    // Outer glow
+    const gradient = ctx.createRadialGradient(
+        playerPos.x, playerPos.y, 0,
+        playerPos.x, playerPos.y, radius
+    );
+    gradient.addColorStop(0, 'rgba(148, 0, 211, 0.3)');
+    gradient.addColorStop(0.5, 'rgba(148, 0, 211, 0.15)');
+    gradient.addColorStop(1, 'rgba(148, 0, 211, 0)');
+
+    ctx.fillStyle = gradient;
+    ctx.beginPath();
+    ctx.arc(playerPos.x, playerPos.y, radius, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Swirling particles
+    const particleCount = 8;
+    for (let i = 0; i < particleCount; i++) {
+        const angle = (i / particleCount) * Math.PI * 2 + time * 3;
+        const particleRadius = radius * 0.7;
+        const x = playerPos.x + Math.cos(angle) * particleRadius;
+        const y = playerPos.y + Math.sin(angle) * particleRadius;
+
+        ctx.fillStyle = `rgba(186, 85, 211, ${0.5 + Math.sin(time * 8 + i) * 0.3})`;
+        ctx.font = '20px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('👀', x, y);
+    }
+
+    // Remaining time indicator (ring that shrinks)
+    const remainingRatio = 1 - progress;
+    ctx.beginPath();
+    ctx.arc(playerPos.x, playerPos.y, radius + 10, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * remainingRatio);
+    ctx.strokeStyle = 'rgba(148, 0, 211, 0.8)';
+    ctx.lineWidth = 4;
+    ctx.stroke();
 
     ctx.restore();
 }
@@ -963,6 +1041,56 @@ function handleQSkill() {
     }
 }
 
+// Handle E skill based on selected character
+function handleESkill() {
+    const playerPos = gameState.player.getPosition();
+
+    switch (gameState.selectedCharacter) {
+        case 'crazy-eyes': // 눈 돌아가는 사람 - 광기 산책
+            // Don't allow if madness is already active
+            if (gameState.madnessActive) return;
+
+            const madnessSkill = gameState.skillManager.useSkill('e');
+            if (madnessSkill) {
+                logger.debug(`Used skill: ${madnessSkill.name} - madness walk activated`);
+
+                // Initialize madness state
+                gameState.madnessActive = true;
+                gameState.madnessStartTime = Date.now();
+                gameState.madnessDuration = GAME_CONFIG.SKILL_MADNESS.DURATION_MS;
+                gameState.madnessLastTickTime = Date.now();
+                gameState.madnessTickInterval = GAME_CONFIG.SKILL_MADNESS.TICK_INTERVAL_MS;
+                gameState.madnessRadius = GAME_CONFIG.SKILL_MADNESS.RADIUS;
+
+                // Send madness start to server
+                if (gameState.networkManager) {
+                    gameState.networkManager.sendMadnessStart();
+                }
+            }
+            break;
+
+        case 'alien': // 외계인 - 텔레파시
+        default:
+            if (!gameState.telepathyEffect.active) {
+                const telepathySkill = gameState.skillManager.useSkill('e');
+                if (telepathySkill) {
+                    gameState.telepathyEffect.start(playerPos.x, playerPos.y);
+                    logger.debug(`Used skill: ${telepathySkill.name}`);
+
+                    // Send telepathy event to server for sync
+                    if (gameState.networkManager) {
+                        gameState.networkManager.sendTelepathy(
+                            playerPos.x,
+                            playerPos.y,
+                            gameState.telepathyEffect.radius
+                        );
+                    }
+                }
+            }
+            break;
+    }
+}
+
 // Initialize skills based on selected character
 function initializeCharacterSkills(characterId) {
     // Clear existing skills (skills is a Map, skillOrder is an array)
@@ -975,8 +1103,8 @@ function initializeCharacterSkills(characterId) {
             gameState.skillManager.addSkill(new Skill('이상한 파동', 'q', GAME_CONFIG.SKILL_WAVE.COOLDOWN_MS, GAME_CONFIG.SKILL_WAVE.COLOR, '🌀'));
             // W = 순간이동
             gameState.skillManager.addSkill(new Skill('순간이동', 'w', GAME_CONFIG.SKILL_TELEPORT.COOLDOWN_MS, GAME_CONFIG.SKILL_TELEPORT.COLOR, '💫'));
-            // E = 광기 산책 (TODO: 구현 예정)
-            gameState.skillManager.addSkill(new Skill('광기 산책', 'e', 10000, '#FF00FF', '👀'));
+            // E = 광기 산책
+            gameState.skillManager.addSkill(new Skill('광기 산책', 'e', GAME_CONFIG.SKILL_MADNESS.COOLDOWN_MS, GAME_CONFIG.SKILL_MADNESS.COLOR, '👀'));
             logger.info('Initialized skills for 눈 돌아가는 사람');
             break;
 

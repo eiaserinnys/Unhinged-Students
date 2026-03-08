@@ -258,6 +258,41 @@ class NetworkManager {
             });
         });
 
+        // Madness walk from other player (Crazy-Eyes E skill)
+        this.socket.on('playerMadnessStart', (data) => {
+            const player = this.remotePlayers.get(data.playerId);
+            if (player) {
+                player.madnessActive = true;
+                logger.debug(`Player ${data.playerId} started madness walk`);
+            }
+        });
+
+        this.socket.on('playerMadnessEnd', (data) => {
+            const player = this.remotePlayers.get(data.playerId);
+            if (player) {
+                player.madnessActive = false;
+                logger.debug(`Player ${data.playerId} ended madness walk`);
+            }
+        });
+
+        // Madness tick damage (small damage, no vignette)
+        this.socket.on('madnessTick', (data) => {
+            data.hitPlayers.forEach(hit => {
+                if (hit.playerId === this.playerId) {
+                    if (this.localPlayer) {
+                        this.localPlayer.currentHP = hit.currentHP;
+                        // Small damage, no hit flash
+                    }
+                } else {
+                    const player = this.remotePlayers.get(hit.playerId);
+                    if (player) {
+                        player.currentHP = hit.currentHP;
+                        player.maxHP = hit.maxHP;
+                    }
+                }
+            });
+        });
+
         // Shard events
         this.socket.on('existingShards', (shards) => {
             logger.debug(`Received ${shards.length} existing shards`);
@@ -530,6 +565,24 @@ class NetworkManager {
     sendShardCollection(shardId) {
         if (!this.connected || !this.socket) return;
         this.socket.emit('collectShard', { shardId });
+    }
+
+    // Send madness walk start to server
+    sendMadnessStart() {
+        if (!this.connected || !this.socket) return;
+        this.socket.emit('madnessStart', {});
+    }
+
+    // Send madness walk end to server
+    sendMadnessEnd() {
+        if (!this.connected || !this.socket) return;
+        this.socket.emit('madnessEnd', {});
+    }
+
+    // Send madness tick damage to server
+    sendMadnessDamage() {
+        if (!this.connected || !this.socket) return;
+        this.socket.emit('madnessDamage', {});
     }
 
     addRemotePlayer(playerData) {

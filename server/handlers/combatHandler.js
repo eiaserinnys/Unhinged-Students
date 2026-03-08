@@ -19,6 +19,8 @@ const {
     WAVE_RADIUS,
     WAVE_DAMAGE,
     WAVE_CONFUSION_DURATION,
+    MADNESS_RADIUS,
+    MADNESS_DAMAGE_PER_TICK,
 } = require('../config');
 const {
     isValidNumber,
@@ -780,6 +782,135 @@ function registerCombatHandlers(socket, io) {
         }
 
         // Check dummies (no confusion for dummies)
+        const hitDummies = [];
+        dummies.forEach((dummy) => {
+            if (dummy.currentHP <= 0) return;
+
+            const dx = dummy.x - x;
+            const dy = dummy.y - y;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+
+            if (distance <= radius + 67.5) {
+                dummy.currentHP = Math.max(0, dummy.currentHP - damage);
+
+                hitDummies.push({
+                    dummyId: dummy.id,
+                    currentHP: dummy.currentHP,
+                    maxHP: dummy.maxHP,
+                    knockbackEndX: dummy.x,
+                    knockbackEndY: dummy.y,
+                    attackerX: x,
+                    attackerY: y
+                });
+
+                if (dummy.currentHP <= 0) {
+                    dummy.deathTime = Date.now();
+                }
+            }
+        });
+
+        if (hitDummies.length > 0) {
+            io.emit('dummyDamaged', {
+                attackerId: socket.id,
+                hitDummies: hitDummies
+            });
+        }
+    });
+
+    // Handle madness walk start (Crazy-Eyes E skill)
+    socket.on('madnessStart', () => {
+        const player = players.get(socket.id);
+        if (!player) return;
+        if (player.isDead) return;
+
+        logger.debug(`Madness walk started by ${socket.id}`);
+
+        // Broadcast madness start to all other players
+        socket.broadcast.emit('playerMadnessStart', {
+            playerId: socket.id
+        });
+    });
+
+    // Handle madness walk end
+    socket.on('madnessEnd', () => {
+        const player = players.get(socket.id);
+        if (!player) return;
+
+        logger.debug(`Madness walk ended by ${socket.id}`);
+
+        // Broadcast madness end to all other players
+        socket.broadcast.emit('playerMadnessEnd', {
+            playerId: socket.id
+        });
+    });
+
+    // Handle madness tick damage (called periodically by client while moving)
+    socket.on('madnessDamage', () => {
+        const attacker = players.get(socket.id);
+        if (!attacker) return;
+        if (attacker.isDead) return;
+
+        const x = attacker.x;
+        const y = attacker.y;
+        const radius = MADNESS_RADIUS;
+        const damage = MADNESS_DAMAGE_PER_TICK;
+
+        // Check all players in range
+        const hitPlayers = [];
+        const killedPlayers = [];
+        players.forEach((player, playerId) => {
+            if (playerId === socket.id) return;
+            if (player.isDead) return;
+
+            const dx = player.x - x;
+            const dy = player.y - y;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+
+            if (distance <= radius) {
+                player.currentHP = Math.max(0, player.currentHP - damage);
+
+                hitPlayers.push({
+                    playerId: playerId,
+                    currentHP: player.currentHP,
+                    maxHP: player.maxHP,
+                    knockbackEndX: player.x,
+                    knockbackEndY: player.y,
+                    attackerX: x,
+                    attackerY: y
+                });
+
+                if (player.currentHP <= 0 && !player.isDead) {
+                    player.isDead = true;
+                    player.deathTime = Date.now();
+                    killedPlayers.push({
+                        playerId: playerId,
+                        killedBy: socket.id,
+                        respawnDelay: PLAYER_RESPAWN_DELAY
+                    });
+                    logger.info(`${playerId} has been killed by madness walk from ${socket.id}!`);
+                }
+            }
+        });
+
+        // Broadcast madness tick damage (small, no vignette)
+        if (hitPlayers.length > 0) {
+            io.emit('madnessTick', {
+                attackerId: socket.id,
+                hitPlayers: hitPlayers
+            });
+        }
+
+        if (killedPlayers.length > 0) {
+            killedPlayers.forEach(killed => {
+                io.emit('playerDied', {
+                    playerId: killed.playerId,
+                    killedBy: killed.killedBy,
+                    respawnDelay: killed.respawnDelay
+                });
+            });
+        }
+
+        // Check dummies
         const hitDummies = [];
         dummies.forEach((dummy) => {
             if (dummy.currentHP <= 0) return;

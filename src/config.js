@@ -105,6 +105,18 @@ const GAME_CONFIG = {
     },
 
     // =====================================
+    // CRAZY-EYES - MADNESS WALK (광기 산책)
+    // =====================================
+    SKILL_MADNESS: {
+        COOLDOWN_MS: 10000,             // 10 seconds
+        DURATION_MS: 5000,              // 5 seconds active
+        RADIUS: 150,                    // 데미지 범위
+        DAMAGE_PER_SECOND: 5,           // 초당 5 데미지
+        TICK_INTERVAL_MS: 200,          // 0.2초마다 틱
+        COLOR: '#9400D3',               // Dark Violet
+    },
+
+    // =====================================
     // SHARDS
     // =====================================
     SHARD: {
