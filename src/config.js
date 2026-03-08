@@ -121,11 +121,11 @@ const GAME_CONFIG = {
     // =====================================
     SKILL_POT_SMASH: {
         COOLDOWN_MS: 1500,              // 1.5 seconds
-        DAMAGE: 25,                     // 메인 데미지
-        SPLASH_DAMAGE: 10,              // 스플래시 데미지
-        RANGE: 120,                     // 부채꼴 거리
-        ANGLE: 90,                      // 부채꼴 각도 (도)
-        SPLASH_RADIUS: 80,              // 스플래시 범위
+        DAMAGE: 45,                     // 메인 데미지 (25 → 45)
+        SPLASH_DAMAGE: 20,              // 스플래시 데미지 (10 → 20)
+        RANGE: 250,                     // 부채꼴 거리 (120 → 250)
+        ANGLE: 150,                     // 부채꼴 각도 (90 → 150도)
+        SPLASH_RADIUS: 120,             // 스플래시 범위 (80 → 120)
         EFFECT_DURATION_MS: 300,        // 이펙트 지속 시간
         COLOR: '#FFD700',               // Gold (카레색)
     },
