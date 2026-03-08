@@ -122,20 +122,24 @@ function registerPlayerHandlers(socket, io) {
         const playerName = isValidString(data.playerName, 30) ? data.playerName : 'Player';
         const level = isValidPositiveInt(data.level, 30) ? data.level : 1;
         const experience = isValidPositiveInt(data.experience, 10000) ? data.experience : 0;
+        const characterId = isValidString(data.characterId, 20) ? data.characterId : 'alien';
 
-        // Update player data, preserving HP, death state, and team
+        // Update player data, preserving HP, death state, team, and curry-bear stored damage
         players.set(socket.id, {
             playerId: socket.id,
+            socketId: socket.id, // For sending events directly
             team: existingPlayer ? existingPlayer.team : 'red',
             x: validX,
             y: validY,
             playerName: playerName,
             level: level,
             experience: experience,
+            characterId: characterId,
             currentHP: existingPlayer ? existingPlayer.currentHP : 100,
             maxHP: existingPlayer ? existingPlayer.maxHP : 100,
             deathTime: existingPlayer ? existingPlayer.deathTime : 0,
             isDead: existingPlayer ? existingPlayer.isDead : false,
+            storedDamage: existingPlayer ? (existingPlayer.storedDamage || 0) : 0,
             lastMoveTime: Date.now()
         });
 

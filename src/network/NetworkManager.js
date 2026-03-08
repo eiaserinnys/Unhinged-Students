@@ -344,6 +344,38 @@ class NetworkManager {
             });
         });
 
+        // Stored damage update (for curry-bear passive)
+        this.socket.on('storedDamageUpdate', (data) => {
+            if (typeof updateStoredDamage === 'function') {
+                updateStoredDamage(data.storedDamage, data.maxStored);
+            }
+        });
+
+        // Curry recovery (Curry-Bear E skill)
+        this.socket.on('playerCurryRecovery', (data) => {
+            if (data.playerId === this.playerId) {
+                // Local player healed
+                if (this.localPlayer) {
+                    this.localPlayer.currentHP = data.currentHP;
+                }
+                // Update stored damage to 0
+                if (typeof updateStoredDamage === 'function') {
+                    updateStoredDamage(0, data.maxHP);
+                }
+                // Trigger recovery effect
+                if (typeof triggerCurryRecoveryEffect === 'function') {
+                    triggerCurryRecoveryEffect(data.healAmount);
+                }
+                logger.debug(`Curry recovery: healed ${data.healAmount} HP`);
+            } else {
+                // Remote player healed - visual effect
+                const player = this.remotePlayers.get(data.playerId);
+                if (player && player.startCurryRecovery) {
+                    player.startCurryRecovery(data.healAmount);
+                }
+            }
+        });
+
         // Shard events
         this.socket.on('existingShards', (shards) => {
             logger.debug(`Received ${shards.length} existing shards`);
@@ -642,6 +674,12 @@ class NetworkManager {
         this.socket.emit('potSmash', { dirX, dirY });
     }
 
+    // Send curry recovery to server (Curry-Bear E skill)
+    sendCurryRecovery() {
+        if (!this.connected || !this.socket) return;
+        this.socket.emit('curryRecovery', {});
+    }
+
     addRemotePlayer(playerData) {
         const remotePlayer = new RemotePlayer(
             playerData.playerId,
@@ -670,7 +708,7 @@ class NetworkManager {
     }
 
     // Send local player position to server
-    sendPlayerPosition(x, y, playerName, level, experience) {
+    sendPlayerPosition(x, y, playerName, level, experience, characterId) {
         if (!this.connected || !this.socket) return;
 
         const currentTime = Date.now();
@@ -685,7 +723,8 @@ class NetworkManager {
             y: y,
             playerName: playerName,
             level: level,
-            experience: experience
+            experience: experience,
+            characterId: characterId
         });
     }
 

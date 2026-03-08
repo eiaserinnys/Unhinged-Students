@@ -74,6 +74,9 @@ class RemotePlayer {
         if (window.PotSmashEffectMixin) {
             window.PotSmashEffectMixin.initPotSmashEffect.call(this);
         }
+        if (window.CurryRecoveryEffectMixin) {
+            window.CurryRecoveryEffectMixin.initCurryRecoveryEffect.call(this);
+        }
 
         // Load alien image
         this.loadImage('asset/image/alien.png');
@@ -150,6 +153,9 @@ class RemotePlayer {
         if (window.PotSmashEffectMixin) {
             window.PotSmashEffectMixin.updatePotSmash.call(this);
         }
+        if (window.CurryRecoveryEffectMixin) {
+            window.CurryRecoveryEffectMixin.updateCurryRecovery.call(this);
+        }
     }
 
     render(ctx) {
@@ -212,6 +218,9 @@ class RemotePlayer {
         }
         if (window.PotSmashEffectMixin) {
             window.PotSmashEffectMixin.renderPotSmash.call(this, ctx);
+        }
+        if (window.CurryRecoveryEffectMixin) {
+            window.CurryRecoveryEffectMixin.renderCurryRecovery.call(this, ctx);
         }
 
         // Draw info above remote player using utility
@@ -339,6 +348,12 @@ class RemotePlayer {
     startPotSmash(dirX, dirY) {
         if (window.PotSmashEffectMixin) {
             window.PotSmashEffectMixin.startPotSmash.call(this, dirX, dirY);
+        }
+    }
+
+    startCurryRecovery(healAmount) {
+        if (window.CurryRecoveryEffectMixin) {
+            window.CurryRecoveryEffectMixin.startCurryRecovery.call(this, healAmount);
         }
     }
 }

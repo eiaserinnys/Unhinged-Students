@@ -131,6 +131,17 @@ const GAME_CONFIG = {
     },
 
     // =====================================
+    // CURRY-BEAR - CURRY RECOVERY (카레 회복)
+    // =====================================
+    SKILL_CURRY_RECOVERY: {
+        COOLDOWN_MS: 8000,              // 8 seconds
+        MAX_STORED_DAMAGE: 50,          // 최대 저장 가능한 대미지
+        STORE_RATIO: 0.5,               // 받은 대미지의 50% 저장
+        EFFECT_DURATION_MS: 500,        // 회복 이펙트 지속 시간
+        COLOR: '#FFA500',               // Orange (카레색)
+    },
+
+    // =====================================
     // SHARDS
     // =====================================
     SHARD: {

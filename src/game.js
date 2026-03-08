@@ -54,7 +54,12 @@ const gameState = {
     madnessDuration: 0,
     madnessLastTickTime: 0,
     madnessTickInterval: 0,
-    madnessRadius: 0
+    madnessRadius: 0,
+    // Curry Recovery (Curry-Bear E skill)
+    storedDamage: 0,
+    maxStoredDamage: GAME_CONFIG.SKILL_CURRY_RECOVERY.MAX_STORED_DAMAGE,
+    curryRecoveryActive: false,
+    curryRecoveryStartTime: 0
 };
 
 // Resize canvas to fill window while maintaining 16:9 aspect ratio
@@ -237,7 +242,8 @@ function update(deltaTime) {
                 pos.y,
                 gameState.player.playerName,
                 gameState.player.level,
-                gameState.player.experience
+                gameState.player.experience,
+                gameState.selectedCharacter
             );
         }
     }
@@ -719,9 +725,17 @@ function render() {
     // Draw madness walk effect (local player)
     renderMadnessEffect(ctx);
 
+    // Draw curry recovery effect (local player - Curry-Bear)
+    renderCurryRecoveryEffect(ctx);
+
     // Draw skill UI (above game elements, below vignette)
     if (gameState.skillUI) {
         gameState.skillUI.render(ctx, GAME_WIDTH, GAME_HEIGHT);
+    }
+
+    // Draw stored damage UI for curry-bear
+    if (gameState.selectedCharacter === 'curry-bear') {
+        renderStoredDamageUI(ctx);
     }
 
     // Draw hit vignette effect (on top of everything)
@@ -945,9 +959,131 @@ function renderConfusionEffect(ctx) {
     ctx.restore();
 }
 
+// Render curry recovery effect (Curry-Bear E skill)
+function renderCurryRecoveryEffect(ctx) {
+    if (!gameState.curryRecoveryActive || !gameState.player) return;
+
+    const playerPos = gameState.player.getPosition();
+    const elapsed = Date.now() - gameState.curryRecoveryStartTime;
+    const duration = GAME_CONFIG.SKILL_CURRY_RECOVERY.EFFECT_DURATION_MS;
+    const progress = elapsed / duration;
+
+    // End effect after duration
+    if (progress >= 1) {
+        gameState.curryRecoveryActive = false;
+        return;
+    }
+
+    ctx.save();
+
+    // Rising curry particles
+    const particleCount = 12;
+    for (let i = 0; i < particleCount; i++) {
+        const angle = (i / particleCount) * Math.PI * 2;
+        const baseRadius = 60;
+        const riseAmount = progress * 100;
+        const spreadX = Math.cos(angle) * baseRadius * (1 - progress * 0.5);
+        const x = playerPos.x + spreadX;
+        const y = playerPos.y - riseAmount + Math.sin(angle * 3 + elapsed / 100) * 10;
+
+        ctx.globalAlpha = (1 - progress) * 0.8;
+        ctx.font = `${20 + progress * 10}px sans-serif`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('🍛', x, y);
+    }
+
+    // Healing glow
+    const glowRadius = 80 + progress * 40;
+    const gradient = ctx.createRadialGradient(
+        playerPos.x, playerPos.y, 0,
+        playerPos.x, playerPos.y, glowRadius
+    );
+    gradient.addColorStop(0, `rgba(255, 165, 0, ${(1 - progress) * 0.4})`);
+    gradient.addColorStop(0.5, `rgba(255, 215, 0, ${(1 - progress) * 0.2})`);
+    gradient.addColorStop(1, 'rgba(255, 215, 0, 0)');
+
+    ctx.fillStyle = gradient;
+    ctx.beginPath();
+    ctx.arc(playerPos.x, playerPos.y, glowRadius, 0, Math.PI * 2);
+    ctx.fill();
+
+    // "+" symbols rising
+    ctx.fillStyle = '#32CD32';
+    ctx.font = `bold ${24 + progress * 12}px sans-serif`;
+    const plusCount = 5;
+    for (let i = 0; i < plusCount; i++) {
+        const plusAngle = (i / plusCount) * Math.PI * 2 + elapsed / 200;
+        const plusRadius = 40 + progress * 60;
+        const plusX = playerPos.x + Math.cos(plusAngle) * plusRadius;
+        const plusY = playerPos.y - progress * 80 + Math.sin(elapsed / 150 + i) * 15;
+
+        ctx.globalAlpha = (1 - progress) * 0.9;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('+', plusX, plusY);
+    }
+
+    ctx.restore();
+}
+
+// Render stored damage UI for curry-bear
+function renderStoredDamageUI(ctx) {
+    if (gameState.storedDamage <= 0) return;
+
+    ctx.save();
+
+    // Position below the skill UI
+    const x = GAME_WIDTH / 2;
+    const y = GAME_HEIGHT - 120;
+
+    // Background bar
+    const barWidth = 150;
+    const barHeight = 16;
+    const fillRatio = gameState.storedDamage / gameState.maxStoredDamage;
+
+    // Background
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+    ctx.fillRect(x - barWidth / 2, y, barWidth, barHeight);
+
+    // Fill bar (orange gradient)
+    const gradient = ctx.createLinearGradient(x - barWidth / 2, y, x + barWidth / 2, y);
+    gradient.addColorStop(0, '#FFA500');
+    gradient.addColorStop(1, '#FFD700');
+    ctx.fillStyle = gradient;
+    ctx.fillRect(x - barWidth / 2, y, barWidth * fillRatio, barHeight);
+
+    // Border
+    ctx.strokeStyle = '#FFA500';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(x - barWidth / 2, y, barWidth, barHeight);
+
+    // Label with emoji
+    ctx.fillStyle = '#FFFFFF';
+    ctx.font = 'bold 14px Jua, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'bottom';
+    ctx.fillText(`🍛 저장: ${gameState.storedDamage}/${gameState.maxStoredDamage}`, x, y - 2);
+
+    ctx.restore();
+}
+
 // Trigger hit vignette effect (called from network.js when local player takes damage)
 function triggerHitVignette() {
     gameState.hitVignetteTime = Date.now();
+}
+
+// Update stored damage for curry-bear (called from network.js)
+function updateStoredDamage(storedDamage, maxStored) {
+    gameState.storedDamage = storedDamage;
+    gameState.maxStoredDamage = maxStored;
+}
+
+// Trigger curry recovery visual effect (called from network.js)
+function triggerCurryRecoveryEffect(healAmount) {
+    gameState.curryRecoveryActive = true;
+    gameState.curryRecoveryStartTime = Date.now();
+    gameState.storedDamage = 0; // Reset stored damage after recovery
 }
 
 // Find the nearest enemy to the player
@@ -1178,8 +1314,25 @@ function handleESkill() {
     const playerPos = gameState.player.getPosition();
 
     switch (gameState.selectedCharacter) {
-        case 'curry-bear': // 카레 곰돌이 - E 스킬 없음 (나중에 카레 회복 추가)
-            // 지금은 E 스킬이 없음
+        case 'curry-bear': // 카레 곰돌이 - 카레 회복
+            if (gameState.storedDamage <= 0) {
+                logger.debug('No stored damage to recover');
+                return;
+            }
+
+            const curryRecoverySkill = gameState.skillManager.useSkill('e');
+            if (curryRecoverySkill) {
+                logger.debug(`Used skill: ${curryRecoverySkill.name} - recovering ${gameState.storedDamage} HP`);
+
+                // Trigger recovery effect
+                gameState.curryRecoveryActive = true;
+                gameState.curryRecoveryStartTime = Date.now();
+
+                // Send to server
+                if (gameState.networkManager) {
+                    gameState.networkManager.sendCurryRecovery();
+                }
+            }
             break;
 
         case 'crazy-eyes': // 눈 돌아가는 사람 - 광기 산책
@@ -1245,6 +1398,8 @@ function initializeCharacterSkills(characterId) {
         case 'curry-bear': // 카레 곰돌이
             // Q = 냄비 내려치기
             gameState.skillManager.addSkill(new Skill('냄비 내려치기', 'q', GAME_CONFIG.SKILL_POT_SMASH.COOLDOWN_MS, GAME_CONFIG.SKILL_POT_SMASH.COLOR, '🍲'));
+            // E = 카레 회복
+            gameState.skillManager.addSkill(new Skill('카레 회복', 'e', GAME_CONFIG.SKILL_CURRY_RECOVERY.COOLDOWN_MS, GAME_CONFIG.SKILL_CURRY_RECOVERY.COLOR, '🍛'));
             logger.info('Initialized skills for 카레 곰돌이');
             break;
 

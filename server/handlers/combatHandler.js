@@ -26,6 +26,8 @@ const {
     POT_SMASH_RANGE,
     POT_SMASH_ANGLE,
     POT_SMASH_SPLASH_RADIUS,
+    CURRY_RECOVERY_MAX_STORED,
+    CURRY_RECOVERY_STORE_RATIO,
 } = require('../config');
 const {
     isValidNumber,
@@ -40,6 +42,37 @@ const {
     dummies,
     rateLimit,
 } = require('../gameState');
+
+// Helper function to apply damage and store for curry-bear passive
+// Returns { currentHP, storedDamageChanged: boolean }
+function applyDamageWithStorage(player, damage, io) {
+    const actualDamage = Math.min(damage, player.currentHP);
+    player.currentHP = Math.max(0, player.currentHP - damage);
+
+    let storedDamageChanged = false;
+
+    // If player is curry-bear, store half the damage taken
+    if (player.characterId === 'curry-bear' && actualDamage > 0) {
+        const storageAmount = Math.floor(actualDamage * CURRY_RECOVERY_STORE_RATIO);
+        player.storedDamage = player.storedDamage || 0;
+        player.storedDamage = Math.min(
+            player.storedDamage + storageAmount,
+            CURRY_RECOVERY_MAX_STORED
+        );
+        storedDamageChanged = true;
+        logger.debug(`Curry-bear stored ${storageAmount} damage (total: ${player.storedDamage}/${CURRY_RECOVERY_MAX_STORED})`);
+
+        // Notify the curry-bear player of their stored damage
+        if (io && player.socketId) {
+            io.to(player.socketId).emit('storedDamageUpdate', {
+                storedDamage: player.storedDamage,
+                maxStored: CURRY_RECOVERY_MAX_STORED
+            });
+        }
+    }
+
+    return { currentHP: player.currentHP, storedDamageChanged };
+}
 
 function registerCombatHandlers(socket, io) {
     // Handle player attack
@@ -94,8 +127,8 @@ function registerCombatHandlers(socket, io) {
 
             // Check if in range (server-authoritative range)
             if (distance <= attackRange) {
-                // Apply damage (server-authoritative power)
-                player.currentHP = Math.max(0, player.currentHP - attackPower);
+                // Apply damage with curry-bear storage (server-authoritative power)
+                applyDamageWithStorage(player, attackPower, io);
 
                 // Calculate knockback
                 const knockbackDist = calculateKnockbackDistance(attackRange, distance);
@@ -1180,6 +1213,55 @@ function registerCombatHandlers(socket, io) {
                 hitDummies: hitDummies
             });
         }
+    });
+
+    // Handle curry recovery (Curry-Bear E skill)
+    socket.on('curryRecovery', () => {
+        const player = players.get(socket.id);
+        if (!player) return;
+        if (player.isDead) return;
+
+        // Only curry-bear can use this skill
+        if (player.characterId !== 'curry-bear') {
+            logger.cheat(`Non curry-bear ${socket.id} tried to use curry recovery`);
+            return;
+        }
+
+        const storedDamage = player.storedDamage || 0;
+        if (storedDamage <= 0) {
+            logger.debug(`${socket.id} tried to use curry recovery with no stored damage`);
+            return;
+        }
+
+        // Heal by stored damage amount
+        const healAmount = storedDamage;
+        const oldHP = player.currentHP;
+        player.currentHP = Math.min(player.maxHP, player.currentHP + healAmount);
+        const actualHeal = player.currentHP - oldHP;
+
+        // Reset stored damage
+        player.storedDamage = 0;
+
+        logger.debug(`Curry recovery: ${socket.id} healed ${actualHeal} (stored: ${storedDamage})`);
+
+        // Broadcast recovery effect to all players
+        io.emit('playerCurryRecovery', {
+            playerId: socket.id,
+            healAmount: actualHeal,
+            currentHP: player.currentHP,
+            maxHP: player.maxHP
+        });
+    });
+
+    // Handle stored damage sync request (for UI display)
+    socket.on('requestStoredDamage', () => {
+        const player = players.get(socket.id);
+        if (!player) return;
+
+        socket.emit('storedDamageUpdate', {
+            storedDamage: player.storedDamage || 0,
+            maxStored: CURRY_RECOVERY_MAX_STORED
+        });
     });
 }
 
