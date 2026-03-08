@@ -1,101 +1,39 @@
 // ========================================
 // SERVER CONFIGURATION
-// Centralized constants for server-authoritative game logic
+// Extends shared GAME_CONFIG with server-specific settings
 // (Anti-cheat: ignore client values, use these)
 // ========================================
-const SERVER_CONFIG = {
-    // World
-    WORLD: {
-        WIDTH: 1920,
-        HEIGHT: 1080,
-    },
 
-    // Player
+const { GAME_CONFIG } = require('../shared/config');
+
+// Server-specific configuration
+const SERVER_ONLY_CONFIG = {
+    // Player server-specific settings
     PLAYER: {
-        SPEED: 300,                     // pixels per second
         SPEED_TOLERANCE: 1.5,           // Allow 50% variance for network latency
-        MAX_HP: 100,
-        RESPAWN_DELAY_MS: 3000,         // 3 seconds
-        RESPAWN_X: 960,                 // Center of game world
-        RESPAWN_Y: 540,
     },
 
-    // Combat
-    COMBAT: {
-        ATTACK_POWER: 10,
-        ATTACK_RANGE: 150,
-        ATTACK_COOLDOWN_MS: 500,
-        HIT_RADIUS: 67.5,               // Half of character size for collision
-    },
-
-    // Knockback
-    KNOCKBACK: {
-        MIN_DISTANCE: 30,
-        MAX_DISTANCE: 100,
-        MULTIPLIER_MIN: 1.25,
-        MULTIPLIER_MAX: 2.5,
-        BOUNDARY_MARGIN: 50,
-        LASER_DISTANCE: 50,             // Fixed knockback for laser
-    },
-
-    // Skill - Laser (Q)
-    SKILL_LASER: {
-        DAMAGE: 44,
-        MAX_LENGTH: 2000,
-        COOLDOWN_MS: 10000,
-    },
-
-    // Skill - Teleport (W)
-    SKILL_TELEPORT: {
-        MAX_DISTANCE: 400,
-        MIN_DISTANCE: 200,
-        DAMAGE_RADIUS: 100,
-        DAMAGE: 12,
-        COOLDOWN_MS: 8000,
-    },
-
-    // Skill - Telepathy (E)
-    SKILL_TELEPATHY: {
-        RADIUS: 180,
-        DAMAGE_PER_TICK: 2,
-        MAX_HEAL_PER_TICK: 4,
-        DURATION_MS: 3000,
-        COOLDOWN_MS: 15000,
-        TICK_INTERVAL_MS: 200, // 200ms between ticks (server validation)
-    },
-
-    // Shard
-    SHARD: {
-        MAX_COUNT: 40,
-        INITIAL_COUNT: 20,
-        SPAWN_MARGIN: 100,
-        COLLECT_DISTANCE: 100,
-        RESPAWN_MIN_MS: 3000,
-        RESPAWN_VARIANCE_MS: 2000,
-    },
-
-    // Dummy
-    DUMMY: {
-        MAX_HP: 30,
-        RESPAWN_DELAY_MS: 5000,
-        POSITIONS: [
-            { offsetX: 300, offsetY: 0, name: 'Dummy 1' },
-            { offsetX: -300, offsetY: 0, name: 'Dummy 2' },
-            { offsetX: 0, offsetY: 300, name: 'Dummy 3' },
-        ],
-    },
-
-    // Chat
-    CHAT: {
-        MAX_MESSAGE_LENGTH: 200,
-    },
-
-    // Rate limiting (in milliseconds)
+    // Rate limiting (in milliseconds) - server-only
     RATE_LIMIT: {
-        MOVE_MS: 50,                    // 50ms = 초당 20회
-        ATTACK_MS: 500,                 // 기본 공격 쿨다운과 동일
-        CHAT_MS: 1000,                  // 초당 1회
+        MOVE_MS: 50,                    // 50ms = 20 requests per second
+        ATTACK_MS: 500,                 // Same as attack cooldown
+        CHAT_MS: 1000,                  // 1 message per second
     },
+};
+
+// Merge configurations
+const SERVER_CONFIG = {
+    // Spread shared config
+    ...GAME_CONFIG,
+
+    // Override/extend PLAYER with server-specific settings
+    PLAYER: {
+        ...GAME_CONFIG.PLAYER,
+        ...SERVER_ONLY_CONFIG.PLAYER,
+    },
+
+    // Add server-only sections
+    RATE_LIMIT: SERVER_ONLY_CONFIG.RATE_LIMIT,
 };
 
 // Computed values
@@ -130,6 +68,8 @@ const PLAYER_RESPAWN_DELAY = SERVER_CONFIG.PLAYER.RESPAWN_DELAY_MS;
 const DUMMY_RESPAWN_DELAY = SERVER_CONFIG.DUMMY.RESPAWN_DELAY_MS;
 
 module.exports = {
+    // Re-export GAME_CONFIG for consumers that need it
+    GAME_CONFIG,
     SERVER_CONFIG,
     GAME_WIDTH,
     GAME_HEIGHT,
