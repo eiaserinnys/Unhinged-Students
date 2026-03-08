@@ -1265,6 +1265,131 @@ function registerCombatHandlers(socket, io) {
             maxStored: CURRY_RECOVERY_MAX_STORED
         });
     });
+
+    // Handle spin throw (Hulk Sister Q skill)
+    socket.on('spinThrow', (data) => {
+        const attacker = players.get(socket.id);
+        if (!attacker) return;
+        if (attacker.isDead) return;
+
+        // Only hulk sister can use this skill
+        if (attacker.characterId !== 'big-sis-hulk') {
+            logger.cheat(`Non hulk-sister ${socket.id} tried to use spin throw`);
+            return;
+        }
+
+        const targetId = data.targetId;
+        const target = players.get(targetId);
+        if (!target || target.isDead) return;
+
+        // Validate target is in range
+        const dx = target.x - attacker.x;
+        const dy = target.y - attacker.y;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+
+        if (distance > SERVER_CONFIG.SKILL_SPIN_THROW.GRAB_RANGE * 1.2) {
+            logger.cheat(`Spin throw target too far: ${distance}px`);
+            return;
+        }
+
+        // Calculate throw direction
+        const dirLength = Math.sqrt(data.dirX * data.dirX + data.dirY * data.dirY);
+        const dirX = dirLength > 0 ? data.dirX / dirLength : 1;
+        const dirY = dirLength > 0 ? data.dirY / dirLength : 0;
+
+        // Calculate throw damage (with rage multiplier if active)
+        let throwDamage = SERVER_CONFIG.SKILL_SPIN_THROW.DAMAGE;
+        let throwDistance = SERVER_CONFIG.SKILL_SPIN_THROW.THROW_DISTANCE;
+
+        if (attacker.rageActive) {
+            throwDamage *= SERVER_CONFIG.SKILL_RAGE.DAMAGE_MULTIPLIER;
+            throwDistance *= SERVER_CONFIG.SKILL_RAGE.THROW_MULTIPLIER;
+        }
+
+        // Apply rage stacks bonus
+        const rageStacks = attacker.rageStacks || 0;
+        throwDamage *= (1 + rageStacks * SERVER_CONFIG.HULK_PASSIVE.DAMAGE_PER_STACK);
+        throwDistance *= (1 + rageStacks * SERVER_CONFIG.HULK_PASSIVE.THROW_PER_STACK);
+
+        // Apply damage to target
+        applyDamageWithStorage(target, Math.floor(throwDamage), io);
+
+        // Calculate throw end position
+        let endX = target.x + dirX * throwDistance;
+        let endY = target.y + dirY * throwDistance;
+
+        // Clamp to bounds
+        const clamped = clampCoordinates(endX, endY);
+        endX = clamped.x;
+        endY = clamped.y;
+
+        // Move target to throw position
+        target.x = endX;
+        target.y = endY;
+
+        logger.debug(`Spin throw: ${socket.id} threw ${targetId} for ${Math.floor(throwDamage)} damage`);
+
+        // Broadcast spin throw effect
+        io.emit('playerSpinThrow', {
+            attackerId: socket.id,
+            targetId: targetId,
+            startX: attacker.x,
+            startY: attacker.y,
+            endX: endX,
+            endY: endY,
+            damage: Math.floor(throwDamage)
+        });
+
+        // Check if target died
+        if (target.currentHP <= 0 && !target.isDead) {
+            target.isDead = true;
+            target.deathTime = Date.now();
+            io.emit('playerDied', {
+                playerId: targetId,
+                killedBy: socket.id,
+                respawnDelay: PLAYER_RESPAWN_DELAY
+            });
+            logger.info(`${targetId} has been killed by spin throw from ${socket.id}!`);
+        }
+    });
+
+    // Handle rage start (Hulk Sister E skill)
+    socket.on('rageStart', () => {
+        const player = players.get(socket.id);
+        if (!player) return;
+        if (player.isDead) return;
+
+        // Only hulk sister can use this skill
+        if (player.characterId !== 'big-sis-hulk') {
+            logger.cheat(`Non hulk-sister ${socket.id} tried to use rage`);
+            return;
+        }
+
+        player.rageActive = true;
+        player.rageStartTime = Date.now();
+
+        logger.debug(`Rage started by ${socket.id}`);
+
+        // Broadcast rage start
+        socket.broadcast.emit('playerRageStart', {
+            playerId: socket.id
+        });
+    });
+
+    // Handle rage end
+    socket.on('rageEnd', () => {
+        const player = players.get(socket.id);
+        if (!player) return;
+
+        player.rageActive = false;
+
+        logger.debug(`Rage ended by ${socket.id}`);
+
+        // Broadcast rage end
+        socket.broadcast.emit('playerRageEnd', {
+            playerId: socket.id
+        });
+    });
 }
 
 module.exports = { registerCombatHandlers };

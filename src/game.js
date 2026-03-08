@@ -59,7 +59,14 @@ const gameState = {
     storedDamage: 0,
     maxStoredDamage: GAME_CONFIG.SKILL_CURRY_RECOVERY.MAX_STORED_DAMAGE,
     curryRecoveryActive: false,
-    curryRecoveryStartTime: 0
+    curryRecoveryStartTime: 0,
+    // Hulk Sister - Rage (폭주)
+    rageActive: false,
+    rageStartTime: 0,
+    rageDuration: 0,
+    // Hulk Sister - Passive (분노 스택)
+    hulkRageStacks: 0,
+    hulkLastStackTime: 0
 };
 
 // Resize canvas to fill window while maintaining 16:9 aspect ratio
@@ -1242,6 +1249,55 @@ function handleQSkill() {
             }
             break;
 
+        case 'big-sis-hulk': // 헐크 언니 - 돌려 던지기
+            const throwSkill = gameState.skillManager.useSkill('q');
+            if (throwSkill) {
+                // Find nearest enemy to grab
+                const target = findNearestEnemy(true); // players only
+                if (target) {
+                    const dx = target.x - playerPos.x;
+                    const dy = target.y - playerPos.y;
+                    const distance = Math.sqrt(dx * dx + dy * dy);
+
+                    if (distance <= GAME_CONFIG.SKILL_SPIN_THROW.GRAB_RANGE) {
+                        // Calculate throw direction (away from hulk)
+                        const dirX = dx / distance;
+                        const dirY = dy / distance;
+
+                        logger.debug(`Used skill: ${throwSkill.name} - grabbing enemy`);
+
+                        // Send spin throw to server
+                        if (gameState.networkManager) {
+                            gameState.networkManager.sendSpinThrow(target.playerId, dirX, dirY);
+                        }
+
+                        // Show local effect
+                        if (!gameState.spinThrowEffect) {
+                            gameState.spinThrowEffect = {
+                                active: false,
+                                x: 0,
+                                y: 0,
+                                targetX: 0,
+                                targetY: 0,
+                                startTime: 0,
+                                duration: GAME_CONFIG.SKILL_SPIN_THROW.EFFECT_DURATION_MS
+                            };
+                        }
+                        gameState.spinThrowEffect.active = true;
+                        gameState.spinThrowEffect.x = playerPos.x;
+                        gameState.spinThrowEffect.y = playerPos.y;
+                        gameState.spinThrowEffect.targetX = target.x;
+                        gameState.spinThrowEffect.targetY = target.y;
+                        gameState.spinThrowEffect.startTime = Date.now();
+                    } else {
+                        logger.debug('Enemy too far to grab');
+                    }
+                } else {
+                    logger.debug('No enemy to grab');
+                }
+            }
+            break;
+
         case 'alien': // 외계인 - 레이저 빔
         default:
             if (!gameState.laserBeamEffect.active) {
@@ -1334,6 +1390,26 @@ function handleESkill() {
             }
             break;
 
+        case 'big-sis-hulk': // 헐크 언니 - 폭주
+            // Don't allow if rage is already active
+            if (gameState.rageActive) return;
+
+            const rageSkill = gameState.skillManager.useSkill('e');
+            if (rageSkill) {
+                logger.debug(`Used skill: ${rageSkill.name} - RAGE activated!`);
+
+                // Initialize rage state
+                gameState.rageActive = true;
+                gameState.rageStartTime = Date.now();
+                gameState.rageDuration = GAME_CONFIG.SKILL_RAGE.DURATION_MS;
+
+                // Send to server
+                if (gameState.networkManager) {
+                    gameState.networkManager.sendRageStart();
+                }
+            }
+            break;
+
         case 'crazy-eyes': // 눈 돌아가는 사람 - 광기 산책
             // Don't allow if madness is already active
             if (gameState.madnessActive) return;
@@ -1400,6 +1476,14 @@ function initializeCharacterSkills(characterId) {
             // E = 카레 회복
             gameState.skillManager.addSkill(new Skill('카레 회복', 'e', GAME_CONFIG.SKILL_CURRY_RECOVERY.COOLDOWN_MS, GAME_CONFIG.SKILL_CURRY_RECOVERY.COLOR, '🍛'));
             logger.info('Initialized skills for 카레 곰돌이');
+            break;
+
+        case 'big-sis-hulk': // 헐크 언니
+            // Q = 돌려 던지기
+            gameState.skillManager.addSkill(new Skill('돌려 던지기', 'q', GAME_CONFIG.SKILL_SPIN_THROW.COOLDOWN_MS, GAME_CONFIG.SKILL_SPIN_THROW.COLOR, '🌀'));
+            // E = 폭주
+            gameState.skillManager.addSkill(new Skill('폭주', 'e', GAME_CONFIG.SKILL_RAGE.COOLDOWN_MS, GAME_CONFIG.SKILL_RAGE.COLOR, '🔥'));
+            logger.info('Initialized skills for 헐크 언니');
             break;
 
         case 'alien': // 외계인 (기본)

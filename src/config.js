@@ -142,6 +142,47 @@ const GAME_CONFIG = {
     },
 
     // =====================================
+    // HULK-SISTER - SPIN THROW (돌려 던지기)
+    // =====================================
+    SKILL_SPIN_THROW: {
+        COOLDOWN_MS: 2000,              // 2 seconds
+        GRAB_RANGE: 150,                // 잡기 범위
+        THROW_DISTANCE: 300,            // 던지는 거리
+        DAMAGE: 30,                     // 기본 대미지
+        COLLISION_DAMAGE: 20,           // 충돌 대미지 (던져진 적이 다른 적과 부딪힐 때)
+        EFFECT_DURATION_MS: 500,        // 이펙트 지속 시간
+        COLOR: '#FF6347',               // Tomato (분노색)
+    },
+
+    // =====================================
+    // HULK-SISTER - RAGE (폭주)
+    // =====================================
+    SKILL_RAGE: {
+        COOLDOWN_MS: 20000,             // 20 seconds
+        DURATION_MS: 5000,              // 5초간 지속
+        DAMAGE_MULTIPLIER: 2.0,         // 대미지 2배
+        THROW_MULTIPLIER: 1.5,          // 던지기 거리 1.5배
+        COLOR: '#FF0000',               // Red (분노!)
+    },
+
+    // =====================================
+    // HULK-SISTER - PASSIVE (분노 스택)
+    // =====================================
+    HULK_PASSIVE: {
+        MAX_STACKS: 10,                 // 최대 분노 스택
+        DAMAGE_PER_STACK: 0.1,          // 스택당 10% 대미지 증가
+        THROW_PER_STACK: 0.05,          // 스택당 5% 던지기 거리 증가
+        STACK_DURATION_MS: 10000,       // 스택 유지 시간 (10초)
+    },
+
+    // =====================================
+    // HULK-SISTER - STATS
+    // =====================================
+    HULK_STATS: {
+        MAX_HP: 150,                    // 높은 체력!
+    },
+
+    // =====================================
     // SHARDS
     // =====================================
     SHARD: {

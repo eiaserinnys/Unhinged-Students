@@ -680,6 +680,24 @@ class NetworkManager {
         this.socket.emit('curryRecovery', {});
     }
 
+    // Send spin throw to server (Hulk Sister Q skill)
+    sendSpinThrow(targetId, dirX, dirY) {
+        if (!this.connected || !this.socket) return;
+        this.socket.emit('spinThrow', { targetId, dirX, dirY });
+    }
+
+    // Send rage start to server (Hulk Sister E skill)
+    sendRageStart() {
+        if (!this.connected || !this.socket) return;
+        this.socket.emit('rageStart', {});
+    }
+
+    // Send rage end to server
+    sendRageEnd() {
+        if (!this.connected || !this.socket) return;
+        this.socket.emit('rageEnd', {});
+    }
+
     addRemotePlayer(playerData) {
         const remotePlayer = new RemotePlayer(
             playerData.playerId,

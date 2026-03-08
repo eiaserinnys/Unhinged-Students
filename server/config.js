@@ -104,6 +104,36 @@ const SERVER_CONFIG = {
         COOLDOWN_MS: 8000,
     },
 
+    // Hulk-Sister - Spin Throw (돌려 던지기)
+    SKILL_SPIN_THROW: {
+        GRAB_RANGE: 150,                // 잡기 범위
+        THROW_DISTANCE: 300,            // 던지는 거리
+        DAMAGE: 30,                     // 기본 대미지
+        COLLISION_DAMAGE: 20,           // 충돌 대미지
+        COOLDOWN_MS: 2000,
+    },
+
+    // Hulk-Sister - Rage (폭주)
+    SKILL_RAGE: {
+        DURATION_MS: 5000,              // 5초간 지속
+        DAMAGE_MULTIPLIER: 2.0,         // 대미지 2배
+        THROW_MULTIPLIER: 1.5,          // 던지기 거리 1.5배
+        COOLDOWN_MS: 20000,
+    },
+
+    // Hulk-Sister - Passive (분노 스택)
+    HULK_PASSIVE: {
+        MAX_STACKS: 10,                 // 최대 분노 스택
+        DAMAGE_PER_STACK: 0.1,          // 스택당 10% 대미지 증가
+        THROW_PER_STACK: 0.05,          // 스택당 5% 던지기 거리 증가
+        STACK_DURATION_MS: 10000,       // 스택 유지 시간
+    },
+
+    // Hulk-Sister - Stats
+    HULK_STATS: {
+        MAX_HP: 150,                    // 높은 체력!
+    },
+
     // Shard
     SHARD: {
         MAX_COUNT: 40,
