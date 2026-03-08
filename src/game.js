@@ -2,13 +2,11 @@
 //
 // Note: canvas, ctx, GAME_WIDTH, GAME_HEIGHT, scale, offset variables
 // are defined in src/core/gameState.js and accessed via getters/setters
-
-// Initialize canvas references from DOM (canvas/ctx are declared in gameState.js)
-canvas = document.getElementById('gameCanvas');
-ctx = canvas.getContext('2d');
+// Use getCanvas() and getCtx() to access canvas and context
 
 // Resize canvas to fill window while maintaining 16:9 aspect ratio
 function resizeCanvas() {
+    const canvas = getCanvas();
     const windowWidth = window.innerWidth;
     const windowHeight = window.innerHeight;
     const windowAspectRatio = windowWidth / windowHeight;
@@ -51,9 +49,11 @@ function init() {
     console.log('[game.js] init() called');
     logger.info('Initializing...');
 
-    // Register canvas with global state
-    setCanvas(canvas);
-    setCtx(ctx);
+    // Initialize canvas references from DOM and register with global state
+    const canvasElement = document.getElementById('gameCanvas');
+    const ctxElement = canvasElement.getContext('2d');
+    setCanvas(canvasElement);
+    setCtx(ctxElement);
 
     // Setup canvas size
     resizeCanvas();
@@ -61,7 +61,7 @@ function init() {
     window.addEventListener('resize', resizeCanvas);
 
     // Initialize input system
-    initInput(canvas);
+    initInput(getCanvas());
 
     // Initialize lobby manager
     console.log('[game.js] Creating LobbyManager...');
@@ -415,6 +415,9 @@ function update(deltaTime) {
 function gameLoop(currentTime) {
     if (!gameState.running) return;
 
+    const ctx = getCtx();
+    const canvas = getCanvas();
+
     // Calculate delta time (in seconds)
     if (gameState.lastFrameTime === 0) {
         gameState.lastFrameTime = currentTime;
@@ -609,6 +612,7 @@ function renderDeathScreen(ctx) {
 
 // Render function
 function render() {
+    const ctx = getCtx();
     // Draw title (in game world coordinates)
     ctx.fillStyle = '#00D9FF';
     ctx.font = '600 28px Jua, sans-serif';
