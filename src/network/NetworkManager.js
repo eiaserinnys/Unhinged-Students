@@ -14,6 +14,9 @@ class NetworkManager {
         this.reconnectUI = null; // Reconnect UI manager
         this.serverUrl = null; // Store server URL for reconnection
         this.onTeamAssigned = null; // Callback when team is assigned
+        // Confusion effect (from wave attack)
+        this.isConfused = false;
+        this.confusionEndTime = 0;
     }
 
     setShardManager(shardManager) {
@@ -218,6 +221,41 @@ class NetworkManager {
                     }
                 });
             }
+        });
+
+        // Wave attack from other player (Crazy-Eyes)
+        this.socket.on('playerWave', (data) => {
+            const player = this.remotePlayers.get(data.playerId);
+            if (player) {
+                player.startWave();
+            }
+        });
+
+        // Wave damage received (with confusion effect)
+        this.socket.on('waveDamage', (data) => {
+            logger.debug(`Wave damage from ${data.attackerId}:`, data.hitPlayers);
+            data.hitPlayers.forEach(hit => {
+                // Check if it's the local player
+                if (hit.playerId === this.playerId) {
+                    if (this.localPlayer) {
+                        this.localPlayer.currentHP = hit.currentHP;
+                        this.localPlayer.hitFlashTime = Date.now();
+                    }
+                    // Apply confusion effect (reversed controls)
+                    if (hit.confused && typeof setConfused === 'function') {
+                        setConfused(hit.confusionDuration);
+                        logger.info(`Confused for ${hit.confusionDuration}ms! Controls reversed!`);
+                    }
+                } else {
+                    // Remote player
+                    const player = this.remotePlayers.get(hit.playerId);
+                    if (player) {
+                        player.currentHP = hit.currentHP;
+                        player.maxHP = hit.maxHP;
+                        player.hitFlashTime = Date.now();
+                    }
+                }
+            });
         });
 
         // Shard events
@@ -471,6 +509,21 @@ class NetworkManager {
             damagePerTarget: damagePerTarget,
             maxHeal: maxHeal
         });
+    }
+
+    // Send wave attack to server (Crazy-Eyes basic attack)
+    sendWaveAttack() {
+        if (!this.connected || !this.socket) return;
+        this.socket.emit('waveAttack', {});
+    }
+
+    // Check if player is confused (controls reversed)
+    checkConfusion() {
+        if (this.isConfused && Date.now() >= this.confusionEndTime) {
+            this.isConfused = false;
+            logger.info('Confusion ended!');
+        }
+        return this.isConfused;
     }
 
     // Send shard collection to server

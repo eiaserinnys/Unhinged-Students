@@ -291,6 +291,11 @@ function update(deltaTime) {
         gameState.networkManager.update();
     }
 
+    // Update confusion effect
+    if (typeof updateConfusion === 'function') {
+        updateConfusion();
+    }
+
     // Update skill manager (check for ready flashes)
     if (gameState.skillManager) {
         gameState.skillManager.update();
@@ -728,6 +733,48 @@ function render() {
 
     // Draw hit vignette effect (on top of everything)
     renderHitVignette(ctx);
+
+    // Draw confusion effect (spinning spiral when confused)
+    renderConfusionEffect(ctx);
+}
+
+// Render confusion effect when player is confused (reversed controls)
+function renderConfusionEffect(ctx) {
+    if (typeof isConfused !== 'function' || !isConfused()) return;
+
+    // Pink tint overlay
+    ctx.save();
+    ctx.fillStyle = 'rgba(255, 105, 180, 0.15)';
+    ctx.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
+
+    // Spinning spirals around edges
+    const time = Date.now() / 1000;
+    const spiralCount = 8;
+
+    for (let i = 0; i < spiralCount; i++) {
+        const angle = (i / spiralCount) * Math.PI * 2 + time * 2;
+        const centerX = GAME_WIDTH / 2;
+        const centerY = GAME_HEIGHT / 2;
+        const radius = Math.min(GAME_WIDTH, GAME_HEIGHT) * 0.4;
+
+        const x = centerX + Math.cos(angle) * radius;
+        const y = centerY + Math.sin(angle) * radius;
+
+        ctx.fillStyle = `rgba(255, 182, 193, ${0.3 + Math.sin(time * 5 + i) * 0.2})`;
+        ctx.font = '40px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('🌀', x, y);
+    }
+
+    // "혼란!" text in center
+    ctx.fillStyle = '#FF69B4';
+    ctx.font = 'bold 48px Jua, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('혼란!', GAME_WIDTH / 2, 80);
+
+    ctx.restore();
 }
 
 // Trigger hit vignette effect (called from network.js when local player takes damage)

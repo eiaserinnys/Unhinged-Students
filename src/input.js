@@ -14,7 +14,10 @@ const Input = {
         x: 0,
         y: 0,
         active: false
-    }
+    },
+    // Confusion effect (from wave attack)
+    isConfused: false,
+    confusionEndTime: 0
 };
 
 // Store event handler references for cleanup
@@ -153,9 +156,38 @@ function updateInput() {
     Input.keysPrevious = { ...Input.keys };
 }
 
+// Confusion effect functions
+function setConfused(duration) {
+    Input.isConfused = true;
+    Input.confusionEndTime = Date.now() + duration;
+}
+
+function updateConfusion() {
+    if (Input.isConfused && Date.now() >= Input.confusionEndTime) {
+        Input.isConfused = false;
+    }
+}
+
+function isConfused() {
+    return Input.isConfused;
+}
+
+// Map to reverse direction keys when confused
+const confusionKeyMap = {
+    'arrowup': 'arrowdown',
+    'arrowdown': 'arrowup',
+    'arrowleft': 'arrowright',
+    'arrowright': 'arrowleft'
+};
+
 // Helper functions
 function isKeyPressed(key) {
-    return Input.keys[key.toLowerCase()] === true;
+    let actualKey = key.toLowerCase();
+    // Reverse direction if confused
+    if (Input.isConfused && confusionKeyMap[actualKey]) {
+        actualKey = confusionKeyMap[actualKey];
+    }
+    return Input.keys[actualKey] === true;
 }
 
 // Check if key was just pressed this frame (not held)

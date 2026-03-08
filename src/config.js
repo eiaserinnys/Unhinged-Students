@@ -93,6 +93,18 @@ const GAME_CONFIG = {
     },
 
     // =====================================
+    // CRAZY-EYES - WAVE ATTACK (기본 공격)
+    // =====================================
+    SKILL_WAVE: {
+        COOLDOWN_MS: 2000,              // 2 seconds
+        EXPAND_DURATION_MS: 500,        // 파동 퍼지는 시간
+        RADIUS: 250,                    // 파동 최대 반경
+        DAMAGE: 15,                     // 데미지
+        CONFUSION_DURATION_MS: 3000,    // 혼란 지속 시간 3초
+        COLOR: '#FF69B4',               // Hot Pink
+    },
+
+    // =====================================
     // SHARDS
     // =====================================
     SHARD: {
