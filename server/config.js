@@ -61,6 +61,7 @@ const SERVER_CONFIG = {
         MAX_HEAL_PER_TICK: 4,
         DURATION_MS: 3000,
         COOLDOWN_MS: 15000,
+        TICK_INTERVAL_MS: 200, // 200ms between ticks (server validation)
     },
 
     // Shard
