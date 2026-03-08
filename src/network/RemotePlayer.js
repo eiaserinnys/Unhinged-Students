@@ -156,6 +156,12 @@ class RemotePlayer {
         if (window.CurryRecoveryEffectMixin) {
             window.CurryRecoveryEffectMixin.updateCurryRecovery.call(this);
         }
+        if (window.SpinThrowEffectMixin) {
+            window.SpinThrowEffectMixin.updateSpinThrow.call(this);
+        }
+        if (window.RageEffectMixin) {
+            window.RageEffectMixin.updateRage.call(this);
+        }
     }
 
     render(ctx) {
@@ -221,6 +227,12 @@ class RemotePlayer {
         }
         if (window.CurryRecoveryEffectMixin) {
             window.CurryRecoveryEffectMixin.renderCurryRecovery.call(this, ctx);
+        }
+        if (window.SpinThrowEffectMixin) {
+            window.SpinThrowEffectMixin.renderSpinThrow.call(this, ctx);
+        }
+        if (window.RageEffectMixin) {
+            window.RageEffectMixin.renderRage.call(this, ctx);
         }
 
         // Draw info above remote player using utility
@@ -354,6 +366,24 @@ class RemotePlayer {
     startCurryRecovery(healAmount) {
         if (window.CurryRecoveryEffectMixin) {
             window.CurryRecoveryEffectMixin.startCurryRecovery.call(this, healAmount);
+        }
+    }
+
+    startSpinThrow(startX, startY, endX, endY) {
+        if (window.SpinThrowEffectMixin) {
+            window.SpinThrowEffectMixin.startSpinThrow.call(this, startX, startY, endX, endY);
+        }
+    }
+
+    startRage(duration) {
+        if (window.RageEffectMixin) {
+            window.RageEffectMixin.startRage.call(this, duration);
+        }
+    }
+
+    endRage() {
+        if (window.RageEffectMixin) {
+            window.RageEffectMixin.endRage.call(this);
         }
     }
 }

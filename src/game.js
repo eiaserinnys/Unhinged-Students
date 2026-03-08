@@ -147,6 +147,13 @@ function startGame() {
         gameState.playerName
     );
 
+    // Apply character-specific stats
+    if (gameState.selectedCharacter === 'big-sis-hulk') {
+        gameState.player.maxHP = GAME_CONFIG.HULK_STATS.MAX_HP;
+        gameState.player.currentHP = GAME_CONFIG.HULK_STATS.MAX_HP;
+        logger.debug(`Hulk Sister: HP set to ${GAME_CONFIG.HULK_STATS.MAX_HP}`);
+    }
+
     // Create test dummies for combat practice
     // Position them around the map for testing
     const dummyConfig = GAME_CONFIG.DUMMY;
@@ -350,6 +357,20 @@ function update(deltaTime) {
                 if (gameState.networkManager) {
                     gameState.networkManager.sendMadnessDamage();
                 }
+            }
+        }
+    }
+
+    // Update rage (Hulk Sister E skill)
+    if (gameState.rageActive) {
+        const elapsed = Date.now() - gameState.rageStartTime;
+
+        // Check if rage duration is over
+        if (elapsed >= gameState.rageDuration) {
+            gameState.rageActive = false;
+            logger.debug('Rage ended');
+            if (gameState.networkManager) {
+                gameState.networkManager.sendRageEnd();
             }
         }
     }
@@ -735,6 +756,9 @@ function render() {
     // Draw curry recovery effect (local player - Curry-Bear)
     renderCurryRecoveryEffect(ctx);
 
+    // Draw rage effect (local player - Hulk Sister)
+    renderRageEffect(ctx);
+
     // Draw skill UI (above game elements, below vignette)
     if (gameState.skillUI) {
         gameState.skillUI.render(ctx, GAME_WIDTH, GAME_HEIGHT);
@@ -921,6 +945,74 @@ function renderMadnessEffect(ctx) {
     ctx.beginPath();
     ctx.arc(playerPos.x, playerPos.y, radius + 10, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * remainingRatio);
     ctx.strokeStyle = 'rgba(148, 0, 211, 0.8)';
+    ctx.lineWidth = 4;
+    ctx.stroke();
+
+    ctx.restore();
+}
+
+// Render rage effect (Hulk Sister E skill)
+function renderRageEffect(ctx) {
+    if (!gameState.rageActive || !gameState.player) return;
+
+    const playerPos = gameState.player.getPosition();
+    const elapsed = Date.now() - gameState.rageStartTime;
+    const progress = elapsed / gameState.rageDuration;
+    const pulsePhase = Math.sin(elapsed / 100) * 0.3 + 0.7;
+
+    ctx.save();
+
+    // Red glow around player
+    const glowRadius = 80 + Math.sin(elapsed / 150) * 15;
+    const gradient = ctx.createRadialGradient(
+        playerPos.x, playerPos.y, 0,
+        playerPos.x, playerPos.y, glowRadius
+    );
+    gradient.addColorStop(0, `rgba(255, 0, 0, ${0.3 * pulsePhase})`);
+    gradient.addColorStop(0.5, `rgba(255, 50, 0, ${0.2 * pulsePhase})`);
+    gradient.addColorStop(1, 'rgba(255, 0, 0, 0)');
+
+    ctx.fillStyle = gradient;
+    ctx.beginPath();
+    ctx.arc(playerPos.x, playerPos.y, glowRadius, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Flame particles rising
+    const particleCount = 6;
+    for (let i = 0; i < particleCount; i++) {
+        const angle = (i / particleCount) * Math.PI * 2 + elapsed / 500;
+        const particleRadius = 45 + Math.sin(elapsed / 200 + i) * 10;
+        const riseAmount = (elapsed / 50 + i * 20) % 60;
+
+        const px = playerPos.x + Math.cos(angle) * particleRadius;
+        const py = playerPos.y - riseAmount;
+
+        ctx.globalAlpha = 0.8 - (riseAmount / 60) * 0.6;
+        ctx.font = '16px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('\uD83D\uDD25', px, py);
+    }
+
+    // Rage indicator above head
+    ctx.globalAlpha = pulsePhase;
+    ctx.font = 'bold 14px Jua, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillStyle = '#FF0000';
+    ctx.strokeStyle = '#000000';
+    ctx.lineWidth = 2;
+
+    const indicatorY = playerPos.y - 70;
+    ctx.strokeText('RAGE!', playerPos.x, indicatorY);
+    ctx.fillText('RAGE!', playerPos.x, indicatorY);
+
+    // Remaining time ring
+    const remainingRatio = 1 - progress;
+    ctx.globalAlpha = 0.8;
+    ctx.beginPath();
+    ctx.arc(playerPos.x, playerPos.y, glowRadius + 10, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * remainingRatio);
+    ctx.strokeStyle = '#FF0000';
     ctx.lineWidth = 4;
     ctx.stroke();
 
@@ -1119,14 +1211,14 @@ function findNearestEnemy(playersOnly = false) {
 
     // Check remote players
     if (gameState.networkManager) {
-        gameState.networkManager.remotePlayers.forEach(remotePlayer => {
+        gameState.networkManager.remotePlayers.forEach((remotePlayer, playerId) => {
             if (remotePlayer.isAlive()) {
                 const dx = remotePlayer.x - playerPos.x;
                 const dy = remotePlayer.y - playerPos.y;
                 const distance = Math.sqrt(dx * dx + dy * dy);
                 if (distance < nearestDistance) {
                     nearestDistance = distance;
-                    nearestEnemy = { x: remotePlayer.x, y: remotePlayer.y, type: 'player' };
+                    nearestEnemy = { x: remotePlayer.x, y: remotePlayer.y, type: 'player', playerId: playerId };
                 }
             }
         });

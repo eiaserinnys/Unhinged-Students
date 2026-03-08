@@ -1372,7 +1372,8 @@ function registerCombatHandlers(socket, io) {
 
         // Broadcast rage start
         socket.broadcast.emit('playerRageStart', {
-            playerId: socket.id
+            playerId: socket.id,
+            duration: SERVER_CONFIG.SKILL_RAGE.DURATION_MS
         });
     });
 

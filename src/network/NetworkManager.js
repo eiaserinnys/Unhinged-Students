@@ -376,6 +376,54 @@ class NetworkManager {
             }
         });
 
+        // Spin throw from other player (Hulk Sister Q skill)
+        this.socket.on('playerSpinThrow', (data) => {
+            // Handle visual effect for attacker
+            const attacker = this.remotePlayers.get(data.attackerId);
+            if (attacker && attacker.startSpinThrow) {
+                attacker.startSpinThrow(data.startX, data.startY, data.endX, data.endY);
+            }
+
+            // Handle target being thrown
+            if (data.targetId === this.playerId) {
+                // Local player got thrown
+                if (this.localPlayer) {
+                    // Move to throw position
+                    this.localPlayer.x = data.endX;
+                    this.localPlayer.y = data.endY;
+                    this.localPlayer.hitFlashTime = Date.now();
+
+                    // Trigger vignette
+                    if (typeof triggerHitVignette === 'function') {
+                        triggerHitVignette();
+                    }
+                }
+            } else {
+                // Remote player got thrown
+                const target = this.remotePlayers.get(data.targetId);
+                if (target) {
+                    target.x = data.endX;
+                    target.y = data.endY;
+                    target.hitFlashTime = Date.now();
+                }
+            }
+        });
+
+        // Rage state updates (Hulk Sister E skill)
+        this.socket.on('playerRageStart', (data) => {
+            const player = this.remotePlayers.get(data.playerId);
+            if (player && player.startRage) {
+                player.startRage(data.duration);
+            }
+        });
+
+        this.socket.on('playerRageEnd', (data) => {
+            const player = this.remotePlayers.get(data.playerId);
+            if (player && player.endRage) {
+                player.endRage();
+            }
+        });
+
         // Shard events
         this.socket.on('existingShards', (shards) => {
             logger.debug(`Received ${shards.length} existing shards`);

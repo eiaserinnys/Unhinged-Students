@@ -6,6 +6,7 @@ const {
     PLAYER_SPEED,
     PLAYER_SPEED_TOLERANCE,
     RATE_LIMIT_MOVE,
+    SERVER_CONFIG,
 } = require('../config');
 const {
     isValidNumber,
@@ -124,6 +125,25 @@ function registerPlayerHandlers(socket, io) {
         const experience = isValidPositiveInt(data.experience, 10000) ? data.experience : 0;
         const characterId = isValidString(data.characterId, 20) ? data.characterId : 'alien';
 
+        // Calculate maxHP based on character
+        const characterMaxHP = characterId === 'big-sis-hulk'
+            ? SERVER_CONFIG.HULK_STATS.MAX_HP
+            : SERVER_CONFIG.PLAYER.MAX_HP;
+
+        // Determine initial HP (use character max HP if new player or character changed)
+        let initialMaxHP = characterMaxHP;
+        let initialCurrentHP = characterMaxHP;
+        if (existingPlayer) {
+            // If character changed, reset HP
+            if (existingPlayer.characterId !== characterId) {
+                initialMaxHP = characterMaxHP;
+                initialCurrentHP = characterMaxHP;
+            } else {
+                initialMaxHP = existingPlayer.maxHP;
+                initialCurrentHP = existingPlayer.currentHP;
+            }
+        }
+
         // Update player data, preserving HP, death state, team, and curry-bear stored damage
         players.set(socket.id, {
             playerId: socket.id,
@@ -135,8 +155,8 @@ function registerPlayerHandlers(socket, io) {
             level: level,
             experience: experience,
             characterId: characterId,
-            currentHP: existingPlayer ? existingPlayer.currentHP : 100,
-            maxHP: existingPlayer ? existingPlayer.maxHP : 100,
+            currentHP: initialCurrentHP,
+            maxHP: initialMaxHP,
             deathTime: existingPlayer ? existingPlayer.deathTime : 0,
             isDead: existingPlayer ? existingPlayer.isDead : false,
             storedDamage: existingPlayer ? (existingPlayer.storedDamage || 0) : 0,
