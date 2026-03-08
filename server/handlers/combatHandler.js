@@ -416,11 +416,27 @@ function registerCombatHandlers(socket, io) {
 
     // Handle laser aiming (sync with other players)
     socket.on('laserAiming', (data) => {
-        // Broadcast laser aiming to all other players
+        const player = players.get(socket.id);
+        if (!player) return;
+
+        // Validate direction vector inputs
+        if (!isValidNumber(data.dirX) || !isValidNumber(data.dirY)) {
+            logger.cheat(`Invalid laser direction types from ${socket.id}`);
+            return;
+        }
+
+        // Validate direction vector length (should be normalized, ~1.0)
+        const dirLength = Math.sqrt(data.dirX * data.dirX + data.dirY * data.dirY);
+        if (dirLength < 0.9 || dirLength > 1.1) {
+            logger.cheat(`Invalid laser direction length from ${socket.id}: ${dirLength}`);
+            return;
+        }
+
+        // Broadcast laser aiming to all other players (use server-side position)
         socket.broadcast.emit('laserAiming', {
             playerId: socket.id,
-            x: data.x,
-            y: data.y,
+            x: player.x,
+            y: player.y,
             dirX: data.dirX,
             dirY: data.dirY
         });
@@ -602,6 +618,17 @@ function registerCombatHandlers(socket, io) {
 
         // Dead players cannot deal damage
         if (attacker.isDead) return;
+
+        // === TICK RATE VALIDATION ===
+        const now = Date.now();
+        const tickInterval = SERVER_CONFIG.SKILL_TELEPATHY.TICK_INTERVAL_MS;
+        const minTickInterval = tickInterval * 0.9; // 10% tolerance for network latency
+
+        if (attacker.telepathyLastTickTime && (now - attacker.telepathyLastTickTime) < minTickInterval) {
+            logger.cheat(`Telepathy tick too fast from ${socket.id}: ${now - attacker.telepathyLastTickTime}ms (min: ${minTickInterval}ms)`);
+            return;
+        }
+        attacker.telepathyLastTickTime = now;
 
         // === INPUT VALIDATION ===
         // Use attacker's server-side position (ignore client x,y)

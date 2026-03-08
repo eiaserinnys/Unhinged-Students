@@ -448,9 +448,14 @@
 
     <!-- Socket.io client -->
     <script src="/game/socket.io/socket.io.js"></script>
-    <!-- Game scripts -->
+    <!-- Game scripts - Core modules (must be loaded first) -->
     <script src="src/utils/logger.js"></script>
     <script src="src/config.js"></script>
+    <script src="src/core/gameState.js"></script>
+    <!-- UI and combat utilities -->
+    <script src="src/rendering/uiRenderer.js"></script>
+    <script src="src/combat/enemyFinder.js"></script>
+    <!-- Game components -->
     <script src="src/lobby.js"></script>
     <script src="src/input.js"></script>
     <script src="src/characterUtils.js"></script>
@@ -470,6 +475,7 @@
     <script src="src/network/NetworkManager.js"></script>
     <script src="src/network/index.js"></script>
     <script src="src/chat.js"></script>
+    <!-- Main game entry point (must be loaded last) -->
     <script src="src/game.js"></script>
 </body>
 </html>
