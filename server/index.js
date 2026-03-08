@@ -41,7 +41,11 @@ const io = new Server(httpServer, {
         origin: getAllowedOrigins(),
         methods: ["GET", "POST"],
         credentials: true
-    }
+    },
+    // Connection health settings to detect and clean up stale connections
+    pingTimeout: 10000,      // 10 seconds to respond to ping
+    pingInterval: 5000,      // Ping every 5 seconds
+    connectTimeout: 10000    // 10 seconds to complete connection
 });
 
 // Serve static files (game client) - go up one directory from server/
