@@ -52,6 +52,7 @@ function resizeCanvas() {
 
 // Initialize game (called on page load)
 function init() {
+    console.log('[game.js] init() called');
     logger.info('Initializing...');
 
     // Register canvas with global state
@@ -67,8 +68,11 @@ function init() {
     initInput(canvas);
 
     // Initialize lobby manager
+    console.log('[game.js] Creating LobbyManager...');
     gameState.lobbyManager = new LobbyManager();
+    console.log('[game.js] LobbyManager created:', gameState.lobbyManager);
     gameState.lobbyManager.setOnGameStart((selection) => {
+        console.log('[game.js] onGameStart callback fired with:', selection);
         // Store player selection
         gameState.selectedCharacter = selection.character;
         gameState.playerName = selection.playerName;
@@ -77,6 +81,7 @@ function init() {
         startGame();
     });
 
+    console.log('[game.js] init() complete');
     logger.info('Lobby initialized - waiting for player input');
 }
 

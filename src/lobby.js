@@ -31,27 +31,39 @@ class LobbyManager {
     // Get the initially selected character from DOM
     getInitialSelectedCharacter() {
         const selectedOption = document.querySelector('.character-option.selected');
+        console.log('[LobbyManager] getInitialSelectedCharacter - selectedOption:', selectedOption);
         if (selectedOption && selectedOption.dataset.character) {
+            console.log('[LobbyManager] Initial character:', selectedOption.dataset.character);
             return selectedOption.dataset.character;
         }
+        console.log('[LobbyManager] No initial character selected');
         return null; // No character selected
     }
 
     setupEventListeners() {
+        console.log('[LobbyManager] setupEventListeners called');
+        console.log('[LobbyManager] characterOptions count:', this.characterOptions.length);
+        console.log('[LobbyManager] startButton:', this.startButton);
+        console.log('[LobbyManager] nameInput:', this.nameInput);
+
         // Character selection
-        this.characterOptions.forEach(option => {
+        this.characterOptions.forEach((option, index) => {
+            console.log('[LobbyManager] Adding click listener to character option', index, option.dataset.character);
             option.addEventListener('click', () => {
+                console.log('[LobbyManager] Character option clicked:', option.dataset.character);
                 this.selectCharacter(option);
             });
         });
 
         // Name input
         this.nameInput.addEventListener('input', () => {
+            console.log('[LobbyManager] Name input changed:', this.nameInput.value);
             this.validateInput();
         });
 
         // Enter key to start game
         this.nameInput.addEventListener('keypress', (e) => {
+            console.log('[LobbyManager] Keypress:', e.key);
             if (e.key === 'Enter' && this.canStartGame()) {
                 this.startGame();
             }
@@ -59,6 +71,7 @@ class LobbyManager {
 
         // Start button
         this.startButton.addEventListener('click', () => {
+            console.log('[LobbyManager] Start button clicked, canStartGame:', this.canStartGame());
             if (this.canStartGame()) {
                 this.startGame();
             }
@@ -107,7 +120,9 @@ class LobbyManager {
 
         // Enable button if name is not empty and character is selected
         const canStart = this.canStartGame();
+        console.log('[LobbyManager] validateInput - playerName:', this.playerName, 'selectedCharacter:', this.selectedCharacter, 'canStart:', canStart);
         this.startButton.disabled = !canStart;
+        console.log('[LobbyManager] startButton.disabled =', this.startButton.disabled);
     }
 
     canStartGame() {
