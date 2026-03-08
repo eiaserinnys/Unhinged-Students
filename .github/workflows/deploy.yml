@@ -79,10 +79,10 @@ jobs:
             --exclude '.claude' \
             --exclude 'docs' \
             --exclude '*.md' \
-            --exclude 'src' \
-            --exclude 'server' \
-            --exclude 'shared' \
-            --exclude 'test' \
+            --exclude '/src' \
+            --exclude '/server' \
+            --exclude '/shared' \
+            --exclude '/test' \
             -e "ssh -i ~/.ssh/id_ed25519" \
             ./ ${{ secrets.LINODE_USER }}@${{ secrets.LINODE_HOST }}:${RELEASE_DIR}/
 
