@@ -713,6 +713,9 @@ function render() {
     // Draw wave effect (local player)
     renderWaveEffect(ctx);
 
+    // Draw pot smash effect (local player - Curry-Bear)
+    renderPotSmashEffect(ctx);
+
     // Draw madness walk effect (local player)
     renderMadnessEffect(ctx);
 
@@ -776,6 +779,73 @@ function renderWaveEffect(ctx) {
         ctx.strokeStyle = `rgba(255, 182, 193, ${opacity * 0.7})`;
         ctx.lineWidth = 3;
         ctx.stroke();
+    }
+
+    ctx.restore();
+}
+
+// Render pot smash effect for local player (Curry-Bear Q skill)
+function renderPotSmashEffect(ctx) {
+    if (!gameState.potSmashEffect || !gameState.potSmashEffect.active) return;
+
+    const elapsed = Date.now() - gameState.potSmashEffect.startTime;
+    const progress = Math.min(elapsed / gameState.potSmashEffect.duration, 1);
+
+    // End effect when done
+    if (progress >= 1) {
+        gameState.potSmashEffect.active = false;
+        return;
+    }
+
+    const effect = gameState.potSmashEffect;
+    const halfAngleRad = (effect.angle / 2) * Math.PI / 180;
+    const baseAngle = Math.atan2(effect.dirY, effect.dirX);
+    const startAngle = baseAngle - halfAngleRad;
+    const endAngle = baseAngle + halfAngleRad;
+
+    ctx.save();
+
+    // Draw cone (curry splash)
+    const opacity = (1 - progress) * 0.6;
+    ctx.globalAlpha = opacity;
+
+    // Fill cone
+    ctx.beginPath();
+    ctx.moveTo(effect.x, effect.y);
+    ctx.arc(effect.x, effect.y, effect.range, startAngle, endAngle);
+    ctx.closePath();
+    ctx.fillStyle = '#FFD700'; // Gold (curry color)
+    ctx.fill();
+
+    // Draw cone outline
+    ctx.globalAlpha = opacity * 1.5;
+    ctx.strokeStyle = '#FFA500'; // Orange
+    ctx.lineWidth = 3;
+    ctx.stroke();
+
+    // Draw pot emoji at the edge
+    const emojiDist = effect.range * 0.6 * (1 - progress * 0.3);
+    const emojiX = effect.x + Math.cos(baseAngle) * emojiDist;
+    const emojiY = effect.y + Math.sin(baseAngle) * emojiDist;
+
+    ctx.globalAlpha = opacity * 1.5;
+    ctx.font = '40px serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('🍲', emojiX, emojiY);
+
+    // Draw splash particles
+    const particleCount = 5;
+    for (let i = 0; i < particleCount; i++) {
+        const particleAngle = startAngle + (endAngle - startAngle) * (i / (particleCount - 1));
+        const particleDist = effect.range * (0.3 + progress * 0.7);
+        const px = effect.x + Math.cos(particleAngle) * particleDist;
+        const py = effect.y + Math.sin(particleAngle) * particleDist;
+
+        ctx.beginPath();
+        ctx.arc(px, py, 10 * (1 - progress), 0, Math.PI * 2);
+        ctx.fillStyle = '#FFD700';
+        ctx.fill();
     }
 
     ctx.restore();
@@ -991,6 +1061,52 @@ function handleQSkill() {
             }
             break;
 
+        case 'curry-bear': // 카레 곰돌이 - 냄비 내려치기
+            const potSkill = gameState.skillManager.useSkill('q');
+            if (potSkill) {
+                // Get attack direction (toward nearest enemy or last movement direction)
+                let dirX = 1, dirY = 0;
+                const target = findNearestEnemy(false);
+                if (target) {
+                    dirX = target.x - playerPos.x;
+                    dirY = target.y - playerPos.y;
+                    const len = Math.sqrt(dirX * dirX + dirY * dirY);
+                    if (len > 0) {
+                        dirX /= len;
+                        dirY /= len;
+                    }
+                }
+
+                logger.debug(`Used skill: ${potSkill.name} - pot smash`);
+
+                // Send pot smash to server
+                if (gameState.networkManager) {
+                    gameState.networkManager.sendPotSmash(dirX, dirY);
+                }
+
+                // Show local pot smash effect
+                if (!gameState.potSmashEffect) {
+                    gameState.potSmashEffect = {
+                        active: false,
+                        x: 0,
+                        y: 0,
+                        dirX: 0,
+                        dirY: 0,
+                        startTime: 0,
+                        duration: GAME_CONFIG.SKILL_POT_SMASH.EFFECT_DURATION_MS,
+                        range: GAME_CONFIG.SKILL_POT_SMASH.RANGE,
+                        angle: GAME_CONFIG.SKILL_POT_SMASH.ANGLE
+                    };
+                }
+                gameState.potSmashEffect.active = true;
+                gameState.potSmashEffect.x = playerPos.x;
+                gameState.potSmashEffect.y = playerPos.y;
+                gameState.potSmashEffect.dirX = dirX;
+                gameState.potSmashEffect.dirY = dirY;
+                gameState.potSmashEffect.startTime = Date.now();
+            }
+            break;
+
         case 'alien': // 외계인 - 레이저 빔
         default:
             if (!gameState.laserBeamEffect.active) {
@@ -1023,7 +1139,8 @@ function handleWSkill() {
 
     switch (gameState.selectedCharacter) {
         case 'crazy-eyes': // 눈 돌아가는 사람 - W 스킬 없음
-            // 눈 돌아가는 사람은 W 스킬이 없음
+        case 'curry-bear': // 카레 곰돌이 - W 스킬 없음
+            // 이 캐릭터들은 W 스킬이 없음
             break;
 
         case 'alien': // 외계인 - 순간이동
@@ -1061,6 +1178,10 @@ function handleESkill() {
     const playerPos = gameState.player.getPosition();
 
     switch (gameState.selectedCharacter) {
+        case 'curry-bear': // 카레 곰돌이 - E 스킬 없음 (나중에 카레 회복 추가)
+            // 지금은 E 스킬이 없음
+            break;
+
         case 'crazy-eyes': // 눈 돌아가는 사람 - 광기 산책
             // Don't allow if madness is already active
             if (gameState.madnessActive) return;
@@ -1119,6 +1240,12 @@ function initializeCharacterSkills(characterId) {
             // E = 광기 산책
             gameState.skillManager.addSkill(new Skill('광기 산책', 'e', GAME_CONFIG.SKILL_MADNESS.COOLDOWN_MS, GAME_CONFIG.SKILL_MADNESS.COLOR, '👀'));
             logger.info('Initialized skills for 눈 돌아가는 사람');
+            break;
+
+        case 'curry-bear': // 카레 곰돌이
+            // Q = 냄비 내려치기
+            gameState.skillManager.addSkill(new Skill('냄비 내려치기', 'q', GAME_CONFIG.SKILL_POT_SMASH.COOLDOWN_MS, GAME_CONFIG.SKILL_POT_SMASH.COLOR, '🍲'));
+            logger.info('Initialized skills for 카레 곰돌이');
             break;
 
         case 'alien': // 외계인 (기본)

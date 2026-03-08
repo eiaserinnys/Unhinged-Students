@@ -293,6 +293,57 @@ class NetworkManager {
             });
         });
 
+        // Pot smash from other player (Curry-Bear)
+        this.socket.on('playerPotSmash', (data) => {
+            const player = this.remotePlayers.get(data.playerId);
+            if (player) {
+                player.startPotSmash(data.dirX, data.dirY);
+            }
+        });
+
+        // Pot smash damage received
+        this.socket.on('potSmashDamage', (data) => {
+            data.hitPlayers.forEach(hit => {
+                if (hit.playerId === this.playerId) {
+                    if (this.localPlayer) {
+                        this.localPlayer.currentHP = hit.currentHP;
+                        this.localPlayer.hitFlashTime = Date.now();
+
+                        // Trigger vignette for main hit
+                        if (hit.isMainHit && typeof triggerHitVignette === 'function') {
+                            triggerHitVignette();
+                        }
+
+                        // Apply knockback
+                        if (hit.knockbackEndX !== undefined && hit.knockbackEndY !== undefined) {
+                            this.localPlayer.startKnockback(
+                                hit.attackerX,
+                                hit.attackerY,
+                                hit.knockbackEndX,
+                                hit.knockbackEndY
+                            );
+                        }
+                    }
+                } else {
+                    const player = this.remotePlayers.get(hit.playerId);
+                    if (player) {
+                        player.currentHP = hit.currentHP;
+                        player.maxHP = hit.maxHP;
+                        player.hitFlashTime = Date.now();
+
+                        if (hit.knockbackEndX !== undefined && hit.knockbackEndY !== undefined) {
+                            player.startKnockback(
+                                hit.attackerX,
+                                hit.attackerY,
+                                hit.knockbackEndX,
+                                hit.knockbackEndY
+                            );
+                        }
+                    }
+                }
+            });
+        });
+
         // Shard events
         this.socket.on('existingShards', (shards) => {
             logger.debug(`Received ${shards.length} existing shards`);
@@ -583,6 +634,12 @@ class NetworkManager {
     sendMadnessDamage() {
         if (!this.connected || !this.socket) return;
         this.socket.emit('madnessDamage', {});
+    }
+
+    // Send pot smash attack to server (Curry-Bear basic attack)
+    sendPotSmash(dirX, dirY) {
+        if (!this.connected || !this.socket) return;
+        this.socket.emit('potSmash', { dirX, dirY });
     }
 
     addRemotePlayer(playerData) {

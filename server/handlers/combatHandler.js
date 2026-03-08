@@ -21,6 +21,11 @@ const {
     WAVE_CONFUSION_DURATION,
     MADNESS_RADIUS,
     MADNESS_DAMAGE_PER_TICK,
+    POT_SMASH_DAMAGE,
+    POT_SMASH_SPLASH_DAMAGE,
+    POT_SMASH_RANGE,
+    POT_SMASH_ANGLE,
+    POT_SMASH_SPLASH_RADIUS,
 } = require('../config');
 const {
     isValidNumber,
@@ -937,6 +942,237 @@ function registerCombatHandlers(socket, io) {
                 }
             }
         });
+
+        if (hitDummies.length > 0) {
+            io.emit('dummyDamaged', {
+                attackerId: socket.id,
+                hitDummies: hitDummies
+            });
+        }
+    });
+
+    // Handle pot smash attack (Curry-Bear basic attack)
+    socket.on('potSmash', (data) => {
+        const attacker = players.get(socket.id);
+        if (!attacker) return;
+        if (attacker.isDead) return;
+
+        // Validate direction
+        if (!isValidNumber(data.dirX) || !isValidNumber(data.dirY)) {
+            logger.cheat(`Invalid pot smash direction from ${socket.id}`);
+            return;
+        }
+
+        const x = attacker.x;
+        const y = attacker.y;
+        const dirX = data.dirX;
+        const dirY = data.dirY;
+
+        // Normalize direction
+        const dirLength = Math.sqrt(dirX * dirX + dirY * dirY);
+        const normDirX = dirLength > 0 ? dirX / dirLength : 1;
+        const normDirY = dirLength > 0 ? dirY / dirLength : 0;
+
+        // Use server constants
+        const range = POT_SMASH_RANGE;
+        const angle = POT_SMASH_ANGLE;
+        const damage = POT_SMASH_DAMAGE;
+        const splashDamage = POT_SMASH_SPLASH_DAMAGE;
+        const splashRadius = POT_SMASH_SPLASH_RADIUS;
+        const halfAngleRad = (angle / 2) * Math.PI / 180;
+
+        logger.debug(`Pot smash from ${socket.id} at (${x.toFixed(0)}, ${y.toFixed(0)}) dir (${normDirX.toFixed(2)}, ${normDirY.toFixed(2)})`);
+
+        // Broadcast pot smash effect to all other players
+        socket.broadcast.emit('playerPotSmash', {
+            playerId: socket.id,
+            x: x,
+            y: y,
+            dirX: normDirX,
+            dirY: normDirY
+        });
+
+        // Helper to check if target is in cone
+        function isInCone(targetX, targetY) {
+            const dx = targetX - x;
+            const dy = targetY - y;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+            if (distance > range) return false;
+            if (distance === 0) return true;
+
+            // Calculate angle between direction and target
+            const targetAngle = Math.atan2(dy, dx);
+            const attackAngle = Math.atan2(normDirY, normDirX);
+            let angleDiff = Math.abs(targetAngle - attackAngle);
+            if (angleDiff > Math.PI) angleDiff = 2 * Math.PI - angleDiff;
+
+            return angleDiff <= halfAngleRad;
+        }
+
+        // Track main hits for splash damage
+        const mainHitPositions = [];
+
+        // Check all players in cone
+        const hitPlayers = [];
+        const killedPlayers = [];
+        players.forEach((player, playerId) => {
+            if (playerId === socket.id) return;
+            if (player.isDead) return;
+
+            if (isInCone(player.x, player.y)) {
+                player.currentHP = Math.max(0, player.currentHP - damage);
+                mainHitPositions.push({ x: player.x, y: player.y });
+
+                // Calculate knockback
+                const knockbackDist = 60; // Fixed knockback for pot smash
+                const knockbackEnd = calculateKnockbackEndPosition(x, y, player.x, player.y, knockbackDist);
+                player.x = knockbackEnd.x;
+                player.y = knockbackEnd.y;
+
+                hitPlayers.push({
+                    playerId: playerId,
+                    currentHP: player.currentHP,
+                    maxHP: player.maxHP,
+                    knockbackEndX: knockbackEnd.x,
+                    knockbackEndY: knockbackEnd.y,
+                    attackerX: x,
+                    attackerY: y,
+                    isMainHit: true
+                });
+
+                logger.debug(`Pot smash hit ${playerId} for ${damage} damage`);
+
+                if (player.currentHP <= 0 && !player.isDead) {
+                    player.isDead = true;
+                    player.deathTime = Date.now();
+                    killedPlayers.push({
+                        playerId: playerId,
+                        killedBy: socket.id,
+                        respawnDelay: PLAYER_RESPAWN_DELAY
+                    });
+                }
+            }
+        });
+
+        // Check dummies in cone
+        const hitDummies = [];
+        dummies.forEach((dummy) => {
+            if (dummy.currentHP <= 0) return;
+
+            if (isInCone(dummy.x, dummy.y)) {
+                dummy.currentHP = Math.max(0, dummy.currentHP - damage);
+                mainHitPositions.push({ x: dummy.x, y: dummy.y });
+
+                const knockbackDist = 60;
+                const knockbackEnd = calculateKnockbackEndPosition(x, y, dummy.x, dummy.y, knockbackDist);
+                dummy.x = knockbackEnd.x;
+                dummy.y = knockbackEnd.y;
+
+                hitDummies.push({
+                    dummyId: dummy.id,
+                    currentHP: dummy.currentHP,
+                    maxHP: dummy.maxHP,
+                    knockbackEndX: knockbackEnd.x,
+                    knockbackEndY: knockbackEnd.y,
+                    attackerX: x,
+                    attackerY: y,
+                    isMainHit: true
+                });
+
+                if (dummy.currentHP <= 0) {
+                    dummy.deathTime = Date.now();
+                }
+            }
+        });
+
+        // Apply splash damage around main hit positions
+        mainHitPositions.forEach(hitPos => {
+            // Check players for splash
+            players.forEach((player, playerId) => {
+                if (playerId === socket.id) return;
+                if (player.isDead) return;
+                // Skip if already hit by main attack
+                if (hitPlayers.some(h => h.playerId === playerId && h.isMainHit)) return;
+
+                const dx = player.x - hitPos.x;
+                const dy = player.y - hitPos.y;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+
+                if (distance <= splashRadius) {
+                    player.currentHP = Math.max(0, player.currentHP - splashDamage);
+
+                    hitPlayers.push({
+                        playerId: playerId,
+                        currentHP: player.currentHP,
+                        maxHP: player.maxHP,
+                        knockbackEndX: player.x,
+                        knockbackEndY: player.y,
+                        attackerX: hitPos.x,
+                        attackerY: hitPos.y,
+                        isMainHit: false
+                    });
+
+                    logger.debug(`Pot smash splash hit ${playerId} for ${splashDamage} damage`);
+
+                    if (player.currentHP <= 0 && !player.isDead) {
+                        player.isDead = true;
+                        player.deathTime = Date.now();
+                        killedPlayers.push({
+                            playerId: playerId,
+                            killedBy: socket.id,
+                            respawnDelay: PLAYER_RESPAWN_DELAY
+                        });
+                    }
+                }
+            });
+
+            // Check dummies for splash
+            dummies.forEach((dummy) => {
+                if (dummy.currentHP <= 0) return;
+                if (hitDummies.some(h => h.dummyId === dummy.id && h.isMainHit)) return;
+
+                const dx = dummy.x - hitPos.x;
+                const dy = dummy.y - hitPos.y;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+
+                if (distance <= splashRadius + 67.5) {
+                    dummy.currentHP = Math.max(0, dummy.currentHP - splashDamage);
+
+                    hitDummies.push({
+                        dummyId: dummy.id,
+                        currentHP: dummy.currentHP,
+                        maxHP: dummy.maxHP,
+                        knockbackEndX: dummy.x,
+                        knockbackEndY: dummy.y,
+                        attackerX: hitPos.x,
+                        attackerY: hitPos.y,
+                        isMainHit: false
+                    });
+
+                    if (dummy.currentHP <= 0) {
+                        dummy.deathTime = Date.now();
+                    }
+                }
+            });
+        });
+
+        // Broadcast pot smash damage
+        if (hitPlayers.length > 0) {
+            io.emit('potSmashDamage', {
+                attackerId: socket.id,
+                hitPlayers: hitPlayers
+            });
+        }
+
+        if (killedPlayers.length > 0) {
+            killedPlayers.forEach(killed => {
+                io.emit('playerDied', {
+                    playerId: killed.playerId,
+                    killedBy: killed.killedBy,
+                    respawnDelay: killed.respawnDelay
+                });
+            });
+        }
 
         if (hitDummies.length > 0) {
             io.emit('dummyDamaged', {

@@ -71,6 +71,9 @@ class RemotePlayer {
         if (window.WaveEffectMixin) {
             window.WaveEffectMixin.initWaveEffect.call(this);
         }
+        if (window.PotSmashEffectMixin) {
+            window.PotSmashEffectMixin.initPotSmashEffect.call(this);
+        }
 
         // Load alien image
         this.loadImage('asset/image/alien.png');
@@ -144,6 +147,9 @@ class RemotePlayer {
         if (window.WaveEffectMixin) {
             window.WaveEffectMixin.updateWave.call(this);
         }
+        if (window.PotSmashEffectMixin) {
+            window.PotSmashEffectMixin.updatePotSmash.call(this);
+        }
     }
 
     render(ctx) {
@@ -203,6 +209,9 @@ class RemotePlayer {
         }
         if (window.WaveEffectMixin) {
             window.WaveEffectMixin.renderWave.call(this, ctx);
+        }
+        if (window.PotSmashEffectMixin) {
+            window.PotSmashEffectMixin.renderPotSmash.call(this, ctx);
         }
 
         // Draw info above remote player using utility
@@ -324,6 +333,12 @@ class RemotePlayer {
     startWave() {
         if (window.WaveEffectMixin) {
             window.WaveEffectMixin.startWave.call(this);
+        }
+    }
+
+    startPotSmash(dirX, dirY) {
+        if (window.PotSmashEffectMixin) {
+            window.PotSmashEffectMixin.startPotSmash.call(this, dirX, dirY);
         }
     }
 }
