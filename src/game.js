@@ -112,8 +112,8 @@ function init() {
 function startGame() {
     logger.info(`Starting game with character: ${gameState.selectedCharacter}, name: ${gameState.playerName}`);
 
-    // Update screen state
-    gameState.screen = 'playing';
+    // Screen state will change to 'teamAnnounce' when team is assigned via network
+    // Don't set to 'playing' here - wait for team assignment
 
     // Get character image path
     const characterImage = LobbyManager.getCharacterImagePath(gameState.selectedCharacter);
