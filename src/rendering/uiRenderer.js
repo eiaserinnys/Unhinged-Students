@@ -6,11 +6,13 @@
  * - Death screen with respawn timer
  */
 
+import { gameState, GAME_WIDTH, GAME_HEIGHT } from '../core/gameState.js';
+
 /**
  * Render hit vignette effect (red screen edges when damaged)
  * @param {CanvasRenderingContext2D} ctx - Canvas 2D context
  */
-function renderHitVignette(ctx) {
+export function renderHitVignette(ctx) {
     if (gameState.hitVignetteTime === 0) return;
 
     const elapsed = Date.now() - gameState.hitVignetteTime;
@@ -46,7 +48,7 @@ function renderHitVignette(ctx) {
  * Render death screen with respawn timer
  * @param {CanvasRenderingContext2D} ctx - Canvas 2D context
  */
-function renderDeathScreen(ctx) {
+export function renderDeathScreen(ctx) {
     // Dark overlay
     ctx.save();
     ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
@@ -83,7 +85,7 @@ function renderDeathScreen(ctx) {
 /**
  * Trigger hit vignette effect (called from network.js when local player takes damage)
  */
-function triggerHitVignette() {
+export function triggerHitVignette() {
     gameState.hitVignetteTime = Date.now();
 }
 

@@ -1,5 +1,5 @@
 // Wave Effect Mixin for RemotePlayer (Crazy-Eyes basic attack)
-const WaveEffectMixin = {
+export const WaveEffectMixin = {
     // Initialize wave effect properties
     initWaveEffect() {
         this.waveActive = false;
@@ -79,7 +79,5 @@ const WaveEffectMixin = {
     }
 };
 
-// Export for browser
-if (typeof window !== 'undefined') {
-    window.WaveEffectMixin = WaveEffectMixin;
-}
+// Backward compatibility: expose to window
+window.WaveEffectMixin = WaveEffectMixin;

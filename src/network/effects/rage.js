@@ -1,7 +1,7 @@
 // Rage Effect Mixin for RemotePlayer (Hulk Sister E skill)
 // This mixin adds rage effect rendering capabilities to RemotePlayer
 
-const RageEffectMixin = {
+export const RageEffectMixin = {
     // Initialize rage effect state
     initRageEffect() {
         this.rageActive = false;
@@ -89,7 +89,5 @@ const RageEffectMixin = {
     }
 };
 
-// Export for browser
-if (typeof window !== 'undefined') {
-    window.RageEffectMixin = RageEffectMixin;
-}
+// Backward compatibility: expose to window
+window.RageEffectMixin = RageEffectMixin;

@@ -48,8 +48,21 @@ const io = new Server(httpServer, {
     connectTimeout: 10000    // 10 seconds to complete connection
 });
 
-// Serve static files (game client) - go up one directory from server/
-app.use(express.static(path.join(__dirname, '..')));
+// Serve static files (game client)
+// In production (dist/ exists), serve from dist/, otherwise serve from project root
+const fs = require('fs');
+const distPath = path.join(__dirname, '..', 'dist');
+const rootPath = path.join(__dirname, '..');
+
+if (fs.existsSync(distPath)) {
+    // Production: serve built files from dist/
+    app.use(express.static(distPath));
+    logger.info('Serving static files from dist/ (production build)');
+} else {
+    // Development: serve from project root
+    app.use(express.static(rootPath));
+    logger.info('Serving static files from project root (development mode)');
+}
 
 // Initialize game state
 initializeShards();

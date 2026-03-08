@@ -46,7 +46,7 @@ function _formatLogMessage(level, message) {
 }
 
 // Global logger object
-const logger = {
+export const logger = {
     /**
      * Debug level - detailed information for debugging
      * Only shown when LOG_LEVEL=debug
@@ -109,3 +109,9 @@ const logger = {
         return _logLevelValue <= levelValue;
     }
 };
+
+// Default export for convenience
+export default logger;
+
+// Backward compatibility: expose to window for legacy code
+window.logger = logger;

@@ -1,7 +1,9 @@
 // Skill System for Unhinged Students
 
+import { GAME_CONFIG } from './config.js';
+
 // Base Skill class
-class Skill {
+export class Skill {
     constructor(name, key, cooldown, iconColor = '#666666', emoji = '⭐') {
         this.name = name;
         this.key = key;
@@ -63,7 +65,7 @@ class Skill {
 }
 
 // Skill Manager - handles all skills for a character
-class SkillManager {
+export class SkillManager {
     constructor() {
         this.skills = new Map(); // key -> Skill
         this.skillOrder = []; // For UI ordering
@@ -100,7 +102,7 @@ class SkillManager {
 }
 
 // Laser Beam Effect - handles the Q skill visual and logic
-class LaserBeamEffect {
+export class LaserBeamEffect {
     constructor() {
         this.active = false;
         this.phase = 'none'; // 'aiming', 'firing', 'none'
@@ -252,7 +254,7 @@ class LaserBeamEffect {
 }
 
 // Teleport Effect - handles the W skill visual and logic
-class TeleportEffect {
+export class TeleportEffect {
     constructor() {
         this.active = false;
         this.phase = 'none'; // 'disappear', 'appear', 'none'
@@ -418,7 +420,7 @@ class TeleportEffect {
 }
 
 // Telepathy Effect - handles the E skill visual and logic (3 second channeling)
-class TelepathyEffect {
+export class TelepathyEffect {
     constructor() {
         this.active = false;
         this.startTime = 0;
@@ -546,7 +548,7 @@ class TelepathyEffect {
 }
 
 // Skill UI Renderer
-class SkillUI {
+export class SkillUI {
     constructor(skillManager) {
         this.skillManager = skillManager;
 

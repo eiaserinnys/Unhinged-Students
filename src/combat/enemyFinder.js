@@ -6,12 +6,14 @@
  * - findRandomEnemy: Selects random enemy from available
  */
 
+import { gameState } from '../core/gameState.js';
+
 /**
  * Find the nearest enemy to the player
  * @param {boolean} playersOnly - If true, only target other players (not dummies)
  * @returns {Object|null} Enemy object with x, y, type properties or default position
  */
-function findNearestEnemy(playersOnly = false) {
+export function findNearestEnemy(playersOnly = false) {
     const player = gameState.player;
     if (!player) return null;
 
@@ -62,7 +64,7 @@ function findNearestEnemy(playersOnly = false) {
  * Find a random enemy (dummy or remote player) for teleport targeting
  * @returns {Object|null} Enemy object with x, y, type properties or null
  */
-function findRandomEnemy() {
+export function findRandomEnemy() {
     const enemies = [];
 
     // Collect all alive dummies

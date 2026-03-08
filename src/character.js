@@ -1,6 +1,11 @@
 // Character system
 
-class Character {
+import { GAME_CONFIG } from './config.js';
+import { logger } from './utils/logger.js';
+import { CharacterUtils } from './characterUtils.js';
+import { isKeyPressed } from './input.js';
+
+export class Character {
     constructor(x, y, imagePath, canvasHeight, playerName = 'Player', isDummy = false) {
         this.x = x;
         this.y = y;

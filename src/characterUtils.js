@@ -1,6 +1,8 @@
 // Character Utilities - Shared rendering and logic between Character and RemotePlayer
 
-const CharacterUtils = {
+import { logger } from './utils/logger.js';
+
+export const CharacterUtils = {
     /**
      * Calculate hit flash intensity based on elapsed time
      * @param {number} hitFlashTime - Timestamp when hit occurred

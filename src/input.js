@@ -1,6 +1,8 @@
 // Input handling system
 
-const Input = {
+import { logger } from './utils/logger.js';
+
+export const Input = {
     keys: {},
     keysJustPressed: {}, // Track keys that were just pressed this frame
     keysPrevious: {}, // Previous frame's key state
@@ -32,7 +34,7 @@ let touchendHandler = null;
 let touchmoveHandler = null;
 
 // Initialize input handlers
-function initInput(canvas) {
+export function initInput(canvas) {
     inputCanvas = canvas;
 
     // Keyboard input
@@ -99,7 +101,7 @@ function initInput(canvas) {
 }
 
 // Cleanup input handlers to prevent memory leaks
-function cleanupInput() {
+export function cleanupInput() {
     if (keydownHandler) {
         window.removeEventListener('keydown', keydownHandler);
         keydownHandler = null;
@@ -147,7 +149,7 @@ function cleanupInput() {
 }
 
 // Update input state (call once per frame before checking inputs)
-function updateInput() {
+export function updateInput() {
     // Calculate which keys were just pressed this frame
     for (const key in Input.keys) {
         Input.keysJustPressed[key] = Input.keys[key] && !Input.keysPrevious[key];
@@ -157,18 +159,18 @@ function updateInput() {
 }
 
 // Confusion effect functions
-function setConfused(duration) {
+export function setConfused(duration) {
     Input.isConfused = true;
     Input.confusionEndTime = Date.now() + duration;
 }
 
-function updateConfusion() {
+export function updateConfusion() {
     if (Input.isConfused && Date.now() >= Input.confusionEndTime) {
         Input.isConfused = false;
     }
 }
 
-function isConfused() {
+export function isConfused() {
     return Input.isConfused;
 }
 
@@ -181,7 +183,7 @@ const confusionKeyMap = {
 };
 
 // Helper functions
-function isKeyPressed(key) {
+export function isKeyPressed(key) {
     let actualKey = key.toLowerCase();
     // Reverse direction if confused
     if (Input.isConfused && confusionKeyMap[actualKey]) {
@@ -191,22 +193,22 @@ function isKeyPressed(key) {
 }
 
 // Check if key was just pressed this frame (not held)
-function isKeyJustPressed(key) {
+export function isKeyJustPressed(key) {
     return Input.keysJustPressed[key.toLowerCase()] === true;
 }
 
-function isMousePressed() {
+export function isMousePressed() {
     return Input.mouse.pressed;
 }
 
-function getMousePosition() {
+export function getMousePosition() {
     return { x: Input.mouse.x, y: Input.mouse.y };
 }
 
-function isTouchActive() {
+export function isTouchActive() {
     return Input.touch.active;
 }
 
-function getTouchPosition() {
+export function getTouchPosition() {
     return { x: Input.touch.x, y: Input.touch.y };
 }

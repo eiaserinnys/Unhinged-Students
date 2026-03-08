@@ -1,5 +1,5 @@
 // Reconnect UI Manager
-class ReconnectUI {
+export class ReconnectUI {
     constructor() {
         this.overlay = document.getElementById('reconnectOverlay');
         this.statusEl = document.getElementById('reconnectStatus');
@@ -137,7 +137,5 @@ class ReconnectUI {
     }
 }
 
-// Export for browser
-if (typeof window !== 'undefined') {
-    window.ReconnectUI = ReconnectUI;
-}
+// Backward compatibility: expose to window
+window.ReconnectUI = ReconnectUI;

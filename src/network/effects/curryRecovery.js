@@ -1,7 +1,7 @@
 // Curry Recovery Effect Mixin for RemotePlayer (Curry-Bear E skill)
 // This mixin adds curry recovery effect rendering capabilities to RemotePlayer
 
-const CurryRecoveryEffectMixin = {
+export const CurryRecoveryEffectMixin = {
     // Initialize curry recovery effect state
     initCurryRecoveryEffect() {
         this.curryRecoveryActive = false;
@@ -81,7 +81,5 @@ const CurryRecoveryEffectMixin = {
     }
 };
 
-// Export for browser
-if (typeof window !== 'undefined') {
-    window.CurryRecoveryEffectMixin = CurryRecoveryEffectMixin;
-}
+// Backward compatibility: expose to window
+window.CurryRecoveryEffectMixin = CurryRecoveryEffectMixin;

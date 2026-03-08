@@ -448,34 +448,7 @@
 
     <!-- Socket.io client -->
     <script src="/game/socket.io/socket.io.js"></script>
-    <!-- Game scripts - Core modules (must be loaded first) -->
-    <script src="src/utils/logger.js"></script>
-    <script src="src/config.js"></script>
-    <script src="src/core/gameState.js"></script>
-    <!-- UI and combat utilities -->
-    <script src="src/rendering/uiRenderer.js"></script>
-    <script src="src/combat/enemyFinder.js"></script>
-    <!-- Game components -->
-    <script src="src/lobby.js"></script>
-    <script src="src/input.js"></script>
-    <script src="src/characterUtils.js"></script>
-    <script src="src/character.js"></script>
-    <script src="src/shard.js"></script>
-    <script src="src/skill.js"></script>
-    <!-- Network module (split into multiple files) -->
-    <script src="src/network/effects/laser.js"></script>
-    <script src="src/network/effects/teleport.js"></script>
-    <script src="src/network/effects/wave.js"></script>
-    <script src="src/network/effects/potSmash.js"></script>
-    <script src="src/network/effects/curryRecovery.js"></script>
-    <script src="src/network/effects/spinThrow.js"></script>
-    <script src="src/network/effects/rage.js"></script>
-    <script src="src/network/ReconnectUI.js"></script>
-    <script src="src/network/RemotePlayer.js"></script>
-    <script src="src/network/NetworkManager.js"></script>
-    <script src="src/network/index.js"></script>
-    <script src="src/chat.js"></script>
-    <!-- Main game entry point (must be loaded last) -->
-    <script src="src/game.js"></script>
+    <!-- Main entry point (ES Module) -->
+    <script type="module" src="/src/main.js"></script>
 </body>
 </html>

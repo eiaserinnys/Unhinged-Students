@@ -1,5 +1,12 @@
 // Network module for multiplayer
-class NetworkManager {
+
+import { logger } from '../utils/logger.js';
+import { triggerHitVignette } from '../rendering/uiRenderer.js';
+import { setConfused } from '../input.js';
+import { ReconnectUI } from './ReconnectUI.js';
+import { RemotePlayer } from './RemotePlayer.js';
+
+export class NetworkManager {
     constructor() {
         this.socket = null;
         this.playerId = null;
@@ -885,7 +892,5 @@ class NetworkManager {
     }
 }
 
-// Export for browser
-if (typeof window !== 'undefined') {
-    window.NetworkManager = NetworkManager;
-}
+// Backward compatibility: expose to window
+window.NetworkManager = NetworkManager;

@@ -24,6 +24,18 @@ jobs:
             -d "{\"embeds\": [{\"title\": \"🚀 배포 시작\", \"description\": \"**unhinged-students** 배포가 시작되었습니다.\", \"color\": 3447003, \"fields\": [{\"name\": \"브랜치\", \"value\": \"\`${{ github.ref_name }}\`\", \"inline\": true}, {\"name\": \"커밋\", \"value\": \"[\`${GITHUB_SHA::7}\`](${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }})\", \"inline\": true}, {\"name\": \"실행자\", \"value\": \"${{ github.actor }}\", \"inline\": true}], \"timestamp\": \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"}]}" \
             ${{ secrets.DISCORD_WEBHOOK_URL }} || true
 
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+
       - name: Setup SSH
         run: |
           mkdir -p ~/.ssh
@@ -48,13 +60,14 @@ jobs:
           echo "=== 1. 새 릴리즈 디렉토리 생성 ==="
           $SSH_CMD "mkdir -p $RELEASE_DIR"
 
-          echo "=== 2. 파일 동기화 ==="
+          echo "=== 2. 파일 동기화 (빌드 포함) ==="
           rsync -avz --delete \
             --exclude '.git' \
             --exclude 'node_modules' \
             --exclude '.claude' \
             --exclude 'docs' \
             --exclude '*.md' \
+            --exclude 'src' \
             -e "ssh -i ~/.ssh/id_ed25519" \
             ./ ${{ secrets.LINODE_USER }}@${{ secrets.LINODE_HOST }}:${RELEASE_DIR}/
 

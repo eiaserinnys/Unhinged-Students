@@ -1,7 +1,7 @@
 // Game Configuration - Centralized constants for Unhinged Students
 // This file consolidates all magic numbers to improve maintainability
 
-const GAME_CONFIG = {
+export const GAME_CONFIG = {
     // =====================================
     // WORLD
     // =====================================
@@ -231,6 +231,12 @@ const GAME_CONFIG = {
         FRICTION: 0.95,
     },
 };
+
+// Default export
+export default GAME_CONFIG;
+
+// Backward compatibility: expose to window
+window.GAME_CONFIG = GAME_CONFIG;
 
 // Export for Node.js (server-side) if module is defined
 if (typeof module !== 'undefined' && module.exports) {

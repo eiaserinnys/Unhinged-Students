@@ -1,7 +1,7 @@
 // Spin Throw Effect Mixin for RemotePlayer (Hulk Sister Q skill)
 // This mixin adds spin throw effect rendering capabilities to RemotePlayer
 
-const SpinThrowEffectMixin = {
+export const SpinThrowEffectMixin = {
     // Initialize spin throw effect state
     initSpinThrowEffect() {
         this.spinThrowActive = false;
@@ -92,7 +92,5 @@ const SpinThrowEffectMixin = {
     }
 };
 
-// Export for browser
-if (typeof window !== 'undefined') {
-    window.SpinThrowEffectMixin = SpinThrowEffectMixin;
-}
+// Backward compatibility: expose to window
+window.SpinThrowEffectMixin = SpinThrowEffectMixin;

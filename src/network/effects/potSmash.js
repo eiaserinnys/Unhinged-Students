@@ -1,7 +1,7 @@
 // Pot Smash Effect Mixin for RemotePlayer (Curry-Bear basic attack)
 // This mixin adds pot smash effect rendering capabilities to RemotePlayer
 
-const PotSmashEffectMixin = {
+export const PotSmashEffectMixin = {
     // Initialize pot smash effect state
     initPotSmashEffect() {
         this.potSmashActive = false;
@@ -94,7 +94,5 @@ const PotSmashEffectMixin = {
     }
 };
 
-// Export for browser
-if (typeof window !== 'undefined') {
-    window.PotSmashEffectMixin = PotSmashEffectMixin;
-}
+// Backward compatibility: expose to window
+window.PotSmashEffectMixin = PotSmashEffectMixin;

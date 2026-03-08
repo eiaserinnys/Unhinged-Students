@@ -1,5 +1,5 @@
 // Laser Effect Mixin for RemotePlayer
-const LaserEffectMixin = {
+export const LaserEffectMixin = {
     // Initialize laser effect properties
     initLaserEffect() {
         this.laserActive = false;
@@ -100,7 +100,5 @@ const LaserEffectMixin = {
     }
 };
 
-// Export for browser
-if (typeof window !== 'undefined') {
-    window.LaserEffectMixin = LaserEffectMixin;
-}
+// Backward compatibility: expose to window
+window.LaserEffectMixin = LaserEffectMixin;

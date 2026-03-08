@@ -1,5 +1,8 @@
 // Shard system - Collectible items for leveling up
 
+import { GAME_CONFIG } from './config.js';
+import { logger } from './utils/logger.js';
+
 // Particle for collection effect
 class Particle {
     constructor(x, y, color) {
@@ -72,7 +75,7 @@ class CollectEffect {
     }
 }
 
-class Shard {
+export class Shard {
     constructor(x, y, size = GAME_CONFIG.SHARD.SIZE, id = null) {
         this.x = x;
         this.y = y;
@@ -135,7 +138,7 @@ class Shard {
 }
 
 // Shard manager
-class ShardManager {
+export class ShardManager {
     constructor() {
         this.shards = [];
         this.effects = []; // Collection effects

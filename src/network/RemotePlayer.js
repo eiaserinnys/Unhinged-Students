@@ -1,5 +1,18 @@
 // Remote player class (represents other players)
-class RemotePlayer {
+
+import { logger } from '../utils/logger.js';
+import { CharacterUtils } from '../characterUtils.js';
+
+// Import effect mixins
+import { LaserEffectMixin } from './effects/laser.js';
+import { TeleportEffectMixin, TelepathyEffectMixin } from './effects/teleport.js';
+import { WaveEffectMixin } from './effects/wave.js';
+import { PotSmashEffectMixin } from './effects/potSmash.js';
+import { CurryRecoveryEffectMixin } from './effects/curryRecovery.js';
+import { SpinThrowEffectMixin } from './effects/spinThrow.js';
+import { RageEffectMixin } from './effects/rage.js';
+
+export class RemotePlayer {
     constructor(playerId, x, y, playerName, level, experience = 0, characterId = 'alien') {
         this.playerId = playerId;
         this.x = x;
@@ -425,7 +438,5 @@ class RemotePlayer {
     }
 }
 
-// Export for browser
-if (typeof window !== 'undefined') {
-    window.RemotePlayer = RemotePlayer;
-}
+// Backward compatibility: expose to window
+window.RemotePlayer = RemotePlayer;

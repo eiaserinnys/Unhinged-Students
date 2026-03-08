@@ -1,6 +1,8 @@
 // Lobby system for Unhinged Students
 
-class LobbyManager {
+import { logger } from './utils/logger.js';
+
+export class LobbyManager {
     constructor() {
         // DOM elements
         this.container = document.getElementById('lobbyContainer');

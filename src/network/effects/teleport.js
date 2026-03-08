@@ -1,5 +1,5 @@
 // Teleport Effect Mixin for RemotePlayer
-const TeleportEffectMixin = {
+export const TeleportEffectMixin = {
     // Initialize teleport effect properties
     initTeleportEffect() {
         this.teleportActive = false;
@@ -110,7 +110,7 @@ const TeleportEffectMixin = {
 };
 
 // Telepathy Effect Mixin for RemotePlayer
-const TelepathyEffectMixin = {
+export const TelepathyEffectMixin = {
     // Initialize telepathy effect properties
     initTelepathyEffect() {
         this.telepathyActive = false;
@@ -176,8 +176,6 @@ const TelepathyEffectMixin = {
     }
 };
 
-// Export for browser
-if (typeof window !== 'undefined') {
-    window.TeleportEffectMixin = TeleportEffectMixin;
-    window.TelepathyEffectMixin = TelepathyEffectMixin;
-}
+// Backward compatibility: expose to window
+window.TeleportEffectMixin = TeleportEffectMixin;
+window.TelepathyEffectMixin = TelepathyEffectMixin;

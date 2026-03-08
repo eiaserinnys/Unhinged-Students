@@ -1,5 +1,5 @@
 // Chat system for multiplayer
-class ChatManager {
+export class ChatManager {
     constructor() {
         this.chatInput = document.getElementById('chatInput');
         this.chatMessages = document.getElementById('chatMessages');

@@ -1,30 +1,20 @@
 // Network Module - Entry Point
-// This file is loaded last in index.html to ensure all dependencies are available
+// This file re-exports all network components for easy importing
 
-// All classes are already exported to window by their respective files:
-// - window.ReconnectUI (from ReconnectUI.js)
-// - window.RemotePlayer (from RemotePlayer.js)
-// - window.NetworkManager (from NetworkManager.js)
-// - window.LaserEffectMixin (from effects/laser.js)
-// - window.TeleportEffectMixin (from effects/teleport.js)
-// - window.TelepathyEffectMixin (from effects/teleport.js)
+// Effects
+export { LaserEffectMixin } from './effects/laser.js';
+export { TeleportEffectMixin, TelepathyEffectMixin } from './effects/teleport.js';
+export { WaveEffectMixin } from './effects/wave.js';
+export { PotSmashEffectMixin } from './effects/potSmash.js';
+export { CurryRecoveryEffectMixin } from './effects/curryRecovery.js';
+export { SpinThrowEffectMixin } from './effects/spinThrow.js';
+export { RageEffectMixin } from './effects/rage.js';
 
-// Verify all components are loaded
-(function() {
-    const requiredComponents = [
-        'ReconnectUI',
-        'RemotePlayer',
-        'NetworkManager',
-        'LaserEffectMixin',
-        'TeleportEffectMixin',
-        'TelepathyEffectMixin'
-    ];
+// UI
+export { ReconnectUI } from './ReconnectUI.js';
 
-    const missing = requiredComponents.filter(name => !window[name]);
+// Core
+export { RemotePlayer } from './RemotePlayer.js';
+export { NetworkManager } from './NetworkManager.js';
 
-    if (missing.length > 0) {
-        console.error('[Network] Missing components:', missing.join(', '));
-    } else {
-        console.log('[Network] All components loaded successfully');
-    }
-})();
+console.log('[Network] All components loaded successfully');

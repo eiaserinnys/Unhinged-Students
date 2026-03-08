@@ -4,6 +4,52 @@
 // are defined in src/core/gameState.js and accessed via getters/setters
 // Use getCanvas() and getCtx() to access canvas and context
 
+import { GAME_CONFIG } from './config.js';
+import { logger } from './utils/logger.js';
+import {
+    gameState,
+    GAME_WIDTH,
+    GAME_HEIGHT,
+    getScale,
+    setScale,
+    getOffsetX,
+    setOffsetX,
+    getOffsetY,
+    setOffsetY,
+    getCanvas,
+    setCanvas,
+    getCtx,
+    setCtx,
+    getResizeHandler,
+    setResizeHandler,
+    setLoadHandler
+} from './core/gameState.js';
+import {
+    initInput,
+    cleanupInput,
+    updateInput,
+    updateConfusion,
+    isConfused,
+    isKeyPressed,
+    isKeyJustPressed
+} from './input.js';
+import { LobbyManager } from './lobby.js';
+import { Character } from './character.js';
+import { CharacterUtils } from './characterUtils.js';
+import { ShardManager } from './shard.js';
+import { ChatManager } from './chat.js';
+import {
+    Skill,
+    SkillManager,
+    LaserBeamEffect,
+    TeleportEffect,
+    TelepathyEffect,
+    SkillUI
+} from './skill.js';
+import { NetworkManager } from './network/NetworkManager.js';
+import { renderHitVignette as renderHitVignetteUI, renderDeathScreen as renderDeathScreenUI, triggerHitVignette } from './rendering/uiRenderer.js';
+import { findNearestEnemy, findRandomEnemy } from './combat/enemyFinder.js';
+
 // Resize canvas to fill window while maintaining 16:9 aspect ratio
 function resizeCanvas() {
     const canvas = getCanvas();
@@ -1124,10 +1170,7 @@ function renderStoredDamageUI(ctx) {
     ctx.restore();
 }
 
-// Trigger hit vignette effect (called from network.js when local player takes damage)
-function triggerHitVignette() {
-    gameState.hitVignetteTime = Date.now();
-}
+// Note: triggerHitVignette is imported from rendering/uiRenderer.js
 
 // Update stored damage for curry-bear (called from network.js)
 function updateStoredDamage(storedDamage, maxStored) {
@@ -1142,82 +1185,15 @@ function triggerCurryRecoveryEffect(healAmount) {
     gameState.storedDamage = 0; // Reset stored damage after recovery
 }
 
-// Find the nearest enemy to the player
-// playersOnly: if true, only target other players (not dummies)
-function findNearestEnemy(playersOnly = false) {
-    const player = gameState.player;
-    if (!player) return null;
+// Expose to window for backward compatibility with network callbacks
+window.triggerHitVignette = triggerHitVignette;
+window.updateStoredDamage = updateStoredDamage;
+window.triggerCurryRecoveryEffect = triggerCurryRecoveryEffect;
 
-    const playerPos = player.getPosition();
-    let nearestEnemy = null;
-    let nearestDistance = Infinity;
-
-    // Check dummies (skip if playersOnly)
-    if (!playersOnly) {
-        gameState.dummies.forEach(dummy => {
-            if (dummy.isAlive()) {
-                const dx = dummy.x - playerPos.x;
-                const dy = dummy.y - playerPos.y;
-                const distance = Math.sqrt(dx * dx + dy * dy);
-                if (distance < nearestDistance) {
-                    nearestDistance = distance;
-                    nearestEnemy = { x: dummy.x, y: dummy.y, type: 'dummy' };
-                }
-            }
-        });
-    }
-
-    // Check remote players
-    if (gameState.networkManager) {
-        gameState.networkManager.remotePlayers.forEach((remotePlayer, playerId) => {
-            if (remotePlayer.isAlive()) {
-                const dx = remotePlayer.x - playerPos.x;
-                const dy = remotePlayer.y - playerPos.y;
-                const distance = Math.sqrt(dx * dx + dy * dy);
-                if (distance < nearestDistance) {
-                    nearestDistance = distance;
-                    nearestEnemy = { x: remotePlayer.x, y: remotePlayer.y, type: 'player', playerId: playerId };
-                }
-            }
-        });
-    }
-
-    // If no enemy found, return a point in front of the player (based on facing direction)
-    if (!nearestEnemy) {
-        // Default to right direction
-        return { x: playerPos.x + 500, y: playerPos.y, type: 'none' };
-    }
-
-    return nearestEnemy;
-}
-
-// Find a random enemy (dummy or remote player) for teleport targeting
-function findRandomEnemy() {
-    const enemies = [];
-
-    // Collect all alive dummies
-    gameState.dummies.forEach(dummy => {
-        if (dummy.isAlive()) {
-            enemies.push({ x: dummy.x, y: dummy.y, type: 'dummy' });
-        }
-    });
-
-    // Collect all alive remote players
-    if (gameState.networkManager) {
-        gameState.networkManager.remotePlayers.forEach(remotePlayer => {
-            if (remotePlayer.isAlive()) {
-                enemies.push({ x: remotePlayer.x, y: remotePlayer.y, type: 'player' });
-            }
-        });
-    }
-
-    // Return random enemy or null if none
-    if (enemies.length === 0) {
-        return null;
-    }
-
-    return enemies[Math.floor(Math.random() * enemies.length)];
-}
+// Note: findNearestEnemy and findRandomEnemy are imported from combat/enemyFinder.js
+// Expose to window for backward compatibility
+window.findNearestEnemy = findNearestEnemy;
+window.findRandomEnemy = findRandomEnemy;
 
 // Handle Q skill based on selected character
 function handleQSkill() {
