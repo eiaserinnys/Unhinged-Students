@@ -26,6 +26,9 @@ const {
     lineCircleIntersect,
 } = require('../validation');
 const {
+    checkAndHandleDeath,
+} = require('../../shared/combat');
+const {
     players,
     dummies,
     rateLimit,
@@ -78,9 +81,7 @@ function registerCombatHandlers(socket, io) {
             if (player.isDead) return; // Skip dead players
 
             // Calculate distance from attacker position
-            const dx = player.x - attackX;
-            const dy = player.y - attackY;
-            const distance = Math.sqrt(dx * dx + dy * dy);
+            const distance = calculateDistance(attackX, attackY, player.x, player.y);
 
             // Check if in range (server-authoritative range)
             if (distance <= attackRange) {
@@ -108,14 +109,7 @@ function registerCombatHandlers(socket, io) {
                 logger.debug(`${socket.id} hit ${playerId} for ${attackPower} damage (HP: ${player.currentHP}/${player.maxHP}), knockback to (${knockbackEnd.x.toFixed(1)}, ${knockbackEnd.y.toFixed(1)})`);
 
                 // Check if player died
-                if (player.currentHP <= 0 && !player.isDead) {
-                    player.isDead = true;
-                    player.deathTime = Date.now();
-                    killedPlayers.push({
-                        playerId: playerId,
-                        killedBy: socket.id,
-                        respawnDelay: PLAYER_RESPAWN_DELAY
-                    });
+                if (checkAndHandleDeath(player, playerId, socket.id, killedPlayers, PLAYER_RESPAWN_DELAY)) {
                     logger.info(`${playerId} has been killed by ${socket.id}!`);
                 }
             }
@@ -146,9 +140,7 @@ function registerCombatHandlers(socket, io) {
             if (dummy.currentHP <= 0) return; // Skip dead dummies
 
             // Calculate distance
-            const dx = dummy.x - attackX;
-            const dy = dummy.y - attackY;
-            const distance = Math.sqrt(dx * dx + dy * dy);
+            const distance = calculateDistance(attackX, attackY, dummy.x, dummy.y);
 
             // Check if in range (consider dummy size ~135px, half = 67.5)
             if (distance <= attackRange + 67.5) {
@@ -277,9 +269,7 @@ function registerCombatHandlers(socket, io) {
             if (playerId === socket.id) return;
             if (player.isDead) return;
 
-            const dx = player.x - x;
-            const dy = player.y - y;
-            const distance = Math.sqrt(dx * dx + dy * dy);
+            const distance = calculateDistance(x, y, player.x, player.y);
 
             if (distance <= radius) {
                 player.currentHP = Math.max(0, player.currentHP - damage);
@@ -300,15 +290,7 @@ function registerCombatHandlers(socket, io) {
                     attackerY: y
                 });
 
-                if (player.currentHP <= 0 && !player.isDead) {
-                    player.isDead = true;
-                    player.deathTime = Date.now();
-                    killedPlayers.push({
-                        playerId: playerId,
-                        killedBy: socket.id,
-                        respawnDelay: PLAYER_RESPAWN_DELAY
-                    });
-                }
+                checkAndHandleDeath(player, playerId, socket.id, killedPlayers, PLAYER_RESPAWN_DELAY);
             }
         });
 
@@ -334,9 +316,7 @@ function registerCombatHandlers(socket, io) {
         dummies.forEach((dummy) => {
             if (dummy.currentHP <= 0) return;
 
-            const dx = dummy.x - x;
-            const dy = dummy.y - y;
-            const distance = Math.sqrt(dx * dx + dy * dy);
+            const distance = calculateDistance(x, y, dummy.x, dummy.y);
 
             if (distance <= radius + 67.5) {
                 dummy.currentHP = Math.max(0, dummy.currentHP - damage);
@@ -485,14 +465,7 @@ function registerCombatHandlers(socket, io) {
                 logger.debug(`Laser hit ${playerId} for ${damage} damage (HP: ${player.currentHP}/${player.maxHP})`);
 
                 // Check if player died
-                if (player.currentHP <= 0 && !player.isDead) {
-                    player.isDead = true;
-                    player.deathTime = Date.now();
-                    killedPlayers.push({
-                        playerId: playerId,
-                        killedBy: socket.id,
-                        respawnDelay: PLAYER_RESPAWN_DELAY
-                    });
+                if (checkAndHandleDeath(player, playerId, socket.id, killedPlayers, PLAYER_RESPAWN_DELAY)) {
                     logger.info(`${playerId} has been killed by laser from ${socket.id}!`);
                 }
             }
@@ -625,9 +598,7 @@ function registerCombatHandlers(socket, io) {
             if (playerId === socket.id) return;
             if (player.isDead) return;
 
-            const dx = player.x - x;
-            const dy = player.y - y;
-            const distance = Math.sqrt(dx * dx + dy * dy);
+            const distance = calculateDistance(x, y, player.x, player.y);
 
             if (distance <= radius) {
                 player.currentHP = Math.max(0, player.currentHP - damagePerTarget);
@@ -643,15 +614,7 @@ function registerCombatHandlers(socket, io) {
                     attackerY: y
                 });
 
-                if (player.currentHP <= 0 && !player.isDead) {
-                    player.isDead = true;
-                    player.deathTime = Date.now();
-                    killedPlayers.push({
-                        playerId: playerId,
-                        killedBy: socket.id,
-                        respawnDelay: PLAYER_RESPAWN_DELAY
-                    });
-                }
+                checkAndHandleDeath(player, playerId, socket.id, killedPlayers, PLAYER_RESPAWN_DELAY);
             }
         });
 
@@ -660,9 +623,7 @@ function registerCombatHandlers(socket, io) {
         dummies.forEach((dummy) => {
             if (dummy.currentHP <= 0) return;
 
-            const dx = dummy.x - x;
-            const dy = dummy.y - y;
-            const distance = Math.sqrt(dx * dx + dy * dy);
+            const distance = calculateDistance(x, y, dummy.x, dummy.y);
 
             if (distance <= radius + 67.5) {
                 dummy.currentHP = Math.max(0, dummy.currentHP - damagePerTarget);
