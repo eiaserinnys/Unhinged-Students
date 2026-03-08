@@ -1,15 +1,11 @@
 // 미친 제자들 (Unhinged Students) - Main Game File
+//
+// Note: canvas, ctx, GAME_WIDTH, GAME_HEIGHT, scale, offset variables
+// are defined in src/core/gameState.js and accessed via getters/setters
 
-// Canvas setup
-const canvas = document.getElementById('gameCanvas');
-const ctx = canvas.getContext('2d');
-
-// Game world constants (16:9 aspect ratio) - from config
-const GAME_WIDTH = GAME_CONFIG.WORLD.WIDTH;
-const GAME_HEIGHT = GAME_CONFIG.WORLD.HEIGHT;
-
-// Use global gameState from src/core/gameState.js
-// Access viewport variables via getter/setter functions from gameState module
+// Initialize canvas references from DOM (canvas/ctx are declared in gameState.js)
+canvas = document.getElementById('gameCanvas');
+ctx = canvas.getContext('2d');
 
 // Resize canvas to fill window while maintaining 16:9 aspect ratio
 function resizeCanvas() {
