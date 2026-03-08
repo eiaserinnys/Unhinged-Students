@@ -40,7 +40,7 @@ export const gameState = {
     telepathyEffect: null, // Telepathy (E skill) effect
     dummies: [], // Test dummies for combat practice
     stats: {
-        shardsCollected: 0
+        shardsCollected: 0,
     },
     lastFrameTime: 0,
     deltaTime: 0,
@@ -79,28 +79,56 @@ export const gameState = {
     // Pot smash effect (Curry-Bear Q skill)
     potSmashEffect: null,
     // Spin throw effect (Hulk Sister Q skill)
-    spinThrowEffect: null
+    spinThrowEffect: null,
 };
 
 // Getter/setter functions for viewport variables
-export function getScale() { return scale; }
-export function setScale(value) { scale = value; }
-export function getOffsetX() { return offsetX; }
-export function setOffsetX(value) { offsetX = value; }
-export function getOffsetY() { return offsetY; }
-export function setOffsetY(value) { offsetY = value; }
+export function getScale() {
+    return scale;
+}
+export function setScale(value) {
+    scale = value;
+}
+export function getOffsetX() {
+    return offsetX;
+}
+export function setOffsetX(value) {
+    offsetX = value;
+}
+export function getOffsetY() {
+    return offsetY;
+}
+export function setOffsetY(value) {
+    offsetY = value;
+}
 
 // Canvas getters/setters
-export function getCanvas() { return canvas; }
-export function setCanvas(c) { canvas = c; }
-export function getCtx() { return ctx; }
-export function setCtx(c) { ctx = c; }
+export function getCanvas() {
+    return canvas;
+}
+export function setCanvas(c) {
+    canvas = c;
+}
+export function getCtx() {
+    return ctx;
+}
+export function setCtx(c) {
+    ctx = c;
+}
 
 // Event handler getters/setters
-export function getResizeHandler() { return resizeHandler; }
-export function setResizeHandler(handler) { resizeHandler = handler; }
-export function getLoadHandler() { return loadHandler; }
-export function setLoadHandler(handler) { loadHandler = handler; }
+export function getResizeHandler() {
+    return resizeHandler;
+}
+export function setResizeHandler(handler) {
+    resizeHandler = handler;
+}
+export function getLoadHandler() {
+    return loadHandler;
+}
+export function setLoadHandler(handler) {
+    loadHandler = handler;
+}
 
 // Backward compatibility: expose to window
 window.gameState = gameState;

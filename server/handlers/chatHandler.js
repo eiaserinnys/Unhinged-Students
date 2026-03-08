@@ -2,14 +2,8 @@
 // CHAT EVENT HANDLERS
 // ========================================
 const logger = require('../../logger');
-const {
-    CHAT_MAX_MESSAGE_LENGTH,
-    RATE_LIMIT_CHAT,
-} = require('../config');
-const {
-    players,
-    rateLimit,
-} = require('../gameState');
+const { CHAT_MAX_MESSAGE_LENGTH, RATE_LIMIT_CHAT } = require('../config');
+const { players, rateLimit } = require('../gameState');
 
 function registerChatHandlers(socket, io) {
     // Handle chat messages (CRITICAL-2 fix: Server-side validation)
@@ -43,7 +37,7 @@ function registerChatHandlers(socket, io) {
             playerId: socket.id,
             playerName: playerData ? playerData.playerName : 'Unknown',
             message: trimmedMessage,
-            timestamp: Date.now()
+            timestamp: Date.now(),
         };
 
         logger.debug(`Chat from ${message.playerName}: ${message.message}`);

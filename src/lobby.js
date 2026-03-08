@@ -50,7 +50,11 @@ export class LobbyManager {
 
         // Character selection
         this.characterOptions.forEach((option, index) => {
-            console.log('[LobbyManager] Adding click listener to character option', index, option.dataset.character);
+            console.log(
+                '[LobbyManager] Adding click listener to character option',
+                index,
+                option.dataset.character
+            );
             option.addEventListener('click', () => {
                 console.log('[LobbyManager] Character option clicked:', option.dataset.character);
                 this.selectCharacter(option);
@@ -87,7 +91,7 @@ export class LobbyManager {
 
     selectCharacter(option) {
         // Remove selected class from all options
-        this.characterOptions.forEach(opt => {
+        this.characterOptions.forEach((opt) => {
             opt.classList.remove('selected');
         });
 
@@ -122,7 +126,14 @@ export class LobbyManager {
 
         // Enable button if name is not empty and character is selected
         const canStart = this.canStartGame();
-        console.log('[LobbyManager] validateInput - playerName:', this.playerName, 'selectedCharacter:', this.selectedCharacter, 'canStart:', canStart);
+        console.log(
+            '[LobbyManager] validateInput - playerName:',
+            this.playerName,
+            'selectedCharacter:',
+            this.selectedCharacter,
+            'canStart:',
+            canStart
+        );
         this.startButton.disabled = !canStart;
         console.log('[LobbyManager] startButton.disabled =', this.startButton.disabled);
     }
@@ -134,7 +145,9 @@ export class LobbyManager {
     startGame() {
         if (!this.canStartGame()) return;
 
-        logger.info(`Starting game with character: ${this.selectedCharacter}, name: ${this.playerName}`);
+        logger.info(
+            `Starting game with character: ${this.selectedCharacter}, name: ${this.playerName}`
+        );
 
         // Hide lobby with animation
         this.hide();
@@ -143,7 +156,7 @@ export class LobbyManager {
         if (this.onGameStart) {
             this.onGameStart({
                 character: this.selectedCharacter,
-                playerName: this.playerName
+                playerName: this.playerName,
             });
         }
     }
@@ -173,12 +186,12 @@ export class LobbyManager {
     // Get character image path based on character ID
     static getCharacterImagePath(characterId) {
         const characterImages = {
-            'alien': 'asset/image/alien.png',
+            alien: 'asset/image/alien.png',
             'crazy-eyes': 'asset/image/crazy-eyes.png',
             'curry-bear': 'asset/image/curry-bear.png',
             'big-sis-hulk': 'asset/image/big-sis-hulk.png',
-            'teacher': 'asset/image/teacher.png',
-            'squeak-squeak': 'asset/image/squeak-squeak.png'
+            teacher: 'asset/image/teacher.png',
+            'squeak-squeak': 'asset/image/squeak-squeak.png',
         };
         return characterImages[characterId] || characterImages['alien'];
     }
@@ -186,12 +199,12 @@ export class LobbyManager {
     // Get character display name
     static getCharacterName(characterId) {
         const characterNames = {
-            'alien': '외계인',
+            alien: '외계인',
             'crazy-eyes': '눈 돌아가는 사람',
             'curry-bear': '카레 곰돌이',
             'big-sis-hulk': '헐크 언니',
-            'teacher': '선생님',
-            'squeak-squeak': '찍찍찍찍찍'
+            teacher: '선생님',
+            'squeak-squeak': '찍찍찍찍찍',
         };
         return characterNames[characterId] || '외계인';
     }
@@ -199,30 +212,30 @@ export class LobbyManager {
     // Get character info (stats and skills)
     static getCharacterInfo(characterId) {
         const characterInfo = {
-            'alien': {
+            alien: {
                 stats: '❤️ 체력: 보통 | ⚡ 속도: 빠름',
-                skills: '🎇 레이저 | 💫 순간이동 | 👽 텔레파시'
+                skills: '🎇 레이저 | 💫 순간이동 | 👽 텔레파시',
             },
             'crazy-eyes': {
                 stats: '❤️ 체력: 보통 | ⚡ 속도: 보통',
-                skills: '🌀 이상한 파동 | 👀 광기 산책'
+                skills: '🌀 이상한 파동 | 👀 광기 산책',
             },
             'curry-bear': {
                 stats: '❤️ 체력: 높음 | ⚡ 속도: 느림',
-                skills: '🍲 냄비 내려치기 | 🍛 카레 회복'
+                skills: '🍲 냄비 내려치기 | 🍛 카레 회복',
             },
             'big-sis-hulk': {
                 stats: '❤️ 체력: 매우 높음 | ⚡ 속도: 느림',
-                skills: '🌀 던지기 | 🔥 폭주'
+                skills: '🌀 던지기 | 🔥 폭주',
             },
-            'teacher': {
+            teacher: {
                 stats: '❤️ 체력: 보통 | ⚡ 속도: 보통',
-                skills: '🎭 위장 능력'
+                skills: '🎭 위장 능력',
             },
             'squeak-squeak': {
                 stats: '❤️ 체력: 낮음 | ⚡ 속도: 빠름',
-                skills: '👻 쥐 환상 | 😴 수면 가루 | 💣 쥐 폭탄'
-            }
+                skills: '👻 쥐 환상 | 😴 수면 가루 | 💣 쥐 폭탄',
+            },
         };
         return characterInfo[characterId] || characterInfo['alien'];
     }

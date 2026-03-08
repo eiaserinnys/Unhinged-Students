@@ -73,7 +73,6 @@ export const LaserEffectMixin = {
             ctx.moveTo(this.x, this.y);
             ctx.lineTo(endX, endY);
             ctx.stroke();
-
         } else if (this.laserPhase === 'firing') {
             // Firing flash
             const progress = elapsed / this.laserFireDuration;
@@ -97,7 +96,7 @@ export const LaserEffectMixin = {
         }
 
         ctx.restore();
-    }
+    },
 };
 
 // Backward compatibility: expose to window

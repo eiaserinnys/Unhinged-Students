@@ -89,7 +89,7 @@ export const SpinThrowEffectMixin = {
         ctx.fillText('🌀', this.x, this.y - 50);
 
         ctx.restore();
-    }
+    },
 };
 
 // Backward compatibility: expose to window

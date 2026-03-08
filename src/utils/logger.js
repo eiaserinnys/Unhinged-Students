@@ -5,7 +5,7 @@ const LOG_LEVELS = {
     debug: 0,
     info: 1,
     warn: 2,
-    error: 3
+    error: 3,
 };
 
 /**
@@ -107,7 +107,7 @@ export const logger = {
     isLevelEnabled: (level) => {
         const levelValue = LOG_LEVELS[level] ?? LOG_LEVELS.warn;
         return _logLevelValue <= levelValue;
-    }
+    },
 };
 
 // Default export for convenience

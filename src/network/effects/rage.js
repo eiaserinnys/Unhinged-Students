@@ -42,10 +42,7 @@ export const RageEffectMixin = {
 
         // Red glow around player
         const glowRadius = 80 + Math.sin(elapsed / 150) * 15;
-        const gradient = ctx.createRadialGradient(
-            this.x, this.y, 0,
-            this.x, this.y, glowRadius
-        );
+        const gradient = ctx.createRadialGradient(this.x, this.y, 0, this.x, this.y, glowRadius);
         gradient.addColorStop(0, `rgba(255, 0, 0, ${0.3 * pulsePhase})`);
         gradient.addColorStop(0.5, `rgba(255, 50, 0, ${0.2 * pulsePhase})`);
         gradient.addColorStop(1, 'rgba(255, 0, 0, 0)');
@@ -86,7 +83,7 @@ export const RageEffectMixin = {
         ctx.fillText('RAGE!', this.x, indicatorY);
 
         ctx.restore();
-    }
+    },
 };
 
 // Backward compatibility: expose to window

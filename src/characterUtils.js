@@ -13,7 +13,7 @@ export const CharacterUtils = {
         if (hitFlashTime <= 0) return 0;
         const elapsed = Date.now() - hitFlashTime;
         if (elapsed < hitFlashDuration) {
-            return 1 - (elapsed / hitFlashDuration);
+            return 1 - elapsed / hitFlashDuration;
         }
         return 0;
     },
@@ -35,12 +35,7 @@ export const CharacterUtils = {
         ctx.save();
         ctx.globalAlpha = hitFlashIntensity * maxAlpha;
         ctx.fillStyle = color;
-        ctx.fillRect(
-            x - width / 2,
-            y - height / 2,
-            width,
-            height
-        );
+        ctx.fillRect(x - width / 2, y - height / 2, width, height);
         ctx.restore();
     },
 
@@ -51,10 +46,7 @@ export const CharacterUtils = {
      * @param {Object} options - Rendering options
      */
     renderInfoAbove(ctx, entity, options = {}) {
-        const {
-            showExpBar = true,
-            isDummy = false
-        } = options;
+        const { showExpBar = true, isDummy = false } = options;
 
         const infoY = entity.y - entity.height / 2 - 15;
 
@@ -89,7 +81,12 @@ export const CharacterUtils = {
 
             // EXP Bar fill
             const requiredExp = CharacterUtils.getRequiredExperience(entity.level, entity.maxLevel);
-            const expPercentage = entity.level >= entity.maxLevel ? 1 : (requiredExp > 0 ? entity.experience / requiredExp : 0);
+            const expPercentage =
+                entity.level >= entity.maxLevel
+                    ? 1
+                    : requiredExp > 0
+                      ? entity.experience / requiredExp
+                      : 0;
             ctx.fillStyle = '#00D9FF'; // Cyan for experience
             ctx.fillRect(hpBarX, expBarY, hpBarWidth * expPercentage, expBarHeight);
 
@@ -159,11 +156,26 @@ export const CharacterUtils = {
         ctx.beginPath();
         ctx.moveTo(bubbleX + radius, bubbleY);
         ctx.lineTo(bubbleX + bubbleWidth - radius, bubbleY);
-        ctx.quadraticCurveTo(bubbleX + bubbleWidth, bubbleY, bubbleX + bubbleWidth, bubbleY + radius);
+        ctx.quadraticCurveTo(
+            bubbleX + bubbleWidth,
+            bubbleY,
+            bubbleX + bubbleWidth,
+            bubbleY + radius
+        );
         ctx.lineTo(bubbleX + bubbleWidth, bubbleY + bubbleHeight - radius);
-        ctx.quadraticCurveTo(bubbleX + bubbleWidth, bubbleY + bubbleHeight, bubbleX + bubbleWidth - radius, bubbleY + bubbleHeight);
+        ctx.quadraticCurveTo(
+            bubbleX + bubbleWidth,
+            bubbleY + bubbleHeight,
+            bubbleX + bubbleWidth - radius,
+            bubbleY + bubbleHeight
+        );
         ctx.lineTo(bubbleX + radius, bubbleY + bubbleHeight);
-        ctx.quadraticCurveTo(bubbleX, bubbleY + bubbleHeight, bubbleX, bubbleY + bubbleHeight - radius);
+        ctx.quadraticCurveTo(
+            bubbleX,
+            bubbleY + bubbleHeight,
+            bubbleX,
+            bubbleY + bubbleHeight - radius
+        );
         ctx.lineTo(bubbleX, bubbleY + radius);
         ctx.quadraticCurveTo(bubbleX, bubbleY, bubbleX + radius, bubbleY);
         ctx.closePath();
@@ -223,8 +235,10 @@ export const CharacterUtils = {
             // Interpolate position during knockback (easeOut for smooth deceleration)
             const progress = elapsed / entity.knockbackDuration;
             const easeOut = 1 - Math.pow(1 - progress, 3); // Cubic ease out
-            entity.x = entity.knockbackStartX + (entity.knockbackEndX - entity.knockbackStartX) * easeOut;
-            entity.y = entity.knockbackStartY + (entity.knockbackEndY - entity.knockbackStartY) * easeOut;
+            entity.x =
+                entity.knockbackStartX + (entity.knockbackEndX - entity.knockbackStartX) * easeOut;
+            entity.y =
+                entity.knockbackStartY + (entity.knockbackEndY - entity.knockbackStartY) * easeOut;
             return true;
         }
     },
@@ -245,7 +259,9 @@ export const CharacterUtils = {
         entity.knockbackEndX = endX;
         entity.knockbackEndY = endY;
 
-        logger.debug(`${entity.playerName} knocked back from (${entity.x.toFixed(1)}, ${entity.y.toFixed(1)}) to (${endX.toFixed(1)}, ${endY.toFixed(1)})`);
+        logger.debug(
+            `${entity.playerName} knocked back from (${entity.x.toFixed(1)}, ${entity.y.toFixed(1)}) to (${endX.toFixed(1)}, ${endY.toFixed(1)})`
+        );
     },
 
     /**
@@ -253,7 +269,10 @@ export const CharacterUtils = {
      * @param {Object} entity - Entity with chatMessage, chatMessageTime, chatMessageDuration
      */
     updateChatBubble(entity) {
-        if (entity.chatMessage && Date.now() - entity.chatMessageTime > entity.chatMessageDuration) {
+        if (
+            entity.chatMessage &&
+            Date.now() - entity.chatMessageTime > entity.chatMessageDuration
+        ) {
             entity.chatMessage = null;
         }
     },
@@ -266,5 +285,5 @@ export const CharacterUtils = {
     setChatMessage(entity, message) {
         entity.chatMessage = message;
         entity.chatMessageTime = Date.now();
-    }
+    },
 };

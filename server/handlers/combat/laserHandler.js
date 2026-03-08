@@ -36,7 +36,13 @@ function processLaserDamage({ attackerId, x1, y1, x2, y2, damage, respawnDelay }
         if (lineCircleIntersect(x1, y1, x2, y2, player.x, player.y, hitRadius)) {
             player.currentHP = Math.max(0, player.currentHP - damage);
 
-            const knockbackEnd = calculateKnockbackEndPosition(x1, y1, player.x, player.y, knockbackDist);
+            const knockbackEnd = calculateKnockbackEndPosition(
+                x1,
+                y1,
+                player.x,
+                player.y,
+                knockbackDist
+            );
             player.x = knockbackEnd.x;
             player.y = knockbackEnd.y;
 
@@ -50,7 +56,9 @@ function processLaserDamage({ attackerId, x1, y1, x2, y2, damage, respawnDelay }
                 attackerY: y1,
             });
 
-            logger.debug(`Laser hit ${playerId} for ${damage} damage (HP: ${player.currentHP}/${player.maxHP})`);
+            logger.debug(
+                `Laser hit ${playerId} for ${damage} damage (HP: ${player.currentHP}/${player.maxHP})`
+            );
 
             if (checkAndHandleDeath(player, playerId, attackerId, killedPlayers, respawnDelay)) {
                 logger.info(`${playerId} has been killed by laser from ${attackerId}!`);
@@ -66,7 +74,13 @@ function processLaserDamage({ attackerId, x1, y1, x2, y2, damage, respawnDelay }
         if (lineCircleIntersect(x1, y1, x2, y2, dummy.x, dummy.y, hitRadius)) {
             dummy.currentHP = Math.max(0, dummy.currentHP - damage);
 
-            const knockbackEnd = calculateKnockbackEndPosition(x1, y1, dummy.x, dummy.y, knockbackDist);
+            const knockbackEnd = calculateKnockbackEndPosition(
+                x1,
+                y1,
+                dummy.x,
+                dummy.y,
+                knockbackDist
+            );
             dummy.x = knockbackEnd.x;
             dummy.y = knockbackEnd.y;
 
@@ -80,7 +94,9 @@ function processLaserDamage({ attackerId, x1, y1, x2, y2, damage, respawnDelay }
                 attackerY: y1,
             });
 
-            logger.debug(`Laser hit ${dummy.name} for ${damage} damage (HP: ${dummy.currentHP}/${dummy.maxHP})`);
+            logger.debug(
+                `Laser hit ${dummy.name} for ${damage} damage (HP: ${dummy.currentHP}/${dummy.maxHP})`
+            );
 
             if (dummy.currentHP <= 0) {
                 dummy.deathTime = Date.now();
@@ -112,7 +128,9 @@ function registerLaserHandlers(socket, io) {
         // Validate direction vector is normalized (length should be ~1)
         const length = Math.sqrt(data.dirX * data.dirX + data.dirY * data.dirY);
         if (length < 0.9 || length > 1.1) {
-            logger.cheat(`Invalid laser direction from ${socket.id}: length=${length.toFixed(3)} (expected ~1.0)`);
+            logger.cheat(
+                `Invalid laser direction from ${socket.id}: length=${length.toFixed(3)} (expected ~1.0)`
+            );
             return;
         }
 
@@ -133,8 +151,12 @@ function registerLaserHandlers(socket, io) {
         if (attacker.isDead) return;
 
         // Validate coordinate types
-        if (!isValidNumber(data.x1) || !isValidNumber(data.y1) ||
-            !isValidNumber(data.x2) || !isValidNumber(data.y2)) {
+        if (
+            !isValidNumber(data.x1) ||
+            !isValidNumber(data.y1) ||
+            !isValidNumber(data.x2) ||
+            !isValidNumber(data.y2)
+        ) {
             logger.cheat(`Invalid laser coordinates from ${socket.id}`);
             return;
         }
@@ -156,21 +178,31 @@ function registerLaserHandlers(socket, io) {
 
         // Log suspicious damage values
         if (data.damage && data.damage > LASER_DAMAGE * 1.1) {
-            logger.cheat(`Suspicious laser damage from ${socket.id}: ${data.damage} (server: ${LASER_DAMAGE})`);
+            logger.cheat(
+                `Suspicious laser damage from ${socket.id}: ${data.damage} (server: ${LASER_DAMAGE})`
+            );
         }
 
-        logger.debug(`Laser attack from ${socket.id}: (${x1.toFixed(0)}, ${y1.toFixed(0)}) -> (${x2.toFixed(0)}, ${y2.toFixed(0)})`);
+        logger.debug(
+            `Laser attack from ${socket.id}: (${x1.toFixed(0)}, ${y1.toFixed(0)}) -> (${x2.toFixed(0)}, ${y2.toFixed(0)})`
+        );
 
         // Broadcast laser effect
         socket.broadcast.emit('laserFired', {
             playerId: socket.id,
-            x1, y1, x2, y2,
+            x1,
+            y1,
+            x2,
+            y2,
         });
 
         // Process laser damage
         const { hitPlayers, killedPlayers, hitDummies } = processLaserDamage({
             attackerId: socket.id,
-            x1, y1, x2, y2,
+            x1,
+            y1,
+            x2,
+            y2,
             damage: LASER_DAMAGE,
             respawnDelay: PLAYER_RESPAWN_DELAY,
         });

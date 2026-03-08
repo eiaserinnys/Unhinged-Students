@@ -46,7 +46,9 @@ function registerTelepathyHandlers(socket, io) {
 
         // Reject if tick is too fast (90% tolerance for network latency)
         if (lastTick > 0 && now - lastTick < tickInterval * 0.9) {
-            logger.cheat(`Telepathy tick too fast from ${socket.id}: ${now - lastTick}ms (min: ${tickInterval * 0.9}ms)`);
+            logger.cheat(
+                `Telepathy tick too fast from ${socket.id}: ${now - lastTick}ms (min: ${tickInterval * 0.9}ms)`
+            );
             return;
         }
 
@@ -58,10 +60,14 @@ function registerTelepathyHandlers(socket, io) {
 
         // Log suspicious values
         if (data.radius && data.radius > TELEPATHY_RADIUS * 1.1) {
-            logger.cheat(`Suspicious telepathy radius from ${socket.id}: ${data.radius} (server: ${TELEPATHY_RADIUS})`);
+            logger.cheat(
+                `Suspicious telepathy radius from ${socket.id}: ${data.radius} (server: ${TELEPATHY_RADIUS})`
+            );
         }
         if (data.damagePerTarget && data.damagePerTarget > TELEPATHY_DAMAGE_PER_TICK * 1.1) {
-            logger.cheat(`Suspicious telepathy damage from ${socket.id}: ${data.damagePerTarget} (server: ${TELEPATHY_DAMAGE_PER_TICK})`);
+            logger.cheat(
+                `Suspicious telepathy damage from ${socket.id}: ${data.damagePerTarget} (server: ${TELEPATHY_DAMAGE_PER_TICK})`
+            );
         }
 
         let totalDamageDealt = 0;
@@ -89,7 +95,13 @@ function registerTelepathyHandlers(socket, io) {
                     attackerY: y,
                 });
 
-                checkAndHandleDeath(player, playerId, socket.id, killedPlayers, PLAYER_RESPAWN_DELAY);
+                checkAndHandleDeath(
+                    player,
+                    playerId,
+                    socket.id,
+                    killedPlayers,
+                    PLAYER_RESPAWN_DELAY
+                );
             }
         });
 

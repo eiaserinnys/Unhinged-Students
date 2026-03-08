@@ -12,14 +12,17 @@ class Particle {
 
         // Random velocity
         const angle = Math.random() * Math.PI * 2;
-        const speed = GAME_CONFIG.PARTICLE.MIN_SPEED + Math.random() * GAME_CONFIG.PARTICLE.SPEED_VARIANCE;
+        const speed =
+            GAME_CONFIG.PARTICLE.MIN_SPEED + Math.random() * GAME_CONFIG.PARTICLE.SPEED_VARIANCE;
         this.vx = Math.cos(angle) * speed;
         this.vy = Math.sin(angle) * speed;
 
         // Size and lifetime
-        this.size = GAME_CONFIG.PARTICLE.MIN_SIZE + Math.random() * GAME_CONFIG.PARTICLE.SIZE_VARIANCE;
+        this.size =
+            GAME_CONFIG.PARTICLE.MIN_SIZE + Math.random() * GAME_CONFIG.PARTICLE.SIZE_VARIANCE;
         this.life = 1.0; // 0.0 to 1.0
-        this.decay = GAME_CONFIG.PARTICLE.MIN_DECAY + Math.random() * GAME_CONFIG.PARTICLE.DECAY_VARIANCE;
+        this.decay =
+            GAME_CONFIG.PARTICLE.MIN_DECAY + Math.random() * GAME_CONFIG.PARTICLE.DECAY_VARIANCE;
     }
 
     update() {
@@ -62,7 +65,7 @@ class CollectEffect {
 
     update() {
         // Update all particles and remove dead ones
-        this.particles = this.particles.filter(p => p.update());
+        this.particles = this.particles.filter((p) => p.update());
 
         // Deactivate when all particles are gone
         if (this.particles.length === 0) {
@@ -71,7 +74,7 @@ class CollectEffect {
     }
 
     render(ctx) {
-        this.particles.forEach(p => p.render(ctx));
+        this.particles.forEach((p) => p.render(ctx));
     }
 }
 
@@ -127,7 +130,7 @@ export class Shard {
         const distance = Math.sqrt(dx * dx + dy * dy);
 
         // Collision radius (character bounds + shard size)
-        const collisionDistance = (character.width / 2) + this.size;
+        const collisionDistance = character.width / 2 + this.size;
 
         return distance < collisionDistance;
     }
@@ -154,7 +157,7 @@ export class ShardManager {
     // Load shards from server
     loadShardsFromServer(shardData) {
         this.shards = [];
-        shardData.forEach(data => {
+        shardData.forEach((data) => {
             this.shards.push(new Shard(data.x, data.y, GAME_CONFIG.SHARD.SIZE, data.id));
         });
         logger.debug(`Loaded ${this.shards.length} shards from server`);
@@ -162,9 +165,9 @@ export class ShardManager {
 
     // Add shards from server spawn event (respawn)
     addShardsFromServer(shardData) {
-        shardData.forEach(data => {
+        shardData.forEach((data) => {
             // Check if shard already exists
-            const existingIndex = this.shards.findIndex(s => s.id === data.id);
+            const existingIndex = this.shards.findIndex((s) => s.id === data.id);
             if (existingIndex !== -1) {
                 // Shard exists - reactivate it (respawn)
                 this.shards[existingIndex].collected = false;
@@ -179,7 +182,7 @@ export class ShardManager {
 
     // Remove shard by ID (server-synced)
     removeShard(shardId) {
-        const shard = this.shards.find(s => s.id === shardId);
+        const shard = this.shards.find((s) => s.id === shardId);
         if (shard && !shard.collected) {
             shard.collected = true;
             // Create effect (with cap to prevent performance issues)
@@ -217,11 +220,11 @@ export class ShardManager {
     }
 
     update() {
-        this.shards.forEach(shard => shard.update());
+        this.shards.forEach((shard) => shard.update());
 
         // Update effects and remove inactive ones
-        this.effects.forEach(effect => effect.update());
-        this.effects = this.effects.filter(effect => effect.active);
+        this.effects.forEach((effect) => effect.update());
+        this.effects = this.effects.filter((effect) => effect.active);
 
         // Check for respawn (only in local mode)
         if (!this.serverMode) {
@@ -247,23 +250,25 @@ export class ShardManager {
             }
 
             if (actualSpawnCount > 0) {
-                logger.debug(`Respawned ${actualSpawnCount} shards (Active: ${activeCount + actualSpawnCount}/${this.maxActiveShards})`);
+                logger.debug(
+                    `Respawned ${actualSpawnCount} shards (Active: ${activeCount + actualSpawnCount}/${this.maxActiveShards})`
+                );
             }
         }
     }
 
     render(ctx) {
         // Render shards first
-        this.shards.forEach(shard => shard.render(ctx));
+        this.shards.forEach((shard) => shard.render(ctx));
 
         // Render effects on top
-        this.effects.forEach(effect => effect.render(ctx));
+        this.effects.forEach((effect) => effect.render(ctx));
     }
 
     checkCollisions(character) {
         const collectedShards = [];
 
-        this.shards.forEach(shard => {
+        this.shards.forEach((shard) => {
             if (shard.checkCollision(character)) {
                 shard.collect();
                 collectedShards.push(shard);
@@ -279,7 +284,7 @@ export class ShardManager {
     }
 
     getActiveShardCount() {
-        return this.shards.filter(s => !s.collected).length;
+        return this.shards.filter((s) => !s.collected).length;
     }
 
     getTotalShardCount() {

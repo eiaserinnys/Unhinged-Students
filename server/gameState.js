@@ -36,7 +36,7 @@ function getTeamCounts() {
     let redCount = 0;
     let blueCount = 0;
 
-    players.forEach(player => {
+    players.forEach((player) => {
         if (player.team === TEAM.RED) redCount++;
         else if (player.team === TEAM.BLUE) blueCount++;
     });
@@ -108,10 +108,10 @@ function cleanupRateLimiter(socketId) {
 
 function initializeDummies() {
     const dummyConfig = SERVER_CONFIG.DUMMY;
-    const dummyPositions = dummyConfig.POSITIONS.map(pos => ({
+    const dummyPositions = dummyConfig.POSITIONS.map((pos) => ({
         x: GAME_WIDTH / 2 + pos.offsetX,
         y: GAME_HEIGHT / 2 + pos.offsetY,
-        name: pos.name
+        name: pos.name,
     }));
 
     dummyPositions.forEach((pos, index) => {
@@ -125,7 +125,7 @@ function initializeDummies() {
             currentHP: dummyConfig.MAX_HP,
             maxHP: dummyConfig.MAX_HP,
             deathTime: 0,
-            respawnDelay: dummyConfig.RESPAWN_DELAY_MS
+            respawnDelay: dummyConfig.RESPAWN_DELAY_MS,
         });
     });
 
@@ -145,7 +145,7 @@ function initializeShards() {
             y,
             collected: false,
             collectedTime: 0,
-            respawnDelay: 0
+            respawnDelay: 0,
         });
     }
     logger.info(`Initialized ${shards.size} shards`);
@@ -177,7 +177,7 @@ function checkDummyRespawn(io) {
                     x: dummy.x,
                     y: dummy.y,
                     currentHP: dummy.currentHP,
-                    maxHP: dummy.maxHP
+                    maxHP: dummy.maxHP,
                 });
             }
         }
@@ -207,7 +207,7 @@ function checkPlayerRespawn(io) {
                     x: player.x,
                     y: player.y,
                     currentHP: player.currentHP,
-                    maxHP: player.maxHP
+                    maxHP: player.maxHP,
                 });
             }
         }
@@ -238,7 +238,7 @@ function checkShardRespawn(io) {
     });
 
     if (respawnedCount > 0) {
-        const activeCount = Array.from(shards.values()).filter(s => !s.collected).length;
+        const activeCount = Array.from(shards.values()).filter((s) => !s.collected).length;
         logger.debug(`Respawned ${respawnedCount} shard(s) (Active: ${activeCount}/${MAX_SHARDS})`);
     }
 }

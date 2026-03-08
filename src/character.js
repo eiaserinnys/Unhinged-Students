@@ -98,7 +98,9 @@ export class Character {
                     this.width = this.displaySize * aspectRatio;
                 }
 
-                logger.debug(`Character image loaded: ${path} (${img.width}x${img.height}) -> Display: (${Math.round(this.width)}x${Math.round(this.height)})`);
+                logger.debug(
+                    `Character image loaded: ${path} (${img.width}x${img.height}) -> Display: (${Math.round(this.width)}x${Math.round(this.height)})`
+                );
                 resolve();
             };
 
@@ -196,7 +198,12 @@ export class Character {
         this.y = Math.max(this.height / 2, Math.min(canvas.height - this.height / 2, this.y));
 
         // Attack input (Space key) - only for non-dummies and not during knockback
-        if (!this.isDummy && !this.isKnockedBack && isKeyPressed(' ') && currentTime - this.lastAttackTime >= this.attackCooldown) {
+        if (
+            !this.isDummy &&
+            !this.isKnockedBack &&
+            isKeyPressed(' ') &&
+            currentTime - this.lastAttackTime >= this.attackCooldown
+        ) {
             this.attack();
         }
 
@@ -211,7 +218,10 @@ export class Character {
 
     render(ctx) {
         // Calculate hit flash intensity using utility
-        const hitFlashIntensity = CharacterUtils.calculateHitFlashIntensity(this.hitFlashTime, this.hitFlashDuration);
+        const hitFlashIntensity = CharacterUtils.calculateHitFlashIntensity(
+            this.hitFlashTime,
+            this.hitFlashDuration
+        );
 
         if (this.isDummy) {
             // Draw dummy as red rectangle
@@ -224,7 +234,16 @@ export class Character {
             );
 
             // Apply hit flash overlay for dummy (white flash for red dummy)
-            CharacterUtils.renderHitFlash(ctx, this.x, this.y, this.width, this.height, hitFlashIntensity, '#ffffff', 0.7);
+            CharacterUtils.renderHitFlash(
+                ctx,
+                this.x,
+                this.y,
+                this.width,
+                this.height,
+                hitFlashIntensity,
+                '#ffffff',
+                0.7
+            );
         } else if (this.imageLoaded && this.image) {
             // Draw character image
             ctx.drawImage(
@@ -236,7 +255,14 @@ export class Character {
             );
 
             // Apply hit flash overlay for player
-            CharacterUtils.renderHitFlash(ctx, this.x, this.y, this.width, this.height, hitFlashIntensity);
+            CharacterUtils.renderHitFlash(
+                ctx,
+                this.x,
+                this.y,
+                this.width,
+                this.height,
+                hitFlashIntensity
+            );
         } else {
             // Fallback: draw colored rectangle if image not loaded
             ctx.fillStyle = '#00ff00';
@@ -254,14 +280,24 @@ export class Character {
             ctx.fillText('Loading...', this.x, this.y);
 
             // Apply hit flash overlay even for fallback
-            CharacterUtils.renderHitFlash(ctx, this.x, this.y, this.width, this.height, hitFlashIntensity);
+            CharacterUtils.renderHitFlash(
+                ctx,
+                this.x,
+                this.y,
+                this.width,
+                this.height,
+                hitFlashIntensity
+            );
         }
 
         // Draw attack effect if attacking
         this.renderAttackEffect(ctx);
 
         // Draw info above character using utility
-        CharacterUtils.renderInfoAbove(ctx, this, { showExpBar: !this.isDummy, isDummy: this.isDummy });
+        CharacterUtils.renderInfoAbove(ctx, this, {
+            showExpBar: !this.isDummy,
+            isDummy: this.isDummy,
+        });
 
         // Draw chat bubble using utility
         CharacterUtils.renderChatBubble(ctx, this);
@@ -274,7 +310,10 @@ export class Character {
 
         // Calculate animation progress (0 to 1)
         const currentTime = Date.now();
-        const progress = Math.min(1, (currentTime - this.attackStartTime) / this.attackAnimationTime);
+        const progress = Math.min(
+            1,
+            (currentTime - this.attackStartTime) / this.attackAnimationTime
+        );
 
         // Draw full attack range circle that fades out
         const opacity = (1 - progress) * 0.4; // Start at 40% opacity, fade to 0
@@ -308,7 +347,7 @@ export class Character {
             left: this.x - this.width / 2,
             right: this.x + this.width / 2,
             top: this.y - this.height / 2,
-            bottom: this.y + this.height / 2
+            bottom: this.y + this.height / 2,
         };
     }
 
@@ -368,7 +407,7 @@ export class Character {
         return {
             x: this.x,
             y: this.y,
-            radius: this.attackRange
+            radius: this.attackRange,
         };
     }
 
@@ -391,7 +430,9 @@ export class Character {
         this.lastDamagedTime = currentTime;
         this.hitFlashTime = currentTime; // Trigger hit flash effect
         this.currentHP = Math.max(0, this.currentHP - amount);
-        logger.debug(`${this.playerName} took ${amount} damage! HP: ${this.currentHP}/${this.maxHP}`);
+        logger.debug(
+            `${this.playerName} took ${amount} damage! HP: ${this.currentHP}/${this.maxHP}`
+        );
 
         if (this.currentHP <= 0) {
             this.deathTime = Date.now();
@@ -435,7 +476,15 @@ export class Character {
 
     // Calculate knockback distance based on distance from attacker
     // Closer = more knockback
-    static calculateKnockbackDistance(attackerX, attackerY, targetX, targetY, attackRange, minKnockback = 30, maxKnockback = 100) {
+    static calculateKnockbackDistance(
+        attackerX,
+        attackerY,
+        targetX,
+        targetY,
+        attackRange,
+        minKnockback = 30,
+        maxKnockback = 100
+    ) {
         const dx = targetX - attackerX;
         const dy = targetY - attackerY;
         const distance = Math.sqrt(dx * dx + dy * dy);
@@ -447,7 +496,15 @@ export class Character {
     }
 
     // Calculate knockback end position
-    static calculateKnockbackEndPosition(attackerX, attackerY, targetX, targetY, knockbackDistance, canvasWidth, canvasHeight) {
+    static calculateKnockbackEndPosition(
+        attackerX,
+        attackerY,
+        targetX,
+        targetY,
+        knockbackDistance,
+        canvasWidth,
+        canvasHeight
+    ) {
         let dirX = targetX - attackerX;
         let dirY = targetY - attackerY;
         const distance = Math.sqrt(dirX * dirX + dirY * dirY);

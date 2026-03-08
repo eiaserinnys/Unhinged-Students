@@ -37,10 +37,14 @@ function registerBasicAttackHandlers(socket, io) {
 
         // Log suspicious values
         if (data.range && data.range > ATTACK_RANGE * 1.1) {
-            logger.cheat(`Suspicious attack range from ${socket.id}: ${data.range} (server: ${ATTACK_RANGE})`);
+            logger.cheat(
+                `Suspicious attack range from ${socket.id}: ${data.range} (server: ${ATTACK_RANGE})`
+            );
         }
         if (data.power && data.power > ATTACK_POWER * 1.1) {
-            logger.cheat(`Suspicious attack power from ${socket.id}: ${data.power} (server: ${ATTACK_POWER})`);
+            logger.cheat(
+                `Suspicious attack power from ${socket.id}: ${data.power} (server: ${ATTACK_POWER})`
+            );
         }
 
         // Broadcast attack to all other players (for visual effect)
@@ -65,7 +69,7 @@ function registerBasicAttackHandlers(socket, io) {
         hitPlayers.forEach((hit) => {
             logger.debug(
                 `${socket.id} hit ${hit.playerId} for ${ATTACK_POWER} damage ` +
-                `(HP: ${hit.currentHP}/${hit.maxHP}), knockback to (${hit.knockbackEndX.toFixed(1)}, ${hit.knockbackEndY.toFixed(1)})`
+                    `(HP: ${hit.currentHP}/${hit.maxHP}), knockback to (${hit.knockbackEndX.toFixed(1)}, ${hit.knockbackEndY.toFixed(1)})`
             );
         });
 
@@ -85,7 +89,7 @@ function registerBasicAttackHandlers(socket, io) {
         hitDummies.forEach((hit) => {
             logger.debug(
                 `${socket.id} hit dummy ${hit.dummyId} for ${ATTACK_POWER} damage ` +
-                `(HP: ${hit.currentHP}/${hit.maxHP})`
+                    `(HP: ${hit.currentHP}/${hit.maxHP})`
             );
             if (hit.currentHP <= 0) {
                 logger.debug(`Dummy ${hit.dummyId} has been defeated!`);

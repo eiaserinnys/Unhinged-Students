@@ -50,8 +50,15 @@ function processAreaDamageToPlayers({
             let knockbackEndY = player.y;
 
             if (applyKnockback) {
-                const knockbackDist = knockbackDistance ?? calculateKnockbackDistance(radius, distance);
-                const knockbackEnd = calculateKnockbackEndPosition(x, y, player.x, player.y, knockbackDist);
+                const knockbackDist =
+                    knockbackDistance ?? calculateKnockbackDistance(radius, distance);
+                const knockbackEnd = calculateKnockbackEndPosition(
+                    x,
+                    y,
+                    player.x,
+                    player.y,
+                    knockbackDist
+                );
                 player.x = knockbackEnd.x;
                 player.y = knockbackEnd.y;
                 knockbackEndX = knockbackEnd.x;
@@ -112,8 +119,15 @@ function processAreaDamageToDummies({
             let knockbackEndY = dummy.y;
 
             if (applyKnockback) {
-                const knockbackDist = knockbackDistance ?? calculateKnockbackDistance(radius, distance);
-                const knockbackEnd = calculateKnockbackEndPosition(x, y, dummy.x, dummy.y, knockbackDist);
+                const knockbackDist =
+                    knockbackDistance ?? calculateKnockbackDistance(radius, distance);
+                const knockbackEnd = calculateKnockbackEndPosition(
+                    x,
+                    y,
+                    dummy.x,
+                    dummy.y,
+                    knockbackDist
+                );
                 dummy.x = knockbackEnd.x;
                 dummy.y = knockbackEnd.y;
                 knockbackEndX = knockbackEnd.x;
@@ -150,11 +164,15 @@ function processAreaDamageToDummies({
  * @param {string} [options.playerDamageEvent='playerDamaged'] - Event name for player damage
  * @param {string} [options.dummyDamageEvent='dummyDamaged'] - Event name for dummy damage
  */
-function broadcastDamageEvents(io, attackerId, hitPlayers, killedPlayers, hitDummies, options = {}) {
-    const {
-        playerDamageEvent = 'playerDamaged',
-        dummyDamageEvent = 'dummyDamaged',
-    } = options;
+function broadcastDamageEvents(
+    io,
+    attackerId,
+    hitPlayers,
+    killedPlayers,
+    hitDummies,
+    options = {}
+) {
+    const { playerDamageEvent = 'playerDamaged', dummyDamageEvent = 'dummyDamaged' } = options;
 
     if (hitPlayers.length > 0) {
         io.emit(playerDamageEvent, {

@@ -33,7 +33,14 @@ export function renderHitVignette(ctx) {
     const innerRadius = Math.min(GAME_WIDTH, GAME_HEIGHT) * 0.3;
     const outerRadius = Math.max(GAME_WIDTH, GAME_HEIGHT) * 0.8;
 
-    const gradient = ctx.createRadialGradient(centerX, centerY, innerRadius, centerX, centerY, outerRadius);
+    const gradient = ctx.createRadialGradient(
+        centerX,
+        centerY,
+        innerRadius,
+        centerX,
+        centerY,
+        outerRadius
+    );
     gradient.addColorStop(0, 'rgba(255, 0, 0, 0)');
     gradient.addColorStop(0.5, `rgba(255, 0, 0, ${opacity * 0.3})`);
     gradient.addColorStop(1, `rgba(255, 0, 0, ${opacity})`);
@@ -75,7 +82,11 @@ export function renderDeathScreen(ctx) {
     // Respawn timer
     ctx.fillStyle = '#ffffff';
     ctx.font = '600 36px Jua, sans-serif';
-    ctx.fillText(`Respawning in ${remainingTime.toFixed(1)}s`, GAME_WIDTH / 2, GAME_HEIGHT / 2 + 30);
+    ctx.fillText(
+        `Respawning in ${remainingTime.toFixed(1)}s`,
+        GAME_WIDTH / 2,
+        GAME_HEIGHT / 2 + 30
+    );
 
     ctx.shadowColor = 'transparent';
     ctx.shadowBlur = 0;

@@ -8,11 +8,7 @@ const {
     TELEPORT_DAMAGE,
     PLAYER_RESPAWN_DELAY,
 } = require('../../config');
-const {
-    isValidNumber,
-    clampCoordinates,
-    calculateDistance,
-} = require('../../validation');
+const { isValidNumber, clampCoordinates, calculateDistance } = require('../../validation');
 const { players } = require('../../gameState');
 const {
     processAreaDamageToPlayers,
@@ -33,8 +29,12 @@ function registerTeleportHandlers(socket, io) {
         if (player.isDead) return;
 
         // Validate coordinate types
-        if (!isValidNumber(data.startX) || !isValidNumber(data.startY) ||
-            !isValidNumber(data.endX) || !isValidNumber(data.endY)) {
+        if (
+            !isValidNumber(data.startX) ||
+            !isValidNumber(data.startY) ||
+            !isValidNumber(data.endX) ||
+            !isValidNumber(data.endY)
+        ) {
             logger.cheat(`Invalid teleport coordinates from ${socket.id}`);
             return;
         }
@@ -49,7 +49,9 @@ function registerTeleportHandlers(socket, io) {
         // Check teleport distance (anti-cheat)
         const teleportDistance = calculateDistance(startX, startY, endX, endY);
         if (teleportDistance > TELEPORT_MAX_DISTANCE * 1.2) {
-            logger.cheat(`Teleport distance exceeded from ${socket.id}: ${teleportDistance.toFixed(1)}px (max: ${TELEPORT_MAX_DISTANCE}px)`);
+            logger.cheat(
+                `Teleport distance exceeded from ${socket.id}: ${teleportDistance.toFixed(1)}px (max: ${TELEPORT_MAX_DISTANCE}px)`
+            );
             // Clamp to max distance
             const angle = Math.atan2(endY - startY, endX - startX);
             endX = startX + Math.cos(angle) * TELEPORT_MAX_DISTANCE;
@@ -87,10 +89,14 @@ function registerTeleportHandlers(socket, io) {
 
         // Log suspicious values
         if (data.radius && data.radius > TELEPORT_DAMAGE_RADIUS * 1.1) {
-            logger.cheat(`Suspicious teleport damage radius from ${socket.id}: ${data.radius} (server: ${TELEPORT_DAMAGE_RADIUS})`);
+            logger.cheat(
+                `Suspicious teleport damage radius from ${socket.id}: ${data.radius} (server: ${TELEPORT_DAMAGE_RADIUS})`
+            );
         }
         if (data.damage && data.damage > TELEPORT_DAMAGE * 1.1) {
-            logger.cheat(`Suspicious teleport damage from ${socket.id}: ${data.damage} (server: ${TELEPORT_DAMAGE})`);
+            logger.cheat(
+                `Suspicious teleport damage from ${socket.id}: ${data.damage} (server: ${TELEPORT_DAMAGE})`
+            );
         }
 
         // Process damage using shared processor

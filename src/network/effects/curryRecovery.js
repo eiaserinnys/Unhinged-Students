@@ -55,10 +55,7 @@ export const CurryRecoveryEffectMixin = {
 
         // Healing glow
         const glowRadius = 60 + progress * 30;
-        const gradient = ctx.createRadialGradient(
-            this.x, this.y, 0,
-            this.x, this.y, glowRadius
-        );
+        const gradient = ctx.createRadialGradient(this.x, this.y, 0, this.x, this.y, glowRadius);
         gradient.addColorStop(0, `rgba(255, 165, 0, ${(1 - progress) * 0.3})`);
         gradient.addColorStop(0.5, `rgba(255, 215, 0, ${(1 - progress) * 0.15})`);
         gradient.addColorStop(1, 'rgba(255, 215, 0, 0)');
@@ -78,7 +75,7 @@ export const CurryRecoveryEffectMixin = {
         ctx.fillText(`+${this.curryRecoveryHealAmount}`, this.x, textY);
 
         ctx.restore();
-    }
+    },
 };
 
 // Backward compatibility: expose to window

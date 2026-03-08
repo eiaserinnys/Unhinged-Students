@@ -41,7 +41,7 @@ export const PotSmashEffectMixin = {
         ctx.save();
 
         // Calculate cone parameters
-        const halfAngleRad = (this.potSmashAngle / 2) * Math.PI / 180;
+        const halfAngleRad = ((this.potSmashAngle / 2) * Math.PI) / 180;
         const baseAngle = Math.atan2(this.potSmashDirY, this.potSmashDirX);
         const startAngle = baseAngle - halfAngleRad;
         const endAngle = baseAngle + halfAngleRad;
@@ -91,7 +91,7 @@ export const PotSmashEffectMixin = {
         }
 
         ctx.restore();
-    }
+    },
 };
 
 // Backward compatibility: expose to window

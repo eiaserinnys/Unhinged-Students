@@ -10,14 +10,14 @@ const { GAME_CONFIG } = require('../shared/config');
 const SERVER_ONLY_CONFIG = {
     // Player server-specific settings
     PLAYER: {
-        SPEED_TOLERANCE: 1.5,           // Allow 50% variance for network latency
+        SPEED_TOLERANCE: 1.5, // Allow 50% variance for network latency
     },
 
     // Rate limiting (in milliseconds) - server-only
     RATE_LIMIT: {
-        MOVE_MS: 50,                    // 50ms = 20 requests per second
-        ATTACK_MS: 500,                 // Same as attack cooldown
-        CHAT_MS: 1000,                  // 1 message per second
+        MOVE_MS: 50, // 50ms = 20 requests per second
+        ATTACK_MS: 500, // Same as attack cooldown
+        CHAT_MS: 1000, // 1 message per second
     },
 };
 

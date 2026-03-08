@@ -13,6 +13,11 @@ export default [
             globals: {
                 ...globals.browser,
                 ...globals.node,
+                // Socket.io client global
+                io: 'readonly',
+                // Game globals exposed on window
+                updateStoredDamage: 'readonly',
+                triggerCurryRecoveryEffect: 'readonly',
             },
         },
         plugins: {

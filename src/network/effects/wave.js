@@ -62,21 +62,15 @@ export const WaveEffectMixin = {
             const outerR = currentRadius * 0.9;
 
             ctx.beginPath();
-            ctx.moveTo(
-                this.x + Math.cos(angle) * innerR,
-                this.y + Math.sin(angle) * innerR
-            );
-            ctx.lineTo(
-                this.x + Math.cos(angle) * outerR,
-                this.y + Math.sin(angle) * outerR
-            );
+            ctx.moveTo(this.x + Math.cos(angle) * innerR, this.y + Math.sin(angle) * innerR);
+            ctx.lineTo(this.x + Math.cos(angle) * outerR, this.y + Math.sin(angle) * outerR);
             ctx.strokeStyle = `rgba(255, 182, 193, ${opacity * 0.7})`;
             ctx.lineWidth = 3;
             ctx.stroke();
         }
 
         ctx.restore();
-    }
+    },
 };
 
 // Backward compatibility: expose to window

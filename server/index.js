@@ -6,11 +6,7 @@ const path = require('path');
 const logger = require('../logger');
 
 // Import game state and handlers
-const {
-    initializeDummies,
-    initializeShards,
-    startRespawnTimers,
-} = require('./gameState');
+const { initializeDummies, initializeShards, startRespawnTimers } = require('./gameState');
 const { registerPlayerHandlers } = require('./handlers/playerHandler');
 const { registerCombatHandlers } = require('./handlers/combatHandler');
 const { registerShardHandlers } = require('./handlers/shardHandler');
@@ -24,7 +20,7 @@ function getAllowedOrigins() {
     if (process.env.NODE_ENV === 'production') {
         return [
             'https://eiaserinnys.me',
-            'http://eiaserinnys.me'  // HTTP to HTTPS redirect 중 요청 허용
+            'http://eiaserinnys.me', // HTTP to HTTPS redirect 중 요청 허용
         ];
     }
     // Development/local environment
@@ -32,20 +28,20 @@ function getAllowedOrigins() {
         'http://localhost:3000',
         'http://localhost:8000',
         'http://127.0.0.1:3000',
-        'http://127.0.0.1:8000'
+        'http://127.0.0.1:8000',
     ];
 }
 
 const io = new Server(httpServer, {
     cors: {
         origin: getAllowedOrigins(),
-        methods: ["GET", "POST"],
-        credentials: true
+        methods: ['GET', 'POST'],
+        credentials: true,
     },
     // Connection health settings to detect and clean up stale connections
-    pingTimeout: 10000,      // 10 seconds to respond to ping
-    pingInterval: 5000,      // Ping every 5 seconds
-    connectTimeout: 10000    // 10 seconds to complete connection
+    pingTimeout: 10000, // 10 seconds to respond to ping
+    pingInterval: 5000, // Ping every 5 seconds
+    connectTimeout: 10000, // 10 seconds to complete connection
 });
 
 // Serve static files (game client)

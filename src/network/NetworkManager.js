@@ -42,7 +42,7 @@ export class NetworkManager {
         // Use relative path for socket.io (works with nginx reverse proxy)
         // Socket.io will connect to /game/socket.io/ when served from /game/
         const options = {
-            path: '/game/socket.io'
+            path: '/game/socket.io',
         };
 
         logger.info('Connecting to server via /game/socket.io');
@@ -78,7 +78,7 @@ export class NetworkManager {
         // Receive existing players
         this.socket.on('existingPlayers', (players) => {
             logger.debug(`Received ${players.length} existing players`);
-            players.forEach(playerData => {
+            players.forEach((playerData) => {
                 if (playerData.playerId !== this.playerId) {
                     this.addRemotePlayer(playerData);
                 }
@@ -188,14 +188,19 @@ export class NetworkManager {
         // Telepathy heal event (for local player HP recovery)
         this.socket.on('telepathyHeal', (data) => {
             if (data.playerId === this.playerId && this.localPlayer) {
-                this.localPlayer.currentHP = Math.min(this.localPlayer.maxHP, this.localPlayer.currentHP + data.healAmount);
-                logger.debug(`Telepathy healed ${data.healAmount} HP! Current: ${this.localPlayer.currentHP}/${this.localPlayer.maxHP}`);
+                this.localPlayer.currentHP = Math.min(
+                    this.localPlayer.maxHP,
+                    this.localPlayer.currentHP + data.healAmount
+                );
+                logger.debug(
+                    `Telepathy healed ${data.healAmount} HP! Current: ${this.localPlayer.currentHP}/${this.localPlayer.maxHP}`
+                );
             }
         });
 
         // Telepathy tick damage (no knockback, but with hit flash and vignette)
         this.socket.on('telepathyTick', (data) => {
-            data.hitPlayers.forEach(hit => {
+            data.hitPlayers.forEach((hit) => {
                 if (hit.playerId === this.playerId && this.localPlayer) {
                     // Update local player HP with hit flash and vignette (no knockback)
                     this.localPlayer.currentHP = hit.currentHP;
@@ -220,7 +225,7 @@ export class NetworkManager {
         // Telepathy tick damage for dummies (no knockback, with hit flash)
         this.socket.on('telepathyTickDummy', (data) => {
             if (this.dummies) {
-                data.hitDummies.forEach(hit => {
+                data.hitDummies.forEach((hit) => {
                     const dummy = this.dummies[hit.dummyId];
                     if (dummy) {
                         dummy.currentHP = hit.currentHP;
@@ -245,7 +250,7 @@ export class NetworkManager {
         // Wave damage received (with confusion effect)
         this.socket.on('waveDamage', (data) => {
             logger.debug(`Wave damage from ${data.attackerId}:`, data.hitPlayers);
-            data.hitPlayers.forEach(hit => {
+            data.hitPlayers.forEach((hit) => {
                 // Check if it's the local player
                 if (hit.playerId === this.playerId) {
                     if (this.localPlayer) {
@@ -288,7 +293,7 @@ export class NetworkManager {
 
         // Madness tick damage (small damage, no vignette)
         this.socket.on('madnessTick', (data) => {
-            data.hitPlayers.forEach(hit => {
+            data.hitPlayers.forEach((hit) => {
                 if (hit.playerId === this.playerId) {
                     if (this.localPlayer) {
                         this.localPlayer.currentHP = hit.currentHP;
@@ -314,7 +319,7 @@ export class NetworkManager {
 
         // Pot smash damage received
         this.socket.on('potSmashDamage', (data) => {
-            data.hitPlayers.forEach(hit => {
+            data.hitPlayers.forEach((hit) => {
                 if (hit.playerId === this.playerId) {
                     if (this.localPlayer) {
                         this.localPlayer.currentHP = hit.currentHP;
@@ -460,7 +465,7 @@ export class NetworkManager {
         // Player damage event
         this.socket.on('playerDamaged', (data) => {
             logger.debug(`Players damaged by ${data.attackerId}:`, data.hitPlayers);
-            data.hitPlayers.forEach(hit => {
+            data.hitPlayers.forEach((hit) => {
                 // Check if it's the local player
                 if (hit.playerId === this.playerId && this.localPlayer) {
                     this.localPlayer.currentHP = hit.currentHP;
@@ -509,7 +514,7 @@ export class NetworkManager {
             logger.debug(`Received ${serverDummies.length} existing dummies`);
             if (this.dummies) {
                 // Sync dummies with server state
-                serverDummies.forEach(serverDummy => {
+                serverDummies.forEach((serverDummy) => {
                     const dummy = this.dummies[serverDummy.id];
                     if (dummy) {
                         dummy.x = serverDummy.x;
@@ -524,7 +529,7 @@ export class NetworkManager {
         this.socket.on('dummyDamaged', (data) => {
             logger.debug(`Dummies damaged by ${data.attackerId}:`, data.hitDummies);
             if (this.dummies) {
-                data.hitDummies.forEach(hit => {
+                data.hitDummies.forEach((hit) => {
                     const dummy = this.dummies[hit.dummyId];
                     if (dummy) {
                         dummy.currentHP = hit.currentHP;
@@ -617,7 +622,7 @@ export class NetworkManager {
             x: x,
             y: y,
             range: range,
-            power: power
+            power: power,
         });
     }
 
@@ -628,7 +633,7 @@ export class NetworkManager {
             x: x,
             y: y,
             dirX: dirX,
-            dirY: dirY
+            dirY: dirY,
         });
     }
 
@@ -640,7 +645,7 @@ export class NetworkManager {
             y1: y1,
             x2: x2,
             y2: y2,
-            damage: damage
+            damage: damage,
         });
     }
 
@@ -651,7 +656,7 @@ export class NetworkManager {
             startX: startX,
             startY: startY,
             endX: endX,
-            endY: endY
+            endY: endY,
         });
     }
 
@@ -662,7 +667,7 @@ export class NetworkManager {
             x: x,
             y: y,
             radius: radius,
-            damage: damage
+            damage: damage,
         });
     }
 
@@ -672,7 +677,7 @@ export class NetworkManager {
         this.socket.emit('telepathy', {
             x: x,
             y: y,
-            radius: radius
+            radius: radius,
         });
     }
 
@@ -684,7 +689,7 @@ export class NetworkManager {
             y: y,
             radius: radius,
             damagePerTarget: damagePerTarget,
-            maxHeal: maxHeal
+            maxHeal: maxHeal,
         });
     }
 
@@ -802,20 +807,20 @@ export class NetworkManager {
             playerName: playerName,
             level: level,
             experience: experience,
-            characterId: characterId
+            characterId: characterId,
         });
     }
 
     // Update all remote players
     update() {
-        this.remotePlayers.forEach(remotePlayer => {
+        this.remotePlayers.forEach((remotePlayer) => {
             remotePlayer.update();
         });
     }
 
     // Render all remote players
     render(ctx) {
-        this.remotePlayers.forEach(remotePlayer => {
+        this.remotePlayers.forEach((remotePlayer) => {
             remotePlayer.render(ctx);
         });
     }

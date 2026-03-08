@@ -13,10 +13,7 @@ const {
 } = require('./config');
 
 // Import geometry functions from shared module
-const {
-    calculateDistance,
-    lineCircleIntersect,
-} = require('../shared/geometry');
+const { calculateDistance, lineCircleIntersect } = require('../shared/geometry');
 
 // Validate that a value is a finite number
 function isValidNumber(value) {
@@ -25,16 +22,21 @@ function isValidNumber(value) {
 
 // Validate coordinates are within game bounds
 function isValidCoordinate(x, y, margin = 0) {
-    return isValidNumber(x) && isValidNumber(y) &&
-           x >= margin && x <= GAME_WIDTH - margin &&
-           y >= margin && y <= GAME_HEIGHT - margin;
+    return (
+        isValidNumber(x) &&
+        isValidNumber(y) &&
+        x >= margin &&
+        x <= GAME_WIDTH - margin &&
+        y >= margin &&
+        y <= GAME_HEIGHT - margin
+    );
 }
 
 // Clamp coordinates to game bounds
 function clampCoordinates(x, y, margin = 50) {
     return {
         x: Math.max(margin, Math.min(GAME_WIDTH - margin, x)),
-        y: Math.max(margin, Math.min(GAME_HEIGHT - margin, y))
+        y: Math.max(margin, Math.min(GAME_HEIGHT - margin, y)),
     };
 }
 
@@ -53,7 +55,9 @@ function isValidPositiveInt(value, max = 1000) {
 function calculateKnockbackDistance(attackRange, distance) {
     const ratio = Math.min(1, distance / attackRange);
     const baseKnockback = KNOCKBACK_MAX - ratio * (KNOCKBACK_MAX - KNOCKBACK_MIN);
-    const multiplier = KNOCKBACK_MULTIPLIER_MIN + Math.random() * (KNOCKBACK_MULTIPLIER_MAX - KNOCKBACK_MULTIPLIER_MIN);
+    const multiplier =
+        KNOCKBACK_MULTIPLIER_MIN +
+        Math.random() * (KNOCKBACK_MULTIPLIER_MAX - KNOCKBACK_MULTIPLIER_MIN);
     return baseKnockback * multiplier;
 }
 

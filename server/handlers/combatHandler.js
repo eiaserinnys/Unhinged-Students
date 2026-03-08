@@ -37,11 +37,7 @@ const {
     calculateKnockbackEndPosition,
     lineCircleIntersect,
 } = require('../validation');
-const {
-    players,
-    dummies,
-    rateLimit,
-} = require('../gameState');
+const { players, dummies, rateLimit } = require('../gameState');
 
 // Helper function to apply damage and store for curry-bear passive
 // Returns { currentHP, storedDamageChanged: boolean }
@@ -60,13 +56,15 @@ function applyDamageWithStorage(player, damage, io) {
             CURRY_RECOVERY_MAX_STORED
         );
         storedDamageChanged = true;
-        logger.debug(`Curry-bear stored ${storageAmount} damage (total: ${player.storedDamage}/${CURRY_RECOVERY_MAX_STORED})`);
+        logger.debug(
+            `Curry-bear stored ${storageAmount} damage (total: ${player.storedDamage}/${CURRY_RECOVERY_MAX_STORED})`
+        );
 
         // Notify the curry-bear player of their stored damage
         if (io && player.socketId) {
             io.to(player.socketId).emit('storedDamageUpdate', {
                 storedDamage: player.storedDamage,
-                maxStored: CURRY_RECOVERY_MAX_STORED
+                maxStored: CURRY_RECOVERY_MAX_STORED,
             });
         }
     }
@@ -99,10 +97,14 @@ function registerCombatHandlers(socket, io) {
 
         // Log if client sent suspicious values
         if (data.range && data.range > ATTACK_RANGE * 1.1) {
-            logger.cheat(`Suspicious attack range from ${socket.id}: ${data.range} (server: ${ATTACK_RANGE})`);
+            logger.cheat(
+                `Suspicious attack range from ${socket.id}: ${data.range} (server: ${ATTACK_RANGE})`
+            );
         }
         if (data.power && data.power > ATTACK_POWER * 1.1) {
-            logger.cheat(`Suspicious attack power from ${socket.id}: ${data.power} (server: ${ATTACK_POWER})`);
+            logger.cheat(
+                `Suspicious attack power from ${socket.id}: ${data.power} (server: ${ATTACK_POWER})`
+            );
         }
 
         // Broadcast attack to all other players (for visual effect)
@@ -110,7 +112,7 @@ function registerCombatHandlers(socket, io) {
             playerId: socket.id,
             x: attackX,
             y: attackY,
-            range: attackRange
+            range: attackRange,
         });
 
         // Check all players in range
@@ -132,7 +134,13 @@ function registerCombatHandlers(socket, io) {
 
                 // Calculate knockback
                 const knockbackDist = calculateKnockbackDistance(attackRange, distance);
-                const knockbackEnd = calculateKnockbackEndPosition(attackX, attackY, player.x, player.y, knockbackDist);
+                const knockbackEnd = calculateKnockbackEndPosition(
+                    attackX,
+                    attackY,
+                    player.x,
+                    player.y,
+                    knockbackDist
+                );
 
                 // Update player position to knockback end (server-authoritative)
                 player.x = knockbackEnd.x;
@@ -145,10 +153,12 @@ function registerCombatHandlers(socket, io) {
                     knockbackEndX: knockbackEnd.x,
                     knockbackEndY: knockbackEnd.y,
                     attackerX: attackX,
-                    attackerY: attackY
+                    attackerY: attackY,
                 });
 
-                logger.debug(`${socket.id} hit ${playerId} for ${attackPower} damage (HP: ${player.currentHP}/${player.maxHP}), knockback to (${knockbackEnd.x.toFixed(1)}, ${knockbackEnd.y.toFixed(1)})`);
+                logger.debug(
+                    `${socket.id} hit ${playerId} for ${attackPower} damage (HP: ${player.currentHP}/${player.maxHP}), knockback to (${knockbackEnd.x.toFixed(1)}, ${knockbackEnd.y.toFixed(1)})`
+                );
 
                 // Check if player died
                 if (player.currentHP <= 0 && !player.isDead) {
@@ -157,7 +167,7 @@ function registerCombatHandlers(socket, io) {
                     killedPlayers.push({
                         playerId: playerId,
                         killedBy: socket.id,
-                        respawnDelay: PLAYER_RESPAWN_DELAY
+                        respawnDelay: PLAYER_RESPAWN_DELAY,
                     });
                     logger.info(`${playerId} has been killed by ${socket.id}!`);
                 }
@@ -168,17 +178,17 @@ function registerCombatHandlers(socket, io) {
         if (hitPlayers.length > 0) {
             io.emit('playerDamaged', {
                 attackerId: socket.id,
-                hitPlayers: hitPlayers
+                hitPlayers: hitPlayers,
             });
         }
 
         // Broadcast deaths to all players
         if (killedPlayers.length > 0) {
-            killedPlayers.forEach(killed => {
+            killedPlayers.forEach((killed) => {
                 io.emit('playerDied', {
                     playerId: killed.playerId,
                     killedBy: killed.killedBy,
-                    respawnDelay: killed.respawnDelay
+                    respawnDelay: killed.respawnDelay,
                 });
             });
         }
@@ -200,7 +210,13 @@ function registerCombatHandlers(socket, io) {
 
                 // Calculate knockback
                 const knockbackDist = calculateKnockbackDistance(attackRange, distance);
-                const knockbackEnd = calculateKnockbackEndPosition(attackX, attackY, dummy.x, dummy.y, knockbackDist);
+                const knockbackEnd = calculateKnockbackEndPosition(
+                    attackX,
+                    attackY,
+                    dummy.x,
+                    dummy.y,
+                    knockbackDist
+                );
 
                 // Update dummy position to knockback end (server-authoritative)
                 dummy.x = knockbackEnd.x;
@@ -213,10 +229,12 @@ function registerCombatHandlers(socket, io) {
                     knockbackEndX: knockbackEnd.x,
                     knockbackEndY: knockbackEnd.y,
                     attackerX: attackX,
-                    attackerY: attackY
+                    attackerY: attackY,
                 });
 
-                logger.debug(`${socket.id} hit ${dummy.name} for ${attackPower} damage (HP: ${dummy.currentHP}/${dummy.maxHP}), knockback to (${knockbackEnd.x.toFixed(1)}, ${knockbackEnd.y.toFixed(1)})`);
+                logger.debug(
+                    `${socket.id} hit ${dummy.name} for ${attackPower} damage (HP: ${dummy.currentHP}/${dummy.maxHP}), knockback to (${knockbackEnd.x.toFixed(1)}, ${knockbackEnd.y.toFixed(1)})`
+                );
 
                 // Mark death time if killed
                 if (dummy.currentHP <= 0) {
@@ -230,7 +248,7 @@ function registerCombatHandlers(socket, io) {
         if (hitDummies.length > 0) {
             io.emit('dummyDamaged', {
                 attackerId: socket.id,
-                hitDummies: hitDummies
+                hitDummies: hitDummies,
             });
         }
     });
@@ -245,8 +263,12 @@ function registerCombatHandlers(socket, io) {
 
         // === INPUT VALIDATION ===
         // Validate coordinate types
-        if (!isValidNumber(data.startX) || !isValidNumber(data.startY) ||
-            !isValidNumber(data.endX) || !isValidNumber(data.endY)) {
+        if (
+            !isValidNumber(data.startX) ||
+            !isValidNumber(data.startY) ||
+            !isValidNumber(data.endX) ||
+            !isValidNumber(data.endY)
+        ) {
             logger.cheat(`Invalid teleport coordinates from ${socket.id}`);
             return;
         }
@@ -261,8 +283,11 @@ function registerCombatHandlers(socket, io) {
 
         // Check teleport distance (anti-cheat: limit max teleport distance)
         const teleportDistance = calculateDistance(startX, startY, endX, endY);
-        if (teleportDistance > TELEPORT_MAX_DISTANCE * 1.2) { // Allow 20% tolerance
-            logger.cheat(`Teleport distance exceeded from ${socket.id}: ${teleportDistance.toFixed(1)}px (max: ${TELEPORT_MAX_DISTANCE}px)`);
+        if (teleportDistance > TELEPORT_MAX_DISTANCE * 1.2) {
+            // Allow 20% tolerance
+            logger.cheat(
+                `Teleport distance exceeded from ${socket.id}: ${teleportDistance.toFixed(1)}px (max: ${TELEPORT_MAX_DISTANCE}px)`
+            );
             // Clamp to max distance
             const angle = Math.atan2(endY - startY, endX - startX);
             endX = startX + Math.cos(angle) * TELEPORT_MAX_DISTANCE;
@@ -280,7 +305,7 @@ function registerCombatHandlers(socket, io) {
             startX: startX,
             startY: startY,
             endX: endX,
-            endY: endY
+            endY: endY,
         });
 
         // Update player position on server
@@ -307,10 +332,14 @@ function registerCombatHandlers(socket, io) {
 
         // Log if client sent suspicious values
         if (data.radius && data.radius > TELEPORT_DAMAGE_RADIUS * 1.1) {
-            logger.cheat(`Suspicious teleport damage radius from ${socket.id}: ${data.radius} (server: ${TELEPORT_DAMAGE_RADIUS})`);
+            logger.cheat(
+                `Suspicious teleport damage radius from ${socket.id}: ${data.radius} (server: ${TELEPORT_DAMAGE_RADIUS})`
+            );
         }
         if (data.damage && data.damage > TELEPORT_DAMAGE * 1.1) {
-            logger.cheat(`Suspicious teleport damage from ${socket.id}: ${data.damage} (server: ${TELEPORT_DAMAGE})`);
+            logger.cheat(
+                `Suspicious teleport damage from ${socket.id}: ${data.damage} (server: ${TELEPORT_DAMAGE})`
+            );
         }
 
         // Check all players in range
@@ -328,7 +357,13 @@ function registerCombatHandlers(socket, io) {
                 applyDamageWithStorage(player, damage, io);
 
                 const knockbackDist = calculateKnockbackDistance(radius, distance);
-                const knockbackEnd = calculateKnockbackEndPosition(x, y, player.x, player.y, knockbackDist);
+                const knockbackEnd = calculateKnockbackEndPosition(
+                    x,
+                    y,
+                    player.x,
+                    player.y,
+                    knockbackDist
+                );
 
                 player.x = knockbackEnd.x;
                 player.y = knockbackEnd.y;
@@ -340,7 +375,7 @@ function registerCombatHandlers(socket, io) {
                     knockbackEndX: knockbackEnd.x,
                     knockbackEndY: knockbackEnd.y,
                     attackerX: x,
-                    attackerY: y
+                    attackerY: y,
                 });
 
                 if (player.currentHP <= 0 && !player.isDead) {
@@ -349,7 +384,7 @@ function registerCombatHandlers(socket, io) {
                     killedPlayers.push({
                         playerId: playerId,
                         killedBy: socket.id,
-                        respawnDelay: PLAYER_RESPAWN_DELAY
+                        respawnDelay: PLAYER_RESPAWN_DELAY,
                     });
                 }
             }
@@ -358,16 +393,16 @@ function registerCombatHandlers(socket, io) {
         if (hitPlayers.length > 0) {
             io.emit('playerDamaged', {
                 attackerId: socket.id,
-                hitPlayers: hitPlayers
+                hitPlayers: hitPlayers,
             });
         }
 
         if (killedPlayers.length > 0) {
-            killedPlayers.forEach(killed => {
+            killedPlayers.forEach((killed) => {
                 io.emit('playerDied', {
                     playerId: killed.playerId,
                     killedBy: killed.killedBy,
-                    respawnDelay: killed.respawnDelay
+                    respawnDelay: killed.respawnDelay,
                 });
             });
         }
@@ -385,7 +420,13 @@ function registerCombatHandlers(socket, io) {
                 dummy.currentHP = Math.max(0, dummy.currentHP - damage);
 
                 const knockbackDist = calculateKnockbackDistance(radius, distance);
-                const knockbackEnd = calculateKnockbackEndPosition(x, y, dummy.x, dummy.y, knockbackDist);
+                const knockbackEnd = calculateKnockbackEndPosition(
+                    x,
+                    y,
+                    dummy.x,
+                    dummy.y,
+                    knockbackDist
+                );
 
                 dummy.x = knockbackEnd.x;
                 dummy.y = knockbackEnd.y;
@@ -397,7 +438,7 @@ function registerCombatHandlers(socket, io) {
                     knockbackEndX: knockbackEnd.x,
                     knockbackEndY: knockbackEnd.y,
                     attackerX: x,
-                    attackerY: y
+                    attackerY: y,
                 });
 
                 if (dummy.currentHP <= 0) {
@@ -409,7 +450,7 @@ function registerCombatHandlers(socket, io) {
         if (hitDummies.length > 0) {
             io.emit('dummyDamaged', {
                 attackerId: socket.id,
-                hitDummies: hitDummies
+                hitDummies: hitDummies,
             });
         }
     });
@@ -438,7 +479,7 @@ function registerCombatHandlers(socket, io) {
             x: player.x,
             y: player.y,
             dirX: data.dirX,
-            dirY: data.dirY
+            dirY: data.dirY,
         });
     });
 
@@ -452,8 +493,12 @@ function registerCombatHandlers(socket, io) {
 
         // === INPUT VALIDATION ===
         // Validate coordinate types
-        if (!isValidNumber(data.x1) || !isValidNumber(data.y1) ||
-            !isValidNumber(data.x2) || !isValidNumber(data.y2)) {
+        if (
+            !isValidNumber(data.x1) ||
+            !isValidNumber(data.y1) ||
+            !isValidNumber(data.x2) ||
+            !isValidNumber(data.y2)
+        ) {
             logger.cheat(`Invalid laser coordinates from ${socket.id}`);
             return;
         }
@@ -480,15 +525,22 @@ function registerCombatHandlers(socket, io) {
 
         // Log if client sent suspicious values
         if (data.damage && data.damage > LASER_DAMAGE * 1.1) {
-            logger.cheat(`Suspicious laser damage from ${socket.id}: ${data.damage} (server: ${LASER_DAMAGE})`);
+            logger.cheat(
+                `Suspicious laser damage from ${socket.id}: ${data.damage} (server: ${LASER_DAMAGE})`
+            );
         }
 
-        logger.debug(`Laser attack from ${socket.id}: (${x1.toFixed(0)}, ${y1.toFixed(0)}) -> (${x2.toFixed(0)}, ${y2.toFixed(0)})`);
+        logger.debug(
+            `Laser attack from ${socket.id}: (${x1.toFixed(0)}, ${y1.toFixed(0)}) -> (${x2.toFixed(0)}, ${y2.toFixed(0)})`
+        );
 
         // Broadcast laser effect to all other players (use validated coordinates)
         socket.broadcast.emit('laserFired', {
             playerId: socket.id,
-            x1, y1, x2, y2
+            x1,
+            y1,
+            x2,
+            y2,
         });
 
         // Check all players in laser path
@@ -505,7 +557,13 @@ function registerCombatHandlers(socket, io) {
 
                 // Calculate knockback direction from laser origin
                 const knockbackDist = SERVER_CONFIG.KNOCKBACK.LASER_DISTANCE;
-                const knockbackEnd = calculateKnockbackEndPosition(x1, y1, player.x, player.y, knockbackDist);
+                const knockbackEnd = calculateKnockbackEndPosition(
+                    x1,
+                    y1,
+                    player.x,
+                    player.y,
+                    knockbackDist
+                );
 
                 player.x = knockbackEnd.x;
                 player.y = knockbackEnd.y;
@@ -517,10 +575,12 @@ function registerCombatHandlers(socket, io) {
                     knockbackEndX: knockbackEnd.x,
                     knockbackEndY: knockbackEnd.y,
                     attackerX: x1,
-                    attackerY: y1
+                    attackerY: y1,
                 });
 
-                logger.debug(`Laser hit ${playerId} for ${damage} damage (HP: ${player.currentHP}/${player.maxHP})`);
+                logger.debug(
+                    `Laser hit ${playerId} for ${damage} damage (HP: ${player.currentHP}/${player.maxHP})`
+                );
 
                 // Check if player died
                 if (player.currentHP <= 0 && !player.isDead) {
@@ -529,7 +589,7 @@ function registerCombatHandlers(socket, io) {
                     killedPlayers.push({
                         playerId: playerId,
                         killedBy: socket.id,
-                        respawnDelay: PLAYER_RESPAWN_DELAY
+                        respawnDelay: PLAYER_RESPAWN_DELAY,
                     });
                     logger.info(`${playerId} has been killed by laser from ${socket.id}!`);
                 }
@@ -540,17 +600,17 @@ function registerCombatHandlers(socket, io) {
         if (hitPlayers.length > 0) {
             io.emit('playerDamaged', {
                 attackerId: socket.id,
-                hitPlayers: hitPlayers
+                hitPlayers: hitPlayers,
             });
         }
 
         // Broadcast deaths
         if (killedPlayers.length > 0) {
-            killedPlayers.forEach(killed => {
+            killedPlayers.forEach((killed) => {
                 io.emit('playerDied', {
                     playerId: killed.playerId,
                     killedBy: killed.killedBy,
-                    respawnDelay: killed.respawnDelay
+                    respawnDelay: killed.respawnDelay,
                 });
             });
         }
@@ -567,7 +627,13 @@ function registerCombatHandlers(socket, io) {
 
                 // Calculate knockback
                 const knockbackDist = SERVER_CONFIG.KNOCKBACK.LASER_DISTANCE;
-                const knockbackEnd = calculateKnockbackEndPosition(x1, y1, dummy.x, dummy.y, knockbackDist);
+                const knockbackEnd = calculateKnockbackEndPosition(
+                    x1,
+                    y1,
+                    dummy.x,
+                    dummy.y,
+                    knockbackDist
+                );
 
                 dummy.x = knockbackEnd.x;
                 dummy.y = knockbackEnd.y;
@@ -579,10 +645,12 @@ function registerCombatHandlers(socket, io) {
                     knockbackEndX: knockbackEnd.x,
                     knockbackEndY: knockbackEnd.y,
                     attackerX: x1,
-                    attackerY: y1
+                    attackerY: y1,
                 });
 
-                logger.debug(`Laser hit ${dummy.name} for ${damage} damage (HP: ${dummy.currentHP}/${dummy.maxHP})`);
+                logger.debug(
+                    `Laser hit ${dummy.name} for ${damage} damage (HP: ${dummy.currentHP}/${dummy.maxHP})`
+                );
 
                 if (dummy.currentHP <= 0) {
                     dummy.deathTime = Date.now();
@@ -595,7 +663,7 @@ function registerCombatHandlers(socket, io) {
         if (hitDummies.length > 0) {
             io.emit('dummyDamaged', {
                 attackerId: socket.id,
-                hitDummies: hitDummies
+                hitDummies: hitDummies,
             });
         }
     });
@@ -607,7 +675,7 @@ function registerCombatHandlers(socket, io) {
             playerId: socket.id,
             x: data.x,
             y: data.y,
-            radius: data.radius
+            radius: data.radius,
         });
     });
 
@@ -624,8 +692,13 @@ function registerCombatHandlers(socket, io) {
         const tickInterval = SERVER_CONFIG.SKILL_TELEPATHY.TICK_INTERVAL_MS;
         const minTickInterval = tickInterval * 0.9; // 10% tolerance for network latency
 
-        if (attacker.telepathyLastTickTime && (now - attacker.telepathyLastTickTime) < minTickInterval) {
-            logger.cheat(`Telepathy tick too fast from ${socket.id}: ${now - attacker.telepathyLastTickTime}ms (min: ${minTickInterval}ms)`);
+        if (
+            attacker.telepathyLastTickTime &&
+            now - attacker.telepathyLastTickTime < minTickInterval
+        ) {
+            logger.cheat(
+                `Telepathy tick too fast from ${socket.id}: ${now - attacker.telepathyLastTickTime}ms (min: ${minTickInterval}ms)`
+            );
             return;
         }
         attacker.telepathyLastTickTime = now;
@@ -642,10 +715,14 @@ function registerCombatHandlers(socket, io) {
 
         // Log if client sent suspicious values
         if (data.radius && data.radius > TELEPATHY_RADIUS * 1.1) {
-            logger.cheat(`Suspicious telepathy radius from ${socket.id}: ${data.radius} (server: ${TELEPATHY_RADIUS})`);
+            logger.cheat(
+                `Suspicious telepathy radius from ${socket.id}: ${data.radius} (server: ${TELEPATHY_RADIUS})`
+            );
         }
         if (data.damagePerTarget && data.damagePerTarget > TELEPATHY_DAMAGE_PER_TICK * 1.1) {
-            logger.cheat(`Suspicious telepathy damage from ${socket.id}: ${data.damagePerTarget} (server: ${TELEPATHY_DAMAGE_PER_TICK})`);
+            logger.cheat(
+                `Suspicious telepathy damage from ${socket.id}: ${data.damagePerTarget} (server: ${TELEPATHY_DAMAGE_PER_TICK})`
+            );
         }
 
         let totalDamageDealt = 0;
@@ -672,7 +749,7 @@ function registerCombatHandlers(socket, io) {
                     knockbackEndX: player.x, // No knockback for telepathy
                     knockbackEndY: player.y,
                     attackerX: x,
-                    attackerY: y
+                    attackerY: y,
                 });
 
                 if (player.currentHP <= 0 && !player.isDead) {
@@ -681,7 +758,7 @@ function registerCombatHandlers(socket, io) {
                     killedPlayers.push({
                         playerId: playerId,
                         killedBy: socket.id,
-                        respawnDelay: PLAYER_RESPAWN_DELAY
+                        respawnDelay: PLAYER_RESPAWN_DELAY,
                     });
                 }
             }
@@ -707,7 +784,7 @@ function registerCombatHandlers(socket, io) {
                     knockbackEndX: dummy.x,
                     knockbackEndY: dummy.y,
                     attackerX: x,
-                    attackerY: y
+                    attackerY: y,
                 });
 
                 if (dummy.currentHP <= 0) {
@@ -720,16 +797,16 @@ function registerCombatHandlers(socket, io) {
         if (hitPlayers.length > 0) {
             io.emit('telepathyTick', {
                 attackerId: socket.id,
-                hitPlayers: hitPlayers
+                hitPlayers: hitPlayers,
             });
         }
 
         if (killedPlayers.length > 0) {
-            killedPlayers.forEach(killed => {
+            killedPlayers.forEach((killed) => {
                 io.emit('playerDied', {
                     playerId: killed.playerId,
                     killedBy: killed.killedBy,
-                    respawnDelay: killed.respawnDelay
+                    respawnDelay: killed.respawnDelay,
                 });
             });
         }
@@ -737,7 +814,7 @@ function registerCombatHandlers(socket, io) {
         if (hitDummies.length > 0) {
             io.emit('telepathyTickDummy', {
                 attackerId: socket.id,
-                hitDummies: hitDummies
+                hitDummies: hitDummies,
             });
         }
 
@@ -751,7 +828,7 @@ function registerCombatHandlers(socket, io) {
             io.to(socket.id).emit('telepathyHeal', {
                 playerId: socket.id,
                 healAmount: healAmount,
-                newHP: attacker.currentHP
+                newHP: attacker.currentHP,
             });
         }
     });
@@ -780,7 +857,7 @@ function registerCombatHandlers(socket, io) {
             playerId: socket.id,
             x: x,
             y: y,
-            radius: radius
+            radius: radius,
         });
 
         // Check all players in range
@@ -809,10 +886,12 @@ function registerCombatHandlers(socket, io) {
                     attackerX: x,
                     attackerY: y,
                     confused: true,
-                    confusionDuration: confusionDuration
+                    confusionDuration: confusionDuration,
                 });
 
-                logger.debug(`Wave hit ${playerId} for ${damage} damage, confused for ${confusionDuration}ms`);
+                logger.debug(
+                    `Wave hit ${playerId} for ${damage} damage, confused for ${confusionDuration}ms`
+                );
 
                 if (player.currentHP <= 0 && !player.isDead) {
                     player.isDead = true;
@@ -820,7 +899,7 @@ function registerCombatHandlers(socket, io) {
                     killedPlayers.push({
                         playerId: playerId,
                         killedBy: socket.id,
-                        respawnDelay: PLAYER_RESPAWN_DELAY
+                        respawnDelay: PLAYER_RESPAWN_DELAY,
                     });
                     logger.info(`${playerId} has been killed by wave from ${socket.id}!`);
                 }
@@ -831,17 +910,17 @@ function registerCombatHandlers(socket, io) {
         if (hitPlayers.length > 0) {
             io.emit('waveDamage', {
                 attackerId: socket.id,
-                hitPlayers: hitPlayers
+                hitPlayers: hitPlayers,
             });
         }
 
         // Broadcast deaths
         if (killedPlayers.length > 0) {
-            killedPlayers.forEach(killed => {
+            killedPlayers.forEach((killed) => {
                 io.emit('playerDied', {
                     playerId: killed.playerId,
                     killedBy: killed.killedBy,
-                    respawnDelay: killed.respawnDelay
+                    respawnDelay: killed.respawnDelay,
                 });
             });
         }
@@ -865,7 +944,7 @@ function registerCombatHandlers(socket, io) {
                     knockbackEndX: dummy.x,
                     knockbackEndY: dummy.y,
                     attackerX: x,
-                    attackerY: y
+                    attackerY: y,
                 });
 
                 if (dummy.currentHP <= 0) {
@@ -877,7 +956,7 @@ function registerCombatHandlers(socket, io) {
         if (hitDummies.length > 0) {
             io.emit('dummyDamaged', {
                 attackerId: socket.id,
-                hitDummies: hitDummies
+                hitDummies: hitDummies,
             });
         }
     });
@@ -892,7 +971,7 @@ function registerCombatHandlers(socket, io) {
 
         // Broadcast madness start to all other players
         socket.broadcast.emit('playerMadnessStart', {
-            playerId: socket.id
+            playerId: socket.id,
         });
     });
 
@@ -905,7 +984,7 @@ function registerCombatHandlers(socket, io) {
 
         // Broadcast madness end to all other players
         socket.broadcast.emit('playerMadnessEnd', {
-            playerId: socket.id
+            playerId: socket.id,
         });
     });
 
@@ -941,7 +1020,7 @@ function registerCombatHandlers(socket, io) {
                     knockbackEndX: player.x,
                     knockbackEndY: player.y,
                     attackerX: x,
-                    attackerY: y
+                    attackerY: y,
                 });
 
                 if (player.currentHP <= 0 && !player.isDead) {
@@ -950,7 +1029,7 @@ function registerCombatHandlers(socket, io) {
                     killedPlayers.push({
                         playerId: playerId,
                         killedBy: socket.id,
-                        respawnDelay: PLAYER_RESPAWN_DELAY
+                        respawnDelay: PLAYER_RESPAWN_DELAY,
                     });
                     logger.info(`${playerId} has been killed by madness walk from ${socket.id}!`);
                 }
@@ -961,16 +1040,16 @@ function registerCombatHandlers(socket, io) {
         if (hitPlayers.length > 0) {
             io.emit('madnessTick', {
                 attackerId: socket.id,
-                hitPlayers: hitPlayers
+                hitPlayers: hitPlayers,
             });
         }
 
         if (killedPlayers.length > 0) {
-            killedPlayers.forEach(killed => {
+            killedPlayers.forEach((killed) => {
                 io.emit('playerDied', {
                     playerId: killed.playerId,
                     killedBy: killed.killedBy,
-                    respawnDelay: killed.respawnDelay
+                    respawnDelay: killed.respawnDelay,
                 });
             });
         }
@@ -994,7 +1073,7 @@ function registerCombatHandlers(socket, io) {
                     knockbackEndX: dummy.x,
                     knockbackEndY: dummy.y,
                     attackerX: x,
-                    attackerY: y
+                    attackerY: y,
                 });
 
                 if (dummy.currentHP <= 0) {
@@ -1006,7 +1085,7 @@ function registerCombatHandlers(socket, io) {
         if (hitDummies.length > 0) {
             io.emit('dummyDamaged', {
                 attackerId: socket.id,
-                hitDummies: hitDummies
+                hitDummies: hitDummies,
             });
         }
     });
@@ -1039,9 +1118,11 @@ function registerCombatHandlers(socket, io) {
         const damage = POT_SMASH_DAMAGE;
         const splashDamage = POT_SMASH_SPLASH_DAMAGE;
         const splashRadius = POT_SMASH_SPLASH_RADIUS;
-        const halfAngleRad = (angle / 2) * Math.PI / 180;
+        const halfAngleRad = ((angle / 2) * Math.PI) / 180;
 
-        logger.debug(`Pot smash from ${socket.id} at (${x.toFixed(0)}, ${y.toFixed(0)}) dir (${normDirX.toFixed(2)}, ${normDirY.toFixed(2)})`);
+        logger.debug(
+            `Pot smash from ${socket.id} at (${x.toFixed(0)}, ${y.toFixed(0)}) dir (${normDirX.toFixed(2)}, ${normDirY.toFixed(2)})`
+        );
 
         // Broadcast pot smash effect to all other players
         socket.broadcast.emit('playerPotSmash', {
@@ -1049,7 +1130,7 @@ function registerCombatHandlers(socket, io) {
             x: x,
             y: y,
             dirX: normDirX,
-            dirY: normDirY
+            dirY: normDirY,
         });
 
         // Helper to check if target is in cone
@@ -1085,7 +1166,13 @@ function registerCombatHandlers(socket, io) {
 
                 // Calculate knockback
                 const knockbackDist = 60; // Fixed knockback for pot smash
-                const knockbackEnd = calculateKnockbackEndPosition(x, y, player.x, player.y, knockbackDist);
+                const knockbackEnd = calculateKnockbackEndPosition(
+                    x,
+                    y,
+                    player.x,
+                    player.y,
+                    knockbackDist
+                );
                 player.x = knockbackEnd.x;
                 player.y = knockbackEnd.y;
 
@@ -1097,7 +1184,7 @@ function registerCombatHandlers(socket, io) {
                     knockbackEndY: knockbackEnd.y,
                     attackerX: x,
                     attackerY: y,
-                    isMainHit: true
+                    isMainHit: true,
                 });
 
                 logger.debug(`Pot smash hit ${playerId} for ${damage} damage`);
@@ -1108,7 +1195,7 @@ function registerCombatHandlers(socket, io) {
                     killedPlayers.push({
                         playerId: playerId,
                         killedBy: socket.id,
-                        respawnDelay: PLAYER_RESPAWN_DELAY
+                        respawnDelay: PLAYER_RESPAWN_DELAY,
                     });
                 }
             }
@@ -1124,7 +1211,13 @@ function registerCombatHandlers(socket, io) {
                 mainHitPositions.push({ x: dummy.x, y: dummy.y });
 
                 const knockbackDist = 60;
-                const knockbackEnd = calculateKnockbackEndPosition(x, y, dummy.x, dummy.y, knockbackDist);
+                const knockbackEnd = calculateKnockbackEndPosition(
+                    x,
+                    y,
+                    dummy.x,
+                    dummy.y,
+                    knockbackDist
+                );
                 dummy.x = knockbackEnd.x;
                 dummy.y = knockbackEnd.y;
 
@@ -1136,7 +1229,7 @@ function registerCombatHandlers(socket, io) {
                     knockbackEndY: knockbackEnd.y,
                     attackerX: x,
                     attackerY: y,
-                    isMainHit: true
+                    isMainHit: true,
                 });
 
                 if (dummy.currentHP <= 0) {
@@ -1146,13 +1239,13 @@ function registerCombatHandlers(socket, io) {
         });
 
         // Apply splash damage around main hit positions
-        mainHitPositions.forEach(hitPos => {
+        mainHitPositions.forEach((hitPos) => {
             // Check players for splash
             players.forEach((player, playerId) => {
                 if (playerId === socket.id) return;
                 if (player.isDead) return;
                 // Skip if already hit by main attack
-                if (hitPlayers.some(h => h.playerId === playerId && h.isMainHit)) return;
+                if (hitPlayers.some((h) => h.playerId === playerId && h.isMainHit)) return;
 
                 const dx = player.x - hitPos.x;
                 const dy = player.y - hitPos.y;
@@ -1169,7 +1262,7 @@ function registerCombatHandlers(socket, io) {
                         knockbackEndY: player.y,
                         attackerX: hitPos.x,
                         attackerY: hitPos.y,
-                        isMainHit: false
+                        isMainHit: false,
                     });
 
                     logger.debug(`Pot smash splash hit ${playerId} for ${splashDamage} damage`);
@@ -1180,7 +1273,7 @@ function registerCombatHandlers(socket, io) {
                         killedPlayers.push({
                             playerId: playerId,
                             killedBy: socket.id,
-                            respawnDelay: PLAYER_RESPAWN_DELAY
+                            respawnDelay: PLAYER_RESPAWN_DELAY,
                         });
                     }
                 }
@@ -1189,7 +1282,7 @@ function registerCombatHandlers(socket, io) {
             // Check dummies for splash
             dummies.forEach((dummy) => {
                 if (dummy.currentHP <= 0) return;
-                if (hitDummies.some(h => h.dummyId === dummy.id && h.isMainHit)) return;
+                if (hitDummies.some((h) => h.dummyId === dummy.id && h.isMainHit)) return;
 
                 const dx = dummy.x - hitPos.x;
                 const dy = dummy.y - hitPos.y;
@@ -1206,7 +1299,7 @@ function registerCombatHandlers(socket, io) {
                         knockbackEndY: dummy.y,
                         attackerX: hitPos.x,
                         attackerY: hitPos.y,
-                        isMainHit: false
+                        isMainHit: false,
                     });
 
                     if (dummy.currentHP <= 0) {
@@ -1220,16 +1313,16 @@ function registerCombatHandlers(socket, io) {
         if (hitPlayers.length > 0) {
             io.emit('potSmashDamage', {
                 attackerId: socket.id,
-                hitPlayers: hitPlayers
+                hitPlayers: hitPlayers,
             });
         }
 
         if (killedPlayers.length > 0) {
-            killedPlayers.forEach(killed => {
+            killedPlayers.forEach((killed) => {
                 io.emit('playerDied', {
                     playerId: killed.playerId,
                     killedBy: killed.killedBy,
-                    respawnDelay: killed.respawnDelay
+                    respawnDelay: killed.respawnDelay,
                 });
             });
         }
@@ -1237,7 +1330,7 @@ function registerCombatHandlers(socket, io) {
         if (hitDummies.length > 0) {
             io.emit('dummyDamaged', {
                 attackerId: socket.id,
-                hitDummies: hitDummies
+                hitDummies: hitDummies,
             });
         }
     });
@@ -1248,11 +1341,15 @@ function registerCombatHandlers(socket, io) {
         if (!player) return;
         if (player.isDead) return;
 
-        logger.info(`Curry recovery attempt by ${socket.id}, characterId: ${player.characterId}, storedDamage: ${player.storedDamage}`);
+        logger.info(
+            `Curry recovery attempt by ${socket.id}, characterId: ${player.characterId}, storedDamage: ${player.storedDamage}`
+        );
 
         // Only curry-bear can use this skill
         if (player.characterId !== 'curry-bear') {
-            logger.info(`Non curry-bear ${socket.id} (${player.characterId}) tried to use curry recovery`);
+            logger.info(
+                `Non curry-bear ${socket.id} (${player.characterId}) tried to use curry recovery`
+            );
             return;
         }
 
@@ -1278,7 +1375,7 @@ function registerCombatHandlers(socket, io) {
             playerId: socket.id,
             healAmount: actualHeal,
             currentHP: player.currentHP,
-            maxHP: player.maxHP
+            maxHP: player.maxHP,
         });
     });
 
@@ -1289,7 +1386,7 @@ function registerCombatHandlers(socket, io) {
 
         socket.emit('storedDamageUpdate', {
             storedDamage: player.storedDamage || 0,
-            maxStored: CURRY_RECOVERY_MAX_STORED
+            maxStored: CURRY_RECOVERY_MAX_STORED,
         });
     });
 
@@ -1335,8 +1432,8 @@ function registerCombatHandlers(socket, io) {
 
         // Apply rage stacks bonus
         const rageStacks = attacker.rageStacks || 0;
-        throwDamage *= (1 + rageStacks * SERVER_CONFIG.HULK_PASSIVE.DAMAGE_PER_STACK);
-        throwDistance *= (1 + rageStacks * SERVER_CONFIG.HULK_PASSIVE.THROW_PER_STACK);
+        throwDamage *= 1 + rageStacks * SERVER_CONFIG.HULK_PASSIVE.DAMAGE_PER_STACK;
+        throwDistance *= 1 + rageStacks * SERVER_CONFIG.HULK_PASSIVE.THROW_PER_STACK;
 
         // Apply damage to target
         applyDamageWithStorage(target, Math.floor(throwDamage), io);
@@ -1354,7 +1451,9 @@ function registerCombatHandlers(socket, io) {
         target.x = endX;
         target.y = endY;
 
-        logger.debug(`Spin throw: ${socket.id} threw ${targetId} for ${Math.floor(throwDamage)} damage`);
+        logger.debug(
+            `Spin throw: ${socket.id} threw ${targetId} for ${Math.floor(throwDamage)} damage`
+        );
 
         // Broadcast spin throw effect
         io.emit('playerSpinThrow', {
@@ -1364,7 +1463,7 @@ function registerCombatHandlers(socket, io) {
             startY: attacker.y,
             endX: endX,
             endY: endY,
-            damage: Math.floor(throwDamage)
+            damage: Math.floor(throwDamage),
         });
 
         // Check if target died
@@ -1374,7 +1473,7 @@ function registerCombatHandlers(socket, io) {
             io.emit('playerDied', {
                 playerId: targetId,
                 killedBy: socket.id,
-                respawnDelay: PLAYER_RESPAWN_DELAY
+                respawnDelay: PLAYER_RESPAWN_DELAY,
             });
             logger.info(`${targetId} has been killed by spin throw from ${socket.id}!`);
         }
@@ -1400,7 +1499,7 @@ function registerCombatHandlers(socket, io) {
         // Broadcast rage start
         socket.broadcast.emit('playerRageStart', {
             playerId: socket.id,
-            duration: SERVER_CONFIG.SKILL_RAGE.DURATION_MS
+            duration: SERVER_CONFIG.SKILL_RAGE.DURATION_MS,
         });
     });
 
@@ -1415,7 +1514,7 @@ function registerCombatHandlers(socket, io) {
 
         // Broadcast rage end
         socket.broadcast.emit('playerRageEnd', {
-            playerId: socket.id
+            playerId: socket.id,
         });
     });
 }

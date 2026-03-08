@@ -23,7 +23,7 @@ export function findNearestEnemy(playersOnly = false) {
 
     // Check dummies (skip if playersOnly)
     if (!playersOnly) {
-        gameState.dummies.forEach(dummy => {
+        gameState.dummies.forEach((dummy) => {
             if (dummy.isAlive()) {
                 const dx = dummy.x - playerPos.x;
                 const dy = dummy.y - playerPos.y;
@@ -38,7 +38,7 @@ export function findNearestEnemy(playersOnly = false) {
 
     // Check remote players
     if (gameState.networkManager) {
-        gameState.networkManager.remotePlayers.forEach(remotePlayer => {
+        gameState.networkManager.remotePlayers.forEach((remotePlayer) => {
             if (remotePlayer.isAlive()) {
                 const dx = remotePlayer.x - playerPos.x;
                 const dy = remotePlayer.y - playerPos.y;
@@ -68,7 +68,7 @@ export function findRandomEnemy() {
     const enemies = [];
 
     // Collect all alive dummies
-    gameState.dummies.forEach(dummy => {
+    gameState.dummies.forEach((dummy) => {
         if (dummy.isAlive()) {
             enemies.push({ x: dummy.x, y: dummy.y, type: 'dummy' });
         }
@@ -76,7 +76,7 @@ export function findRandomEnemy() {
 
     // Collect all alive remote players
     if (gameState.networkManager) {
-        gameState.networkManager.remotePlayers.forEach(remotePlayer => {
+        gameState.networkManager.remotePlayers.forEach((remotePlayer) => {
             if (remotePlayer.isAlive()) {
                 enemies.push({ x: remotePlayer.x, y: remotePlayer.y, type: 'player' });
             }

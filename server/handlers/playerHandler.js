@@ -29,12 +29,14 @@ function registerPlayerHandlers(socket, io) {
     // Assign team to new player
     const team = assignTeam();
     const teamCounts = getTeamCounts();
-    logger.info(`Assigned team ${team} to player ${socket.id} (Red: ${teamCounts.red}, Blue: ${teamCounts.blue})`);
+    logger.info(
+        `Assigned team ${team} to player ${socket.id} (Red: ${teamCounts.red}, Blue: ${teamCounts.blue})`
+    );
 
     // Send player their ID and team
     socket.emit('connected', {
         playerId: socket.id,
-        team: team
+        team: team,
     });
 
     // Send existing players to new player
@@ -42,11 +44,11 @@ function registerPlayerHandlers(socket, io) {
     socket.emit('existingPlayers', existingPlayers);
 
     // Send existing shards to new player
-    const activeShards = Array.from(shards.values()).filter(s => !s.collected);
+    const activeShards = Array.from(shards.values()).filter((s) => !s.collected);
     socket.emit('existingShards', activeShards);
 
     // Send existing dummies to new player
-    const aliveDummies = Array.from(dummies.values()).filter(d => d.currentHP > 0);
+    const aliveDummies = Array.from(dummies.values()).filter((d) => d.currentHP > 0);
     socket.emit('existingDummies', aliveDummies);
 
     // Initialize player data with team
@@ -62,7 +64,7 @@ function registerPlayerHandlers(socket, io) {
         maxHP: 100,
         deathTime: 0,
         isDead: false,
-        characterId: 'alien' // 기본 캐릭터 (playerMove에서 업데이트됨)
+        characterId: 'alien', // 기본 캐릭터 (playerMove에서 업데이트됨)
     });
 
     // Notify others about new player (include team)
@@ -77,7 +79,7 @@ function registerPlayerHandlers(socket, io) {
         currentHP: 100,
         maxHP: 100,
         isDead: false,
-        characterId: 'alien' // 기본 캐릭터
+        characterId: 'alien', // 기본 캐릭터
     });
 
     // Handle player position updates
@@ -103,7 +105,12 @@ function registerPlayerHandlers(socket, io) {
 
         // Speed hack detection (only if player exists with previous position)
         if (existingPlayer && !existingPlayer.isDead) {
-            const moveDistance = calculateDistance(existingPlayer.x, existingPlayer.y, data.x, data.y);
+            const moveDistance = calculateDistance(
+                existingPlayer.x,
+                existingPlayer.y,
+                data.x,
+                data.y
+            );
             const currentTime = Date.now();
             const lastMoveTime = existingPlayer.lastMoveTime || currentTime;
             const timeDelta = Math.max(16, currentTime - lastMoveTime); // Minimum 16ms (60fps)
@@ -113,7 +120,9 @@ function registerPlayerHandlers(socket, io) {
                 // Log potential speed hack but allow within reasonable bounds
                 // (Network lag can cause position jumps)
                 if (moveDistance > maxAllowedDistance * 3) {
-                    logger.cheat(`Speed hack detected from ${socket.id}: moved ${moveDistance.toFixed(1)}px in ${timeDelta}ms (max: ${maxAllowedDistance.toFixed(1)}px)`);
+                    logger.cheat(
+                        `Speed hack detected from ${socket.id}: moved ${moveDistance.toFixed(1)}px in ${timeDelta}ms (max: ${maxAllowedDistance.toFixed(1)}px)`
+                    );
                     // Use last valid position instead
                     validX = existingPlayer.x;
                     validY = existingPlayer.y;
@@ -128,9 +137,10 @@ function registerPlayerHandlers(socket, io) {
         const characterId = isValidString(data.characterId, 20) ? data.characterId : 'alien';
 
         // Calculate maxHP based on character
-        const characterMaxHP = characterId === 'big-sis-hulk'
-            ? SERVER_CONFIG.HULK_STATS.MAX_HP
-            : SERVER_CONFIG.PLAYER.MAX_HP;
+        const characterMaxHP =
+            characterId === 'big-sis-hulk'
+                ? SERVER_CONFIG.HULK_STATS.MAX_HP
+                : SERVER_CONFIG.PLAYER.MAX_HP;
 
         // Determine initial HP (use character max HP if new player or character changed)
         let initialMaxHP = characterMaxHP;
@@ -161,8 +171,8 @@ function registerPlayerHandlers(socket, io) {
             maxHP: initialMaxHP,
             deathTime: existingPlayer ? existingPlayer.deathTime : 0,
             isDead: existingPlayer ? existingPlayer.isDead : false,
-            storedDamage: existingPlayer ? (existingPlayer.storedDamage || 0) : 0,
-            lastMoveTime: Date.now()
+            storedDamage: existingPlayer ? existingPlayer.storedDamage || 0 : 0,
+            lastMoveTime: Date.now(),
         });
 
         // Broadcast to other players (use validated position)
@@ -173,7 +183,7 @@ function registerPlayerHandlers(socket, io) {
             playerName: playerName,
             level: level,
             experience: experience,
-            characterId: characterId
+            characterId: characterId,
         });
     });
 
@@ -185,7 +195,7 @@ function registerPlayerHandlers(socket, io) {
 
         // Notify others
         socket.broadcast.emit('playerLeft', {
-            playerId: socket.id
+            playerId: socket.id,
         });
     });
 }

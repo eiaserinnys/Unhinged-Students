@@ -76,7 +76,6 @@ export const TeleportEffectMixin = {
             ctx.beginPath();
             ctx.arc(this.teleportStartX, this.teleportStartY, 20 * scale, 0, Math.PI * 2);
             ctx.fill();
-
         } else if (this.teleportPhase === 'appear') {
             const progress = elapsed / this.teleportAppearDuration;
             const opacity = progress < 0.5 ? progress * 2 : 2 - progress * 2;
@@ -86,7 +85,13 @@ export const TeleportEffectMixin = {
             ctx.globalAlpha = damageOpacity;
             ctx.fillStyle = '#44FF44';
             ctx.beginPath();
-            ctx.arc(this.teleportEndX, this.teleportEndY, this.teleportDamageRadius, 0, Math.PI * 2);
+            ctx.arc(
+                this.teleportEndX,
+                this.teleportEndY,
+                this.teleportDamageRadius,
+                0,
+                Math.PI * 2
+            );
             ctx.fill();
 
             // Damage radius border
@@ -94,19 +99,31 @@ export const TeleportEffectMixin = {
             ctx.strokeStyle = '#00FF00';
             ctx.lineWidth = 3;
             ctx.beginPath();
-            ctx.arc(this.teleportEndX, this.teleportEndY, this.teleportDamageRadius, 0, Math.PI * 2);
+            ctx.arc(
+                this.teleportEndX,
+                this.teleportEndY,
+                this.teleportDamageRadius,
+                0,
+                Math.PI * 2
+            );
             ctx.stroke();
 
             // Appear flash
             ctx.globalAlpha = opacity * 0.8;
             ctx.fillStyle = '#ffffff';
             ctx.beginPath();
-            ctx.arc(this.teleportEndX, this.teleportEndY, 30 * (1 - progress * 0.5), 0, Math.PI * 2);
+            ctx.arc(
+                this.teleportEndX,
+                this.teleportEndY,
+                30 * (1 - progress * 0.5),
+                0,
+                Math.PI * 2
+            );
             ctx.fill();
         }
 
         ctx.restore();
-    }
+    },
 };
 
 // Telepathy Effect Mixin for RemotePlayer
@@ -173,7 +190,7 @@ export const TelepathyEffectMixin = {
         ctx.stroke();
 
         ctx.restore();
-    }
+    },
 };
 
 // Backward compatibility: expose to window

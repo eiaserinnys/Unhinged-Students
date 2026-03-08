@@ -10,16 +10,16 @@ export const Input = {
         x: 0,
         y: 0,
         pressed: false,
-        button: -1
+        button: -1,
     },
     touch: {
         x: 0,
         y: 0,
-        active: false
+        active: false,
     },
     // Confusion effect (from wave attack)
     isConfused: false,
-    confusionEndTime: 0
+    confusionEndTime: 0,
 };
 
 // Store event handler references for cleanup
@@ -176,10 +176,10 @@ export function isConfused() {
 
 // Map to reverse direction keys when confused
 const confusionKeyMap = {
-    'arrowup': 'arrowdown',
-    'arrowdown': 'arrowup',
-    'arrowleft': 'arrowright',
-    'arrowright': 'arrowleft'
+    arrowup: 'arrowdown',
+    arrowdown: 'arrowup',
+    arrowleft: 'arrowright',
+    arrowright: 'arrowleft',
 };
 
 // Helper functions

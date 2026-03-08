@@ -90,14 +90,14 @@ export class SkillManager {
 
     update() {
         // Check for ready flashes
-        this.skills.forEach(skill => {
+        this.skills.forEach((skill) => {
             skill.checkReadyFlash();
         });
     }
 
     // Get all skills in order for UI
     getAllSkills() {
-        return this.skillOrder.map(key => this.skills.get(key));
+        return this.skillOrder.map((key) => this.skills.get(key));
     }
 }
 
@@ -190,7 +190,7 @@ export class LaserBeamEffect {
             x1: this.startX,
             y1: this.startY,
             x2: endX,
-            y2: endY
+            y2: endY,
         };
     }
 
@@ -221,7 +221,6 @@ export class LaserBeamEffect {
                 ctx.lineTo(line.x2, line.y2);
             }
             ctx.stroke();
-
         } else if (this.phase === 'firing') {
             // Firing flash - bright white/red beam
             const progress = elapsed / this.fireDuration;
@@ -302,7 +301,8 @@ export class TeleportEffect {
         } else {
             // Fallback: random teleport if no target
             const angle = Math.random() * Math.PI * 2;
-            const distance = this.minDistance + Math.random() * (this.maxDistance - this.minDistance);
+            const distance =
+                this.minDistance + Math.random() * (this.maxDistance - this.minDistance);
 
             newX = playerX + Math.cos(angle) * distance;
             newY = playerY + Math.sin(angle) * distance;
@@ -355,7 +355,7 @@ export class TeleportEffect {
             x: this.endX,
             y: this.endY,
             radius: this.damageRadius,
-            damage: this.damage
+            damage: this.damage,
         };
     }
 
@@ -385,7 +385,6 @@ export class TeleportEffect {
             ctx.beginPath();
             ctx.arc(this.startX, this.startY, 20 * scale, 0, Math.PI * 2);
             ctx.fill();
-
         } else if (this.phase === 'appear') {
             // Appearing effect at end position
             const progress = elapsed / this.appearDuration;
@@ -484,7 +483,7 @@ export class TelepathyEffect {
             y: this.y,
             radius: this.radius,
             damagePerTarget: this.damagePerTick,
-            maxHeal: this.maxHealPerTick
+            maxHeal: this.maxHealPerTick,
         };
     }
 
@@ -532,8 +531,12 @@ export class TelepathyEffect {
 
         // Inner glow
         const innerGradient = ctx.createRadialGradient(
-            this.x, this.y, 0,
-            this.x, this.y, currentRadius * 0.5
+            this.x,
+            this.y,
+            0,
+            this.x,
+            this.y,
+            currentRadius * 0.5
         );
         innerGradient.addColorStop(0, `rgba(139, 92, 246, ${(1 - progress) * 0.5})`);
         innerGradient.addColorStop(1, 'rgba(139, 92, 246, 0)');

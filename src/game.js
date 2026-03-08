@@ -22,7 +22,7 @@ import {
     setCtx,
     getResizeHandler,
     setResizeHandler,
-    setLoadHandler
+    setLoadHandler,
 } from './core/gameState.js';
 import {
     initInput,
@@ -31,7 +31,7 @@ import {
     updateConfusion,
     isConfused,
     isKeyPressed,
-    isKeyJustPressed
+    isKeyJustPressed,
 } from './input.js';
 import { LobbyManager } from './lobby.js';
 import { Character } from './character.js';
@@ -44,10 +44,14 @@ import {
     LaserBeamEffect,
     TeleportEffect,
     TelepathyEffect,
-    SkillUI
+    SkillUI,
 } from './skill.js';
 import { NetworkManager } from './network/NetworkManager.js';
-import { renderHitVignette as renderHitVignetteUI, renderDeathScreen as renderDeathScreenUI, triggerHitVignette } from './rendering/uiRenderer.js';
+import {
+    renderHitVignette as renderHitVignetteUI,
+    renderDeathScreen as renderDeathScreenUI,
+    triggerHitVignette,
+} from './rendering/uiRenderer.js';
 import { findNearestEnemy, findRandomEnemy } from './combat/enemyFinder.js';
 
 // Resize canvas to fill window while maintaining 16:9 aspect ratio
@@ -87,7 +91,9 @@ function resizeCanvas() {
     canvas.style.left = newOffsetX + 'px';
     canvas.style.top = newOffsetY + 'px';
 
-    logger.debug(`Canvas resized to ${canvas.width}x${canvas.height}, scale: ${newScale.toFixed(2)}`);
+    logger.debug(
+        `Canvas resized to ${canvas.width}x${canvas.height}, scale: ${newScale.toFixed(2)}`
+    );
 }
 
 // Initialize game (called on page load)
@@ -129,7 +135,9 @@ function init() {
 
 // Start game after lobby selection
 function startGame() {
-    logger.info(`Starting game with character: ${gameState.selectedCharacter}, name: ${gameState.playerName}`);
+    logger.info(
+        `Starting game with character: ${gameState.selectedCharacter}, name: ${gameState.playerName}`
+    );
 
     // Show "waiting for team" state until server assigns team
     gameState.screen = 'waitingTeam';
@@ -157,13 +165,13 @@ function startGame() {
     // Create test dummies for combat practice
     // Position them around the map for testing
     const dummyConfig = GAME_CONFIG.DUMMY;
-    const dummyPositions = dummyConfig.POSITIONS.map(pos => ({
+    const dummyPositions = dummyConfig.POSITIONS.map((pos) => ({
         x: GAME_WIDTH / 2 + pos.offsetX,
         y: GAME_HEIGHT / 2 + pos.offsetY,
-        name: pos.name
+        name: pos.name,
     }));
 
-    dummyPositions.forEach(pos => {
+    dummyPositions.forEach((pos) => {
         const dummy = new Character(
             pos.x,
             pos.y,
@@ -269,14 +277,16 @@ function update(deltaTime) {
         const collectedShards = gameState.shardManager.checkCollisions(gameState.player);
         if (collectedShards.length > 0) {
             gameState.stats.shardsCollected += collectedShards.length;
-            logger.debug(`Collected ${collectedShards.length} shard(s)! Total: ${gameState.stats.shardsCollected}`);
+            logger.debug(
+                `Collected ${collectedShards.length} shard(s)! Total: ${gameState.stats.shardsCollected}`
+            );
 
             // Add experience for each shard collected (1 shard = 1 exp)
             gameState.player.addExperience(collectedShards.length);
 
             // Send shard collection to server
             if (gameState.networkManager) {
-                collectedShards.forEach(shard => {
+                collectedShards.forEach((shard) => {
                     if (shard.id !== null) {
                         gameState.networkManager.sendShardCollection(shard.id);
                     }
@@ -286,7 +296,7 @@ function update(deltaTime) {
     }
 
     // Update dummies (respawn is handled by server)
-    gameState.dummies.forEach(dummy => {
+    gameState.dummies.forEach((dummy) => {
         dummy.update({ width: GAME_WIDTH, height: GAME_HEIGHT }, deltaTime);
     });
 
@@ -297,7 +307,10 @@ function update(deltaTime) {
 
         // Send attack to server once per attack (when attack just started)
         const currentTime = Date.now();
-        if (!gameState.lastAttackSentTime || currentTime - gameState.lastAttackSentTime > gameState.player.attackCooldown) {
+        if (
+            !gameState.lastAttackSentTime ||
+            currentTime - gameState.lastAttackSentTime > gameState.player.attackCooldown
+        ) {
             if (gameState.networkManager) {
                 gameState.networkManager.sendAttack(
                     attackArea.x,
@@ -348,11 +361,17 @@ function update(deltaTime) {
             }
         } else {
             // Check if player is moving (any arrow key pressed)
-            const isMoving = isKeyPressed('arrowup') || isKeyPressed('arrowdown') ||
-                           isKeyPressed('arrowleft') || isKeyPressed('arrowright');
+            const isMoving =
+                isKeyPressed('arrowup') ||
+                isKeyPressed('arrowdown') ||
+                isKeyPressed('arrowleft') ||
+                isKeyPressed('arrowright');
 
             // Send damage tick if moving and tick interval passed
-            if (isMoving && currentTime - gameState.madnessLastTickTime >= gameState.madnessTickInterval) {
+            if (
+                isMoving &&
+                currentTime - gameState.madnessLastTickTime >= gameState.madnessTickInterval
+            ) {
                 gameState.madnessLastTickTime = currentTime;
                 if (gameState.networkManager) {
                     gameState.networkManager.sendMadnessDamage();
@@ -404,8 +423,10 @@ function update(deltaTime) {
             const line = gameState.laserBeamEffect.getLaserLine();
             if (line && gameState.networkManager) {
                 gameState.networkManager.sendLaserAttack(
-                    line.x1, line.y1,
-                    line.x2, line.y2,
+                    line.x1,
+                    line.y1,
+                    line.x2,
+                    line.y2,
                     gameState.laserBeamEffect.damage
                 );
             }
@@ -529,7 +550,14 @@ function renderHitVignette(ctx) {
     const innerRadius = Math.min(GAME_WIDTH, GAME_HEIGHT) * 0.3;
     const outerRadius = Math.max(GAME_WIDTH, GAME_HEIGHT) * 0.8;
 
-    const gradient = ctx.createRadialGradient(centerX, centerY, innerRadius, centerX, centerY, outerRadius);
+    const gradient = ctx.createRadialGradient(
+        centerX,
+        centerY,
+        innerRadius,
+        centerX,
+        centerY,
+        outerRadius
+    );
     gradient.addColorStop(0, 'rgba(255, 0, 0, 0)');
     gradient.addColorStop(0.5, `rgba(255, 0, 0, ${opacity * 0.3})`);
     gradient.addColorStop(1, `rgba(255, 0, 0, ${opacity})`);
@@ -591,7 +619,7 @@ function renderTeamAnnounce(ctx) {
     const teamEmoji = isRed ? '🔴' : '🔵';
 
     // Scale animation (starts big, settles)
-    const scale = 1 + Math.max(0, (1 - progress * 2)) * 0.3;
+    const scale = 1 + Math.max(0, 1 - progress * 2) * 0.3;
 
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
@@ -649,7 +677,11 @@ function renderDeathScreen(ctx) {
     // Respawn timer
     ctx.fillStyle = '#ffffff';
     ctx.font = '600 36px Jua, sans-serif';
-    ctx.fillText(`Respawning in ${remainingTime.toFixed(1)}s`, GAME_WIDTH / 2, GAME_HEIGHT / 2 + 30);
+    ctx.fillText(
+        `Respawning in ${remainingTime.toFixed(1)}s`,
+        GAME_WIDTH / 2,
+        GAME_HEIGHT / 2 + 30
+    );
 
     ctx.shadowColor = 'transparent';
     ctx.shadowBlur = 0;
@@ -668,8 +700,13 @@ function render() {
     // Draw instructions
     ctx.fillStyle = '#E0E0E0';
     ctx.font = '16px Jua, sans-serif';
-    const connectionStatus = gameState.networkManager && gameState.networkManager.connected ? 'Connected' : 'Connecting...';
-    const playerCount = gameState.networkManager ? gameState.networkManager.remotePlayers.size + 1 : 1;
+    const connectionStatus =
+        gameState.networkManager && gameState.networkManager.connected
+            ? 'Connected'
+            : 'Connecting...';
+    const playerCount = gameState.networkManager
+        ? gameState.networkManager.remotePlayers.size + 1
+        : 1;
     ctx.fillText(`${connectionStatus} | Players: ${playerCount}`, GAME_WIDTH / 2, 70);
 
     // Draw shards
@@ -683,7 +720,7 @@ function render() {
     }
 
     // Draw test dummies
-    gameState.dummies.forEach(dummy => {
+    gameState.dummies.forEach((dummy) => {
         if (dummy.isAlive()) {
             dummy.render(ctx);
         }
@@ -730,7 +767,11 @@ function render() {
 
     if (gameState.shardManager) {
         ctx.fillText(`Shards Collected: ${gameState.stats.shardsCollected}`, 10, 60);
-        ctx.fillText(`Active Shards: ${gameState.shardManager.getActiveShardCount()}/${gameState.shardManager.maxActiveShards}`, 10, 80);
+        ctx.fillText(
+            `Active Shards: ${gameState.shardManager.getActiveShardCount()}/${gameState.shardManager.maxActiveShards}`,
+            10,
+            80
+        );
     }
 
     // Draw laser beam effect (above players)
@@ -847,7 +888,7 @@ function renderPotSmashEffect(ctx) {
     }
 
     const effect = gameState.potSmashEffect;
-    const halfAngleRad = (effect.angle / 2) * Math.PI / 180;
+    const halfAngleRad = ((effect.angle / 2) * Math.PI) / 180;
     const baseAngle = Math.atan2(effect.dirY, effect.dirX);
     const startAngle = baseAngle - halfAngleRad;
     const endAngle = baseAngle + halfAngleRad;
@@ -917,8 +958,12 @@ function renderMadnessEffect(ctx) {
 
     // Outer glow
     const gradient = ctx.createRadialGradient(
-        playerPos.x, playerPos.y, 0,
-        playerPos.x, playerPos.y, radius
+        playerPos.x,
+        playerPos.y,
+        0,
+        playerPos.x,
+        playerPos.y,
+        radius
     );
     gradient.addColorStop(0, 'rgba(148, 0, 211, 0.3)');
     gradient.addColorStop(0.5, 'rgba(148, 0, 211, 0.15)');
@@ -947,7 +992,13 @@ function renderMadnessEffect(ctx) {
     // Remaining time indicator (ring that shrinks)
     const remainingRatio = 1 - progress;
     ctx.beginPath();
-    ctx.arc(playerPos.x, playerPos.y, radius + 10, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * remainingRatio);
+    ctx.arc(
+        playerPos.x,
+        playerPos.y,
+        radius + 10,
+        -Math.PI / 2,
+        -Math.PI / 2 + Math.PI * 2 * remainingRatio
+    );
     ctx.strokeStyle = 'rgba(148, 0, 211, 0.8)';
     ctx.lineWidth = 4;
     ctx.stroke();
@@ -969,8 +1020,12 @@ function renderRageEffect(ctx) {
     // Red glow around player
     const glowRadius = 80 + Math.sin(elapsed / 150) * 15;
     const gradient = ctx.createRadialGradient(
-        playerPos.x, playerPos.y, 0,
-        playerPos.x, playerPos.y, glowRadius
+        playerPos.x,
+        playerPos.y,
+        0,
+        playerPos.x,
+        playerPos.y,
+        glowRadius
     );
     gradient.addColorStop(0, `rgba(255, 0, 0, ${0.3 * pulsePhase})`);
     gradient.addColorStop(0.5, `rgba(255, 50, 0, ${0.2 * pulsePhase})`);
@@ -1015,7 +1070,13 @@ function renderRageEffect(ctx) {
     const remainingRatio = 1 - progress;
     ctx.globalAlpha = 0.8;
     ctx.beginPath();
-    ctx.arc(playerPos.x, playerPos.y, glowRadius + 10, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * remainingRatio);
+    ctx.arc(
+        playerPos.x,
+        playerPos.y,
+        glowRadius + 10,
+        -Math.PI / 2,
+        -Math.PI / 2 + Math.PI * 2 * remainingRatio
+    );
     ctx.strokeStyle = '#FF0000';
     ctx.lineWidth = 4;
     ctx.stroke();
@@ -1099,8 +1160,12 @@ function renderCurryRecoveryEffect(ctx) {
     // Healing glow
     const glowRadius = 80 + progress * 40;
     const gradient = ctx.createRadialGradient(
-        playerPos.x, playerPos.y, 0,
-        playerPos.x, playerPos.y, glowRadius
+        playerPos.x,
+        playerPos.y,
+        0,
+        playerPos.x,
+        playerPos.y,
+        glowRadius
     );
     gradient.addColorStop(0, `rgba(255, 165, 0, ${(1 - progress) * 0.4})`);
     gradient.addColorStop(0.5, `rgba(255, 215, 0, ${(1 - progress) * 0.2})`);
@@ -1200,7 +1265,8 @@ function handleQSkill() {
     const playerPos = gameState.player.getPosition();
 
     switch (gameState.selectedCharacter) {
-        case 'crazy-eyes': // 눈 돌아가는 사람 - 이상한 파동
+        case 'crazy-eyes': {
+            // 눈 돌아가는 사람 - 이상한 파동
             // Wave attack doesn't have a visual effect that blocks input
             const waveSkill = gameState.skillManager.useSkill('q');
             if (waveSkill) {
@@ -1219,7 +1285,7 @@ function handleQSkill() {
                         y: 0,
                         startTime: 0,
                         duration: GAME_CONFIG.SKILL_WAVE.EXPAND_DURATION_MS,
-                        maxRadius: GAME_CONFIG.SKILL_WAVE.RADIUS
+                        maxRadius: GAME_CONFIG.SKILL_WAVE.RADIUS,
                     };
                 }
                 gameState.waveEffect.active = true;
@@ -1228,12 +1294,15 @@ function handleQSkill() {
                 gameState.waveEffect.startTime = Date.now();
             }
             break;
+        }
 
-        case 'curry-bear': // 카레 곰돌이 - 냄비 내려치기
+        case 'curry-bear': {
+            // 카레 곰돌이 - 냄비 내려치기
             const potSkill = gameState.skillManager.useSkill('q');
             if (potSkill) {
                 // Get attack direction (toward nearest enemy or last movement direction)
-                let dirX = 1, dirY = 0;
+                let dirX = 1,
+                    dirY = 0;
                 const target = findNearestEnemy(false);
                 if (target) {
                     dirX = target.x - playerPos.x;
@@ -1263,7 +1332,7 @@ function handleQSkill() {
                         startTime: 0,
                         duration: GAME_CONFIG.SKILL_POT_SMASH.EFFECT_DURATION_MS,
                         range: GAME_CONFIG.SKILL_POT_SMASH.RANGE,
-                        angle: GAME_CONFIG.SKILL_POT_SMASH.ANGLE
+                        angle: GAME_CONFIG.SKILL_POT_SMASH.ANGLE,
                     };
                 }
                 gameState.potSmashEffect.active = true;
@@ -1274,8 +1343,10 @@ function handleQSkill() {
                 gameState.potSmashEffect.startTime = Date.now();
             }
             break;
+        }
 
-        case 'big-sis-hulk': // 헐크 언니 - 돌려 던지기
+        case 'big-sis-hulk': {
+            // 헐크 언니 - 돌려 던지기
             const throwSkill = gameState.skillManager.useSkill('q');
             if (throwSkill) {
                 // Find nearest enemy to grab
@@ -1306,7 +1377,7 @@ function handleQSkill() {
                                 targetX: 0,
                                 targetY: 0,
                                 startTime: 0,
-                                duration: GAME_CONFIG.SKILL_SPIN_THROW.EFFECT_DURATION_MS
+                                duration: GAME_CONFIG.SKILL_SPIN_THROW.EFFECT_DURATION_MS,
                             };
                         }
                         gameState.spinThrowEffect.active = true;
@@ -1323,6 +1394,7 @@ function handleQSkill() {
                 }
             }
             break;
+        }
 
         case 'alien': // 외계인 - 레이저 빔
         default:
@@ -1331,8 +1403,15 @@ function handleQSkill() {
                 if (laserSkill) {
                     const target = findNearestEnemy(true); // playersOnly = true
                     if (target) {
-                        gameState.laserBeamEffect.start(playerPos.x, playerPos.y, target.x, target.y);
-                        logger.debug(`Used skill: ${laserSkill.name} - targeting ${target.type} at (${target.x.toFixed(0)}, ${target.y.toFixed(0)})`);
+                        gameState.laserBeamEffect.start(
+                            playerPos.x,
+                            playerPos.y,
+                            target.x,
+                            target.y
+                        );
+                        logger.debug(
+                            `Used skill: ${laserSkill.name} - targeting ${target.type} at (${target.x.toFixed(0)}, ${target.y.toFixed(0)})`
+                        );
 
                         // Send laser aiming to server for sync with other players
                         if (gameState.networkManager) {
@@ -1361,18 +1440,32 @@ function handleWSkill() {
             break;
 
         case 'alien': // 외계인 - 순간이동
-        default:
+        default: {
             const skill = gameState.skillManager.useSkill('w');
             if (skill) {
                 const target = findRandomEnemy();
 
                 if (target) {
                     // Teleport to near the target enemy
-                    gameState.teleportEffect.start(playerPos.x, playerPos.y, GAME_WIDTH, GAME_HEIGHT, target.x, target.y);
-                    logger.debug(`Used skill: ${skill.name} - teleporting to ${target.type} at (${target.x.toFixed(0)}, ${target.y.toFixed(0)})`);
+                    gameState.teleportEffect.start(
+                        playerPos.x,
+                        playerPos.y,
+                        GAME_WIDTH,
+                        GAME_HEIGHT,
+                        target.x,
+                        target.y
+                    );
+                    logger.debug(
+                        `Used skill: ${skill.name} - teleporting to ${target.type} at (${target.x.toFixed(0)}, ${target.y.toFixed(0)})`
+                    );
                 } else {
                     // No enemies, teleport randomly
-                    gameState.teleportEffect.start(playerPos.x, playerPos.y, GAME_WIDTH, GAME_HEIGHT);
+                    gameState.teleportEffect.start(
+                        playerPos.x,
+                        playerPos.y,
+                        GAME_WIDTH,
+                        GAME_HEIGHT
+                    );
                     logger.debug(`Used skill: ${skill.name} - random teleport (no enemies)`);
                 }
 
@@ -1387,6 +1480,7 @@ function handleWSkill() {
                 }
             }
             break;
+        }
     }
 }
 
@@ -1395,7 +1489,8 @@ function handleESkill() {
     const playerPos = gameState.player.getPosition();
 
     switch (gameState.selectedCharacter) {
-        case 'curry-bear': // 카레 곰돌이 - 카레 회복
+        case 'curry-bear': {
+            // 카레 곰돌이 - 카레 회복
             if (gameState.storedDamage <= 0) {
                 logger.debug('No stored damage to recover');
                 return;
@@ -1403,7 +1498,9 @@ function handleESkill() {
 
             const curryRecoverySkill = gameState.skillManager.useSkill('e');
             if (curryRecoverySkill) {
-                logger.debug(`Used skill: ${curryRecoverySkill.name} - recovering ${gameState.storedDamage} HP`);
+                logger.debug(
+                    `Used skill: ${curryRecoverySkill.name} - recovering ${gameState.storedDamage} HP`
+                );
 
                 // Trigger recovery effect
                 gameState.curryRecoveryActive = true;
@@ -1415,8 +1512,10 @@ function handleESkill() {
                 }
             }
             break;
+        }
 
-        case 'big-sis-hulk': // 헐크 언니 - 폭주
+        case 'big-sis-hulk': {
+            // 헐크 언니 - 폭주
             // Don't allow if rage is already active
             if (gameState.rageActive) return;
 
@@ -1435,8 +1534,10 @@ function handleESkill() {
                 }
             }
             break;
+        }
 
-        case 'crazy-eyes': // 눈 돌아가는 사람 - 광기 산책
+        case 'crazy-eyes': {
+            // 눈 돌아가는 사람 - 광기 산책
             // Don't allow if madness is already active
             if (gameState.madnessActive) return;
 
@@ -1458,6 +1559,7 @@ function handleESkill() {
                 }
             }
             break;
+        }
 
         case 'alien': // 외계인 - 텔레파시
         default:
@@ -1490,36 +1592,108 @@ function initializeCharacterSkills(characterId) {
     switch (characterId) {
         case 'crazy-eyes': // 눈 돌아가는 사람
             // Q = 이상한 파동 (Wave Attack) - 기본 공격
-            gameState.skillManager.addSkill(new Skill('이상한 파동', 'q', GAME_CONFIG.SKILL_WAVE.COOLDOWN_MS, GAME_CONFIG.SKILL_WAVE.COLOR, '🌀'));
+            gameState.skillManager.addSkill(
+                new Skill(
+                    '이상한 파동',
+                    'q',
+                    GAME_CONFIG.SKILL_WAVE.COOLDOWN_MS,
+                    GAME_CONFIG.SKILL_WAVE.COLOR,
+                    '🌀'
+                )
+            );
             // E = 광기 산책
-            gameState.skillManager.addSkill(new Skill('광기 산책', 'e', GAME_CONFIG.SKILL_MADNESS.COOLDOWN_MS, GAME_CONFIG.SKILL_MADNESS.COLOR, '👀'));
+            gameState.skillManager.addSkill(
+                new Skill(
+                    '광기 산책',
+                    'e',
+                    GAME_CONFIG.SKILL_MADNESS.COOLDOWN_MS,
+                    GAME_CONFIG.SKILL_MADNESS.COLOR,
+                    '👀'
+                )
+            );
             logger.info('Initialized skills for 눈 돌아가는 사람');
             break;
 
         case 'curry-bear': // 카레 곰돌이
             // Q = 냄비 내려치기
-            gameState.skillManager.addSkill(new Skill('냄비 내려치기', 'q', GAME_CONFIG.SKILL_POT_SMASH.COOLDOWN_MS, GAME_CONFIG.SKILL_POT_SMASH.COLOR, '🍲'));
+            gameState.skillManager.addSkill(
+                new Skill(
+                    '냄비 내려치기',
+                    'q',
+                    GAME_CONFIG.SKILL_POT_SMASH.COOLDOWN_MS,
+                    GAME_CONFIG.SKILL_POT_SMASH.COLOR,
+                    '🍲'
+                )
+            );
             // E = 카레 회복
-            gameState.skillManager.addSkill(new Skill('카레 회복', 'e', GAME_CONFIG.SKILL_CURRY_RECOVERY.COOLDOWN_MS, GAME_CONFIG.SKILL_CURRY_RECOVERY.COLOR, '🍛'));
+            gameState.skillManager.addSkill(
+                new Skill(
+                    '카레 회복',
+                    'e',
+                    GAME_CONFIG.SKILL_CURRY_RECOVERY.COOLDOWN_MS,
+                    GAME_CONFIG.SKILL_CURRY_RECOVERY.COLOR,
+                    '🍛'
+                )
+            );
             logger.info('Initialized skills for 카레 곰돌이');
             break;
 
         case 'big-sis-hulk': // 헐크 언니
             // Q = 돌려 던지기
-            gameState.skillManager.addSkill(new Skill('돌려 던지기', 'q', GAME_CONFIG.SKILL_SPIN_THROW.COOLDOWN_MS, GAME_CONFIG.SKILL_SPIN_THROW.COLOR, '🌀'));
+            gameState.skillManager.addSkill(
+                new Skill(
+                    '돌려 던지기',
+                    'q',
+                    GAME_CONFIG.SKILL_SPIN_THROW.COOLDOWN_MS,
+                    GAME_CONFIG.SKILL_SPIN_THROW.COLOR,
+                    '🌀'
+                )
+            );
             // E = 폭주
-            gameState.skillManager.addSkill(new Skill('폭주', 'e', GAME_CONFIG.SKILL_RAGE.COOLDOWN_MS, GAME_CONFIG.SKILL_RAGE.COLOR, '🔥'));
+            gameState.skillManager.addSkill(
+                new Skill(
+                    '폭주',
+                    'e',
+                    GAME_CONFIG.SKILL_RAGE.COOLDOWN_MS,
+                    GAME_CONFIG.SKILL_RAGE.COLOR,
+                    '🔥'
+                )
+            );
             logger.info('Initialized skills for 헐크 언니');
             break;
 
         case 'alien': // 외계인 (기본)
         default:
             // Q = 레이저 빔
-            gameState.skillManager.addSkill(new Skill('레이저', 'q', GAME_CONFIG.SKILL_LASER.COOLDOWN_MS, GAME_CONFIG.SKILL_LASER.COLOR, '🎇'));
+            gameState.skillManager.addSkill(
+                new Skill(
+                    '레이저',
+                    'q',
+                    GAME_CONFIG.SKILL_LASER.COOLDOWN_MS,
+                    GAME_CONFIG.SKILL_LASER.COLOR,
+                    '🎇'
+                )
+            );
             // W = 순간이동
-            gameState.skillManager.addSkill(new Skill('순간이동', 'w', GAME_CONFIG.SKILL_TELEPORT.COOLDOWN_MS, GAME_CONFIG.SKILL_TELEPORT.COLOR, '💫'));
+            gameState.skillManager.addSkill(
+                new Skill(
+                    '순간이동',
+                    'w',
+                    GAME_CONFIG.SKILL_TELEPORT.COOLDOWN_MS,
+                    GAME_CONFIG.SKILL_TELEPORT.COLOR,
+                    '💫'
+                )
+            );
             // E = 텔레파시
-            gameState.skillManager.addSkill(new Skill('텔레파시', 'e', GAME_CONFIG.SKILL_TELEPATHY.COOLDOWN_MS, GAME_CONFIG.SKILL_TELEPATHY.COLOR, '👽'));
+            gameState.skillManager.addSkill(
+                new Skill(
+                    '텔레파시',
+                    'e',
+                    GAME_CONFIG.SKILL_TELEPATHY.COOLDOWN_MS,
+                    GAME_CONFIG.SKILL_TELEPATHY.COLOR,
+                    '👽'
+                )
+            );
             logger.info('Initialized skills for 외계인');
             break;
     }

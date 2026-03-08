@@ -107,12 +107,12 @@ export class RemotePlayer {
     // Get character image path (same logic as LobbyManager)
     static getCharacterImagePath(characterId) {
         const characterImages = {
-            'alien': 'asset/image/alien.png',
+            alien: 'asset/image/alien.png',
             'crazy-eyes': 'asset/image/crazy-eyes.png',
             'curry-bear': 'asset/image/curry-bear.png',
             'big-sis-hulk': 'asset/image/big-sis-hulk.png',
-            'teacher': 'asset/image/teacher.png',
-            'squeak-squeak': 'asset/image/squeak-squeak.png'
+            teacher: 'asset/image/teacher.png',
+            'squeak-squeak': 'asset/image/squeak-squeak.png',
         };
         return characterImages[characterId] || characterImages['alien'];
     }
@@ -127,7 +127,9 @@ export class RemotePlayer {
     // Change character (reload image if different)
     setCharacter(characterId) {
         if (this.characterId !== characterId) {
-            logger.debug(`RemotePlayer ${this.playerId} changed character: ${this.characterId} -> ${characterId}`);
+            logger.debug(
+                `RemotePlayer ${this.playerId} changed character: ${this.characterId} -> ${characterId}`
+            );
             this.loadCharacterImage(characterId);
         }
     }
@@ -222,7 +224,10 @@ export class RemotePlayer {
         }
 
         // Calculate hit flash intensity using utility
-        const hitFlashIntensity = CharacterUtils.calculateHitFlashIntensity(this.hitFlashTime, this.hitFlashDuration);
+        const hitFlashIntensity = CharacterUtils.calculateHitFlashIntensity(
+            this.hitFlashTime,
+            this.hitFlashDuration
+        );
 
         if (this.imageLoaded && this.image) {
             // Draw remote player image
@@ -235,7 +240,14 @@ export class RemotePlayer {
             );
 
             // Apply hit flash overlay using utility
-            CharacterUtils.renderHitFlash(ctx, this.x, this.y, this.width, this.height, hitFlashIntensity);
+            CharacterUtils.renderHitFlash(
+                ctx,
+                this.x,
+                this.y,
+                this.width,
+                this.height,
+                hitFlashIntensity
+            );
         } else {
             // Fallback: draw colored rectangle if image not loaded
             ctx.fillStyle = '#ff6b6b'; // Red color for remote players
@@ -253,7 +265,14 @@ export class RemotePlayer {
             ctx.fillText('Loading...', this.x, this.y);
 
             // Apply hit flash overlay for fallback using utility
-            CharacterUtils.renderHitFlash(ctx, this.x, this.y, this.width, this.height, hitFlashIntensity);
+            CharacterUtils.renderHitFlash(
+                ctx,
+                this.x,
+                this.y,
+                this.width,
+                this.height,
+                hitFlashIntensity
+            );
         }
 
         // Draw attack effect if attacking
@@ -302,7 +321,10 @@ export class RemotePlayer {
 
         // Calculate animation progress (0 to 1)
         const currentTime = Date.now();
-        const progress = Math.min(1, (currentTime - this.attackStartTime) / this.attackAnimationTime);
+        const progress = Math.min(
+            1,
+            (currentTime - this.attackStartTime) / this.attackAnimationTime
+        );
 
         // Draw full attack range circle that fades out
         const opacity = (1 - progress) * 0.4; // Start at 40% opacity, fade to 0
@@ -333,7 +355,9 @@ export class RemotePlayer {
     // Take damage
     takeDamage(amount) {
         this.currentHP = Math.max(0, this.currentHP - amount);
-        logger.debug(`${this.playerName} took ${amount} damage! HP: ${this.currentHP}/${this.maxHP}`);
+        logger.debug(
+            `${this.playerName} took ${amount} damage! HP: ${this.currentHP}/${this.maxHP}`
+        );
 
         if (this.currentHP <= 0) {
             logger.info(`${this.playerName} has been defeated!`);
@@ -353,7 +377,7 @@ export class RemotePlayer {
             left: this.x - this.width / 2,
             right: this.x + this.width / 2,
             top: this.y - this.height / 2,
-            bottom: this.y + this.height / 2
+            bottom: this.y + this.height / 2,
         };
     }
 

@@ -3,10 +3,7 @@
  * Contains geometry utility functions used by both server and potentially client
  */
 
-const {
-    calculateDistance,
-    lineCircleIntersect,
-} = require('../../shared/geometry');
+const { calculateDistance, lineCircleIntersect } = require('../../shared/geometry');
 
 describe('shared/geometry', () => {
     describe('calculateDistance', () => {

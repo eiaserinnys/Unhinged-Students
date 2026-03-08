@@ -74,7 +74,9 @@ export class ReconnectUI {
 
         this.reconnectAttempts++;
         this.reconnectBtn.disabled = true;
-        this.setStatus(`재연결 시도 중... (${this.reconnectAttempts}/${this.maxReconnectAttempts})`);
+        this.setStatus(
+            `재연결 시도 중... (${this.reconnectAttempts}/${this.maxReconnectAttempts})`
+        );
         this.countdownEl.textContent = '';
 
         this.onReconnect();
