@@ -325,7 +325,7 @@ function registerCombatHandlers(socket, io) {
             const distance = Math.sqrt(dx * dx + dy * dy);
 
             if (distance <= radius) {
-                player.currentHP = Math.max(0, player.currentHP - damage);
+                applyDamageWithStorage(player, damage, io);
 
                 const knockbackDist = calculateKnockbackDistance(radius, distance);
                 const knockbackEnd = calculateKnockbackEndPosition(x, y, player.x, player.y, knockbackDist);
@@ -485,7 +485,7 @@ function registerCombatHandlers(socket, io) {
             // Check line-circle collision
             if (lineCircleIntersect(x1, y1, x2, y2, player.x, player.y, hitRadius)) {
                 // Apply damage (server-authoritative)
-                player.currentHP = Math.max(0, player.currentHP - damage);
+                applyDamageWithStorage(player, damage, io);
 
                 // Calculate knockback direction from laser origin
                 const knockbackDist = SERVER_CONFIG.KNOCKBACK.LASER_DISTANCE;
@@ -635,7 +635,7 @@ function registerCombatHandlers(socket, io) {
             const distance = Math.sqrt(dx * dx + dy * dy);
 
             if (distance <= radius) {
-                player.currentHP = Math.max(0, player.currentHP - damagePerTarget);
+                applyDamageWithStorage(player, damagePerTarget, io);
                 totalDamageDealt += damagePerTarget;
 
                 hitPlayers.push({
@@ -768,7 +768,7 @@ function registerCombatHandlers(socket, io) {
             const distance = Math.sqrt(dx * dx + dy * dy);
 
             if (distance <= radius) {
-                player.currentHP = Math.max(0, player.currentHP - damage);
+                applyDamageWithStorage(player, damage, io);
 
                 // Apply confusion effect
                 player.confusedUntil = Date.now() + confusionDuration;
@@ -905,7 +905,7 @@ function registerCombatHandlers(socket, io) {
             const distance = Math.sqrt(dx * dx + dy * dy);
 
             if (distance <= radius) {
-                player.currentHP = Math.max(0, player.currentHP - damage);
+                applyDamageWithStorage(player, damage, io);
 
                 hitPlayers.push({
                     playerId: playerId,
@@ -1053,7 +1053,7 @@ function registerCombatHandlers(socket, io) {
             if (player.isDead) return;
 
             if (isInCone(player.x, player.y)) {
-                player.currentHP = Math.max(0, player.currentHP - damage);
+                applyDamageWithStorage(player, damage, io);
                 mainHitPositions.push({ x: player.x, y: player.y });
 
                 // Calculate knockback
@@ -1132,7 +1132,7 @@ function registerCombatHandlers(socket, io) {
                 const distance = Math.sqrt(dx * dx + dy * dy);
 
                 if (distance <= splashRadius) {
-                    player.currentHP = Math.max(0, player.currentHP - splashDamage);
+                    applyDamageWithStorage(player, splashDamage, io);
 
                     hitPlayers.push({
                         playerId: playerId,
