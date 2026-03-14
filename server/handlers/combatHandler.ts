@@ -1491,6 +1491,145 @@ export function registerCombatHandlers(socket: TypedSocket, io: TypedServer): vo
             `Spin throw: ${socket.id} threw ${targetType}:${targetId} for ${Math.floor(throwDamage)} damage`
         );
 
+        // === COLLISION DAMAGE ===
+        // Check if thrown target collides with other enemies at landing position
+        const collisionRadius = 80; // Collision detection radius
+        const collisionDamage = SERVER_CONFIG.SKILL_SPIN_THROW.COLLISION_DAMAGE;
+        const collisionHitPlayers: HitPlayerInfo[] = [];
+        const collisionKilledPlayers: KilledPlayerInfo[] = [];
+        const collisionHitDummies: HitDummyInfo[] = [];
+        let thrownTargetTookCollisionDamage = false;
+
+        // Check collision with other players
+        players.forEach((player, playerId) => {
+            // Skip the attacker, the thrown target, and dead players
+            if (playerId === socket.id) return;
+            if (targetType === 'player' && playerId === targetId) return;
+            if (player.isDead) return;
+
+            const cdx = player.x - endX;
+            const cdy = player.y - endY;
+            const collisionDist = Math.sqrt(cdx * cdx + cdy * cdy);
+
+            if (collisionDist <= collisionRadius) {
+                // Apply collision damage to the collided player
+                applyDamageWithStorage(player, collisionDamage, io);
+
+                collisionHitPlayers.push({
+                    playerId: playerId,
+                    currentHP: player.currentHP,
+                    maxHP: player.maxHP,
+                    knockbackEndX: player.x,
+                    knockbackEndY: player.y,
+                    attackerX: endX,
+                    attackerY: endY,
+                });
+
+                logger.debug(
+                    `Spin throw collision: ${playerId} hit by thrown target for ${collisionDamage} damage`
+                );
+
+                // Apply collision damage to thrown target too (if not already applied)
+                if (!thrownTargetTookCollisionDamage) {
+                    thrownTargetTookCollisionDamage = true;
+                    if (targetType === 'dummy') {
+                        target.currentHP = Math.max(0, target.currentHP - collisionDamage);
+                    } else {
+                        applyDamageWithStorage(target as Player, collisionDamage, io);
+                    }
+                    logger.debug(
+                        `Spin throw collision: thrown target took ${collisionDamage} collision damage`
+                    );
+                }
+
+                // Check if collided player died
+                if (player.currentHP <= 0 && !player.isDead) {
+                    player.isDead = true;
+                    player.deathTime = Date.now();
+                    collisionKilledPlayers.push({
+                        playerId: playerId,
+                        killedBy: socket.id,
+                        respawnDelay: PLAYER_RESPAWN_DELAY,
+                    });
+                    logger.info(`${playerId} has been killed by spin throw collision!`);
+                }
+            }
+        });
+
+        // Check collision with dummies
+        dummies.forEach((dummy) => {
+            // Skip the thrown dummy and dead dummies
+            if (targetType === 'dummy' && dummy.id === targetId) return;
+            if (dummy.currentHP <= 0) return;
+
+            const cdx = dummy.x - endX;
+            const cdy = dummy.y - endY;
+            const collisionDist = Math.sqrt(cdx * cdx + cdy * cdy);
+
+            if (collisionDist <= collisionRadius + 67.5) {
+                // Apply collision damage to the dummy
+                dummy.currentHP = Math.max(0, dummy.currentHP - collisionDamage);
+
+                collisionHitDummies.push({
+                    dummyId: dummy.id,
+                    currentHP: dummy.currentHP,
+                    maxHP: dummy.maxHP,
+                    knockbackEndX: dummy.x,
+                    knockbackEndY: dummy.y,
+                    attackerX: endX,
+                    attackerY: endY,
+                });
+
+                logger.debug(
+                    `Spin throw collision: ${dummy.name} hit by thrown target for ${collisionDamage} damage`
+                );
+
+                // Apply collision damage to thrown target too (if not already applied)
+                if (!thrownTargetTookCollisionDamage) {
+                    thrownTargetTookCollisionDamage = true;
+                    if (targetType === 'dummy') {
+                        target.currentHP = Math.max(0, target.currentHP - collisionDamage);
+                    } else {
+                        applyDamageWithStorage(target as Player, collisionDamage, io);
+                    }
+                    logger.debug(
+                        `Spin throw collision: thrown target took ${collisionDamage} collision damage`
+                    );
+                }
+
+                if (dummy.currentHP <= 0) {
+                    dummy.deathTime = Date.now();
+                }
+            }
+        });
+
+        // Broadcast collision damage
+        if (collisionHitPlayers.length > 0) {
+            io.emit('spinThrowCollision', {
+                attackerId: socket.id,
+                hitPlayers: collisionHitPlayers,
+                thrownTargetId: targetId,
+                thrownTargetType: targetType,
+            });
+        }
+
+        if (collisionKilledPlayers.length > 0) {
+            collisionKilledPlayers.forEach((killed) => {
+                io.emit('playerDied', {
+                    playerId: killed.playerId,
+                    killedBy: killed.killedBy,
+                    respawnDelay: killed.respawnDelay,
+                });
+            });
+        }
+
+        if (collisionHitDummies.length > 0) {
+            io.emit('dummyDamaged', {
+                attackerId: socket.id,
+                hitDummies: collisionHitDummies,
+            });
+        }
+
         // Broadcast spin throw effect
         io.emit('playerSpinThrow', {
             attackerId: socket.id,
@@ -1501,9 +1640,10 @@ export function registerCombatHandlers(socket: TypedSocket, io: TypedServer): vo
             endX: endX,
             endY: endY,
             damage: Math.floor(throwDamage),
+            collisionDamage: thrownTargetTookCollisionDamage ? collisionDamage : 0,
         });
 
-        // Check if target died
+        // Check if target died (including from collision damage)
         if (target.currentHP <= 0) {
             if (targetType === 'dummy') {
                 // Broadcast dummy death

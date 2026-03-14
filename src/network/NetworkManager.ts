@@ -632,6 +632,44 @@ export class NetworkManager implements INetworkManager {
             }
         });
 
+        // Spin throw collision damage (when thrown target hits other enemies)
+        this.socket.on('spinThrowCollision', (data: unknown) => {
+            const collisionData = data as {
+                attackerId: string;
+                hitPlayers: DamageHit[];
+                thrownTargetId: string | number;
+                thrownTargetType: string;
+            };
+
+            logger.debug(
+                `Spin throw collision: ${collisionData.hitPlayers.length} players hit by thrown target`
+            );
+
+            // Apply damage to local player if hit
+            for (const hitInfo of collisionData.hitPlayers) {
+                if (hitInfo.playerId === this.playerId && this.localPlayer) {
+                    this.localPlayer.currentHP = hitInfo.currentHP;
+                    this.localPlayer.hitFlashTime = Date.now();
+
+                    // Trigger vignette for collision damage
+                    if (typeof triggerHitVignette === 'function') {
+                        triggerHitVignette();
+                    }
+                    break;
+                }
+            }
+
+            // If local player was the thrown target, they also take collision damage
+            if (
+                collisionData.thrownTargetType === 'player' &&
+                collisionData.thrownTargetId === this.playerId &&
+                this.localPlayer
+            ) {
+                // HP update will come from the playerDamaged event
+                this.localPlayer.hitFlashTime = Date.now();
+            }
+        });
+
         // Rage state updates (Hulk Sister E skill)
         this.socket.on('playerRageStart', (data: unknown) => {
             const { playerId, duration } = data as { playerId: string; duration: number };
@@ -1140,6 +1178,7 @@ export class NetworkManager implements INetworkManager {
             this.socket.off('playerCurryRecovery');
             // SpinThrow, Rage related events
             this.socket.off('playerSpinThrow');
+            this.socket.off('spinThrowCollision');
             this.socket.off('playerRageStart');
             this.socket.off('playerRageEnd');
 

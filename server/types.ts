@@ -149,6 +149,7 @@ export interface ServerToClientEvents {
     playerCurryRecovery: (data: PlayerCurryRecoveryData) => void;
     storedDamageUpdate: (data: StoredDamageUpdateData) => void;
     playerSpinThrow: (data: PlayerSpinThrowData) => void;
+    spinThrowCollision: (data: SpinThrowCollisionData) => void;
     playerRageStart: (data: PlayerRageStartData) => void;
     playerRageEnd: (data: PlayerRageEndData) => void;
 
@@ -437,6 +438,15 @@ export interface PlayerSpinThrowData {
     endX: number;
     endY: number;
     damage: number;
+    collisionDamage?: number;
+}
+
+// Spin Throw Collision events
+export interface SpinThrowCollisionData {
+    attackerId: string;
+    hitPlayers: HitPlayerInfo[];
+    thrownTargetId: string | number;
+    thrownTargetType: string;
 }
 
 // Rage events
