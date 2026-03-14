@@ -63,6 +63,8 @@ interface SpinThrowData {
     startY: number;
     endX: number;
     endY: number;
+    damage?: number;
+    collisionDamage?: number;
 }
 
 /**
@@ -600,13 +602,21 @@ export class NetworkManager implements INetworkManager {
 
             // Handle target being thrown based on type
             if (throwData.targetType === 'dummy') {
-                // Dummy got thrown - update local dummy position
+                // Dummy got thrown - update local dummy position and apply damage
                 const dummyIndex = throwData.targetId as number;
                 if (this.dummies && this.dummies[dummyIndex]) {
                     const dummy = this.dummies[dummyIndex];
                     dummy.x = throwData.endX;
                     dummy.y = throwData.endY;
                     dummy.hitFlashTime = Date.now();
+
+                    // Apply damage to dummy
+                    if (throwData.damage) {
+                        dummy.currentHP = Math.max(0, dummy.currentHP - throwData.damage);
+                        logger.debug(
+                            `Dummy ${dummyIndex} took ${throwData.damage} damage from spin throw, HP: ${dummy.currentHP}`
+                        );
+                    }
                 }
             } else if (throwData.targetId === this.playerId) {
                 // Local player got thrown
