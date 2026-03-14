@@ -1437,15 +1437,46 @@ export function registerCombatHandlers(socket: TypedSocket, io: TypedServer): vo
         }
 
         // Validate target is in range
-        const dx = targetX - attacker.x;
-        const dy = targetY - attacker.y;
-        const distance = Math.sqrt(dx * dx + dy * dy);
+        // Use client's known target position if provided (handles position sync issues)
+        const clientTargetX = data.clientTargetX;
+        const clientTargetY = data.clientTargetY;
 
-        // Allow larger tolerance for network latency and position sync issues
-        // GRAB_RANGE is 150px, allow up to 3x for better UX
-        if (distance > SERVER_CONFIG.SKILL_SPIN_THROW.GRAB_RANGE * 3.0) {
-            logger.cheat(`Spin throw target too far: ${distance}px`);
-            return;
+        // If client sent target position, verify it's reasonable
+        if (isValidNumber(clientTargetX) && isValidNumber(clientTargetY)) {
+            // Check if client's target position is within sync tolerance of server's position
+            const syncDx = clientTargetX - targetX;
+            const syncDy = clientTargetY - targetY;
+            const syncDistance = Math.sqrt(syncDx * syncDx + syncDy * syncDy);
+
+            // Allow up to 500px sync difference (accounts for throw distance + network lag)
+            const maxSyncDifference = 500;
+            if (syncDistance > maxSyncDifference) {
+                logger.cheat(`Spin throw target position mismatch: client=(${clientTargetX},${clientTargetY}), server=(${targetX},${targetY}), diff=${syncDistance}px`);
+                return;
+            }
+
+            // Use client's target position for range check (since client may have more recent state)
+            const dx = clientTargetX - attacker.x;
+            const dy = clientTargetY - attacker.y;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+
+            // GRAB_RANGE is 150px, allow up to 2x for client-provided position
+            if (distance > SERVER_CONFIG.SKILL_SPIN_THROW.GRAB_RANGE * 2.0) {
+                logger.cheat(`Spin throw target too far (client pos): ${distance}px`);
+                return;
+            }
+        } else {
+            // Fallback: use server's position with larger tolerance
+            const dx = targetX - attacker.x;
+            const dy = targetY - attacker.y;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+
+            // Allow larger tolerance for network latency and position sync issues
+            // GRAB_RANGE is 150px, allow up to 3x for better UX
+            if (distance > SERVER_CONFIG.SKILL_SPIN_THROW.GRAB_RANGE * 3.0) {
+                logger.cheat(`Spin throw target too far: ${distance}px`);
+                return;
+            }
         }
 
         // Calculate throw direction

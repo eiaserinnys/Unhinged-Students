@@ -427,6 +427,9 @@ export interface SpinThrowData {
     targetType?: string;
     dirX: number;
     dirY: number;
+    // Client's known target position (for range validation)
+    clientTargetX?: number;
+    clientTargetY?: number;
 }
 
 export interface PlayerSpinThrowData {

@@ -1037,10 +1037,19 @@ export class NetworkManager implements INetworkManager {
         targetId: string | number | undefined,
         dirX: number,
         dirY: number,
-        targetType: string = 'player'
+        targetType: string = 'player',
+        clientTargetX?: number,
+        clientTargetY?: number
     ): void {
         if (!this.connected || !this.socket) return;
-        this.socket.emit('spinThrow', { targetId, dirX, dirY, targetType });
+        this.socket.emit('spinThrow', {
+            targetId,
+            dirX,
+            dirY,
+            targetType,
+            clientTargetX,
+            clientTargetY,
+        });
     }
 
     // Send rage start to server (Hulk Sister E skill)

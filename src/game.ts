@@ -1482,10 +1482,17 @@ function handleQSkill(): void {
                     }
                 }
 
-                // Send spin throw to server
+                // Send spin throw to server with client's known target position
                 if (gameState.networkManager) {
                     const targetId = target.type === 'dummy' ? target.dummyIndex : target.playerId;
-                    gameState.networkManager.sendSpinThrow(targetId, dirX, dirY, target.type);
+                    gameState.networkManager.sendSpinThrow(
+                        targetId,
+                        dirX,
+                        dirY,
+                        target.type,
+                        target.x, // Client's known target X position
+                        target.y // Client's known target Y position
+                    );
                 }
 
                 // Show local effect
