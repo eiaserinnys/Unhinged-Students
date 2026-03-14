@@ -1404,9 +1404,17 @@ export function registerCombatHandlers(socket: TypedSocket, io: TypedServer): vo
 
     // Handle spin throw (Hulk Sister Q skill)
     socket.on('spinThrow', (data) => {
+        logger.info(`SpinThrow request: targetId=${data.targetId}, targetType=${data.targetType}, clientTarget=(${data.clientTargetX},${data.clientTargetY})`);
+
         const attacker = players.get(socket.id);
-        if (!attacker) return;
-        if (attacker.isDead) return;
+        if (!attacker) {
+            logger.warn(`SpinThrow: attacker not found for ${socket.id}`);
+            return;
+        }
+        if (attacker.isDead) {
+            logger.warn(`SpinThrow: attacker ${socket.id} is dead`);
+            return;
+        }
 
         // Only hulk sister can use this skill
         if (attacker.characterId !== 'big-sis-hulk') {
@@ -1424,13 +1432,19 @@ export function registerCombatHandlers(socket: TypedSocket, io: TypedServer): vo
         if (targetType === 'dummy') {
             const dummyIndex = targetId as number;
             const dummy = dummies.get(dummyIndex);
-            if (!dummy || dummy.currentHP <= 0) return;
+            if (!dummy || dummy.currentHP <= 0) {
+                logger.warn(`SpinThrow: dummy ${dummyIndex} not found or dead (HP=${dummy?.currentHP})`);
+                return;
+            }
             target = dummy;
             targetX = dummy.x;
             targetY = dummy.y;
         } else {
             const player = players.get(targetId as string);
-            if (!player || player.isDead) return;
+            if (!player || player.isDead) {
+                logger.warn(`SpinThrow: player target ${targetId} not found or dead`);
+                return;
+            }
             target = player;
             targetX = player.x;
             targetY = player.y;
@@ -1527,8 +1541,8 @@ export function registerCombatHandlers(socket: TypedSocket, io: TypedServer): vo
         target.x = endX;
         target.y = endY;
 
-        logger.debug(
-            `Spin throw: ${socket.id} threw ${targetType}:${targetId} for ${Math.floor(throwDamage)} damage, ` +
+        logger.info(
+            `SpinThrow SUCCESS: ${socket.id} threw ${targetType}:${targetId} for ${Math.floor(throwDamage)} damage, ` +
             `from=(${targetX.toFixed(0)},${targetY.toFixed(0)}) to=(${endX.toFixed(0)},${endY.toFixed(0)})`
         );
 
