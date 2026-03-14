@@ -101,6 +101,7 @@ interface EnemyTarget {
     y: number;
     type: string;
     playerId?: string;
+    dummyIndex?: number;
 }
 
 // Resize canvas to fill window while maintaining 16:9 aspect ratio
@@ -1436,9 +1437,9 @@ function handleQSkill(): void {
             // 헐크 언니 - 돌려 던지기
             const throwSkill = skillManager.useSkill('q');
             if (throwSkill) {
-                // Find nearest enemy to grab
-                const target = findNearestEnemy(true) as EnemyTarget | null; // players only
-                if (target && target.playerId) {
+                // Find nearest enemy to grab (including dummies)
+                const target = findNearestEnemy(false) as EnemyTarget | null; // players AND dummies
+                if (target && (target.playerId || target.type === 'dummy')) {
                     const dx = target.x - playerPos.x;
                     const dy = target.y - playerPos.y;
                     const distance = Math.sqrt(dx * dx + dy * dy);
@@ -1448,11 +1449,12 @@ function handleQSkill(): void {
                         const dirX = dx / distance;
                         const dirY = dy / distance;
 
-                        logger.debug(`Used skill: ${throwSkill.name} - grabbing enemy`);
+                        logger.debug(`Used skill: ${throwSkill.name} - grabbing ${target.type}`);
 
                         // Send spin throw to server
                         if (gameState.networkManager) {
-                            gameState.networkManager.sendSpinThrow(target.playerId, dirX, dirY);
+                            const targetId = target.type === 'dummy' ? target.dummyIndex : target.playerId;
+                            gameState.networkManager.sendSpinThrow(targetId, dirX, dirY, target.type);
                         }
 
                         // Show local effect

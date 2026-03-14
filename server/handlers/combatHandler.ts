@@ -1414,13 +1414,31 @@ export function registerCombatHandlers(socket: TypedSocket, io: TypedServer): vo
             return;
         }
 
+        const targetType = data.targetType || 'player';
         const targetId = data.targetId;
-        const target = players.get(targetId);
-        if (!target || target.isDead) return;
+        let target: { x: number; y: number; currentHP: number; isDead?: boolean } | null = null;
+        let targetX: number = 0;
+        let targetY: number = 0;
+
+        // Get target based on type
+        if (targetType === 'dummy') {
+            const dummyIndex = targetId as number;
+            const dummy = dummies.get(dummyIndex);
+            if (!dummy || dummy.currentHP <= 0) return;
+            target = dummy;
+            targetX = dummy.x;
+            targetY = dummy.y;
+        } else {
+            const player = players.get(targetId as string);
+            if (!player || player.isDead) return;
+            target = player;
+            targetX = player.x;
+            targetY = player.y;
+        }
 
         // Validate target is in range
-        const dx = target.x - attacker.x;
-        const dy = target.y - attacker.y;
+        const dx = targetX - attacker.x;
+        const dy = targetY - attacker.y;
         const distance = Math.sqrt(dx * dx + dy * dy);
 
         if (distance > SERVER_CONFIG.SKILL_SPIN_THROW.GRAB_RANGE * 1.2) {
@@ -1448,11 +1466,15 @@ export function registerCombatHandlers(socket: TypedSocket, io: TypedServer): vo
         throwDistance *= 1 + rageStacks * SERVER_CONFIG.HULK_PASSIVE.THROW_PER_STACK;
 
         // Apply damage to target
-        applyDamageWithStorage(target, Math.floor(throwDamage), io);
+        if (targetType === 'dummy') {
+            target.currentHP = Math.max(0, target.currentHP - Math.floor(throwDamage));
+        } else {
+            applyDamageWithStorage(target as Player, Math.floor(throwDamage), io);
+        }
 
         // Calculate throw end position
-        let endX = target.x + dirX * throwDistance;
-        let endY = target.y + dirY * throwDistance;
+        let endX = targetX + dirX * throwDistance;
+        let endY = targetY + dirY * throwDistance;
 
         // Clamp to bounds
         const clamped = clampCoordinates(endX, endY);
@@ -1464,13 +1486,14 @@ export function registerCombatHandlers(socket: TypedSocket, io: TypedServer): vo
         target.y = endY;
 
         logger.debug(
-            `Spin throw: ${socket.id} threw ${targetId} for ${Math.floor(throwDamage)} damage`
+            `Spin throw: ${socket.id} threw ${targetType}:${targetId} for ${Math.floor(throwDamage)} damage`
         );
 
         // Broadcast spin throw effect
         io.emit('playerSpinThrow', {
             attackerId: socket.id,
             targetId: targetId,
+            targetType: targetType,
             startX: attacker.x,
             startY: attacker.y,
             endX: endX,
@@ -1479,15 +1502,33 @@ export function registerCombatHandlers(socket: TypedSocket, io: TypedServer): vo
         });
 
         // Check if target died
-        if (target.currentHP <= 0 && !target.isDead) {
-            target.isDead = true;
-            target.deathTime = Date.now();
-            io.emit('playerDied', {
-                playerId: targetId,
-                killedBy: socket.id,
-                respawnDelay: PLAYER_RESPAWN_DELAY,
+        if (target.currentHP <= 0) {
+            if (targetType === 'dummy') {
+                // Broadcast dummy death
+                io.emit('dummyDamaged', {
+                    dummyIndex: targetId as number,
+                    damage: Math.floor(throwDamage),
+                    currentHP: 0,
+                    attackerId: socket.id,
+                });
+            } else if (!target.isDead) {
+                (target as Player).isDead = true;
+                (target as Player).deathTime = Date.now();
+                io.emit('playerDied', {
+                    playerId: targetId as string,
+                    killedBy: socket.id,
+                    respawnDelay: PLAYER_RESPAWN_DELAY,
+                });
+                logger.info(`${targetId} has been killed by spin throw from ${socket.id}!`);
+            }
+        } else if (targetType === 'dummy') {
+            // Broadcast dummy damage
+            io.emit('dummyDamaged', {
+                dummyIndex: targetId as number,
+                damage: Math.floor(throwDamage),
+                currentHP: target.currentHP,
+                attackerId: socket.id,
             });
-            logger.info(`${targetId} has been killed by spin throw from ${socket.id}!`);
         }
     });
 

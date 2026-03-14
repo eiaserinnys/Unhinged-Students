@@ -422,14 +422,16 @@ export interface StoredDamageUpdateData {
 
 // Spin Throw events
 export interface SpinThrowData {
-    targetId: string;
+    targetId: string | number;
+    targetType?: string;
     dirX: number;
     dirY: number;
 }
 
 export interface PlayerSpinThrowData {
     attackerId: string;
-    targetId: string;
+    targetId: string | number;
+    targetType?: string;
     startX: number;
     startY: number;
     endX: number;
@@ -461,7 +463,11 @@ export interface HitDummyInfo {
 
 export interface DummyDamagedData {
     attackerId: string;
-    hitDummies: HitDummyInfo[];
+    hitDummies?: HitDummyInfo[];
+    // For single dummy damage (e.g., spin throw)
+    dummyIndex?: number;
+    damage?: number;
+    currentHP?: number;
 }
 
 export interface DummyRespawnedData {

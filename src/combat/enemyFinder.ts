@@ -14,6 +14,8 @@ interface EnemyInfo {
     x: number;
     y: number;
     type: EnemyType;
+    playerId?: string;
+    dummyIndex?: number;
 }
 
 /**
@@ -31,14 +33,14 @@ export function findNearestEnemy(playersOnly: boolean = false): EnemyInfo | null
 
     // Check dummies (skip if playersOnly)
     if (!playersOnly) {
-        gameState.dummies.forEach((dummy) => {
+        gameState.dummies.forEach((dummy, index) => {
             if (dummy.isAlive()) {
                 const dx = dummy.x - playerPos.x;
                 const dy = dummy.y - playerPos.y;
                 const distance = Math.sqrt(dx * dx + dy * dy);
                 if (distance < nearestDistance) {
                     nearestDistance = distance;
-                    nearestEnemy = { x: dummy.x, y: dummy.y, type: 'dummy' };
+                    nearestEnemy = { x: dummy.x, y: dummy.y, type: 'dummy', dummyIndex: index };
                 }
             }
         });
@@ -46,14 +48,14 @@ export function findNearestEnemy(playersOnly: boolean = false): EnemyInfo | null
 
     // Check remote players
     if (gameState.networkManager) {
-        gameState.networkManager.remotePlayers.forEach((remotePlayer) => {
+        gameState.networkManager.remotePlayers.forEach((remotePlayer, playerId) => {
             if (!remotePlayer.isDead) {
                 const dx = remotePlayer.x - playerPos.x;
                 const dy = remotePlayer.y - playerPos.y;
                 const distance = Math.sqrt(dx * dx + dy * dy);
                 if (distance < nearestDistance) {
                     nearestDistance = distance;
-                    nearestEnemy = { x: remotePlayer.x, y: remotePlayer.y, type: 'player' };
+                    nearestEnemy = { x: remotePlayer.x, y: remotePlayer.y, type: 'player', playerId: playerId };
                 }
             }
         });

@@ -57,7 +57,8 @@ interface PlayerMoveData {
  */
 interface SpinThrowData {
     attackerId: string;
-    targetId: string;
+    targetId: string | number;
+    targetType?: string;
     startX: number;
     startY: number;
     endX: number;
@@ -597,8 +598,17 @@ export class NetworkManager implements INetworkManager {
                 );
             }
 
-            // Handle target being thrown
-            if (throwData.targetId === this.playerId) {
+            // Handle target being thrown based on type
+            if (throwData.targetType === 'dummy') {
+                // Dummy got thrown - update local dummy position
+                const dummyIndex = throwData.targetId as number;
+                if (this.dummies && this.dummies[dummyIndex]) {
+                    const dummy = this.dummies[dummyIndex];
+                    dummy.x = throwData.endX;
+                    dummy.y = throwData.endY;
+                    dummy.hitFlashTime = Date.now();
+                }
+            } else if (throwData.targetId === this.playerId) {
                 // Local player got thrown
                 if (this.localPlayer) {
                     // Move to throw position
@@ -613,7 +623,7 @@ export class NetworkManager implements INetworkManager {
                 }
             } else {
                 // Remote player got thrown
-                const target = this.remotePlayers.get(throwData.targetId);
+                const target = this.remotePlayers.get(throwData.targetId as string);
                 if (target) {
                     target.x = throwData.endX;
                     target.y = throwData.endY;
@@ -985,9 +995,9 @@ export class NetworkManager implements INetworkManager {
     }
 
     // Send spin throw to server (Hulk Sister Q skill)
-    sendSpinThrow(targetId: string, dirX: number, dirY: number): void {
+    sendSpinThrow(targetId: string | number | undefined, dirX: number, dirY: number, targetType: string = 'player'): void {
         if (!this.connected || !this.socket) return;
-        this.socket.emit('spinThrow', { targetId, dirX, dirY });
+        this.socket.emit('spinThrow', { targetId, dirX, dirY, targetType });
     }
 
     // Send rage start to server (Hulk Sister E skill)
