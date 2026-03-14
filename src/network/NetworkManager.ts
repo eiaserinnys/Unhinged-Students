@@ -631,6 +631,18 @@ export class NetworkManager implements INetworkManager {
                     this.localPlayer.y = throwData.endY;
                     this.localPlayer.hitFlashTime = Date.now();
 
+                    // Apply damage to local player
+                    if (throwData.damage) {
+                        const oldHP = this.localPlayer.currentHP;
+                        this.localPlayer.currentHP = Math.max(
+                            0,
+                            this.localPlayer.currentHP - throwData.damage
+                        );
+                        console.log(
+                            `[SpinThrow] Local player: HP ${oldHP} -> ${this.localPlayer.currentHP} (damage: ${throwData.damage})`
+                        );
+                    }
+
                     // Trigger vignette
                     if (typeof triggerHitVignette === 'function') {
                         triggerHitVignette();
@@ -643,6 +655,15 @@ export class NetworkManager implements INetworkManager {
                     target.x = throwData.endX;
                     target.y = throwData.endY;
                     target.hitFlashTime = Date.now();
+
+                    // Apply damage to remote player
+                    if (throwData.damage) {
+                        const oldHP = target.currentHP;
+                        target.currentHP = Math.max(0, target.currentHP - throwData.damage);
+                        console.log(
+                            `[SpinThrow] Remote player ${throwData.targetId}: HP ${oldHP} -> ${target.currentHP} (damage: ${throwData.damage})`
+                        );
+                    }
                 }
             }
         });
