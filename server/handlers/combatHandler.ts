@@ -1462,7 +1462,12 @@ export function registerCombatHandlers(socket: TypedSocket, io: TypedServer): vo
 
             // GRAB_RANGE is 150px, allow up to 2x for client-provided position
             if (distance > SERVER_CONFIG.SKILL_SPIN_THROW.GRAB_RANGE * 2.0) {
-                logger.cheat(`Spin throw target too far (client pos): ${distance}px`);
+                logger.cheat(
+                    `Spin throw target too far (client pos): dist=${distance.toFixed(0)}px, ` +
+                    `attacker=(${attacker.x.toFixed(0)},${attacker.y.toFixed(0)}), ` +
+                    `clientTarget=(${clientTargetX.toFixed(0)},${clientTargetY.toFixed(0)}), ` +
+                    `serverTarget=(${targetX.toFixed(0)},${targetY.toFixed(0)})`
+                );
                 return;
             }
         } else {
@@ -1474,7 +1479,11 @@ export function registerCombatHandlers(socket: TypedSocket, io: TypedServer): vo
             // Allow larger tolerance for network latency and position sync issues
             // GRAB_RANGE is 150px, allow up to 3x for better UX
             if (distance > SERVER_CONFIG.SKILL_SPIN_THROW.GRAB_RANGE * 3.0) {
-                logger.cheat(`Spin throw target too far: ${distance}px`);
+                logger.cheat(
+                    `Spin throw target too far: dist=${distance.toFixed(0)}px, ` +
+                    `attacker=(${attacker.x.toFixed(0)},${attacker.y.toFixed(0)}), ` +
+                    `serverTarget=(${targetX.toFixed(0)},${targetY.toFixed(0)})`
+                );
                 return;
             }
         }
@@ -1519,7 +1528,8 @@ export function registerCombatHandlers(socket: TypedSocket, io: TypedServer): vo
         target.y = endY;
 
         logger.debug(
-            `Spin throw: ${socket.id} threw ${targetType}:${targetId} for ${Math.floor(throwDamage)} damage`
+            `Spin throw: ${socket.id} threw ${targetType}:${targetId} for ${Math.floor(throwDamage)} damage, ` +
+            `from=(${targetX.toFixed(0)},${targetY.toFixed(0)}) to=(${endX.toFixed(0)},${endY.toFixed(0)})`
         );
 
         // === COLLISION DAMAGE ===
