@@ -247,7 +247,12 @@ export interface INetworkManager {
     sendMadnessDamage(): void;
     sendPotSmash(dirX: number, dirY: number): void;
     sendCurryRecovery(): void;
-    sendSpinThrow(targetId: string | number | undefined, dirX: number, dirY: number, targetType?: string): void;
+    sendSpinThrow(
+        targetId: string | number | undefined,
+        dirX: number,
+        dirY: number,
+        targetType?: string
+    ): void;
     sendRageStart(): void;
     sendRageEnd(): void;
     addRemotePlayer(playerData: PlayerData): void;

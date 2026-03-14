@@ -55,7 +55,12 @@ export function findNearestEnemy(playersOnly: boolean = false): EnemyInfo | null
                 const distance = Math.sqrt(dx * dx + dy * dy);
                 if (distance < nearestDistance) {
                     nearestDistance = distance;
-                    nearestEnemy = { x: remotePlayer.x, y: remotePlayer.y, type: 'player', playerId: playerId };
+                    nearestEnemy = {
+                        x: remotePlayer.x,
+                        y: remotePlayer.y,
+                        type: 'player',
+                        playerId: playerId,
+                    };
                 }
             }
         });

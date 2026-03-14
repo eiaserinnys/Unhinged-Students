@@ -1416,9 +1416,9 @@ export function registerCombatHandlers(socket: TypedSocket, io: TypedServer): vo
 
         const targetType = data.targetType || 'player';
         const targetId = data.targetId;
-        let target: { x: number; y: number; currentHP: number; isDead?: boolean } | null = null;
-        let targetX: number = 0;
-        let targetY: number = 0;
+        let target: { x: number; y: number; currentHP: number; isDead?: boolean };
+        let targetX: number;
+        let targetY: number;
 
         // Get target based on type
         if (targetType === 'dummy') {
