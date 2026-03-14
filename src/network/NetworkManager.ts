@@ -586,10 +586,12 @@ export class NetworkManager implements INetworkManager {
             }
         });
 
-        // Spin throw from other player (Hulk Sister Q skill)
+        // Spin throw (Hulk Sister Q skill)
         this.socket.on('playerSpinThrow', (data: unknown) => {
             const throwData = data as SpinThrowData;
-            // Handle visual effect for attacker
+            console.log('[SpinThrow] Received:', throwData);
+
+            // Handle visual effect for attacker (if remote player)
             const attacker = this.remotePlayers.get(throwData.attackerId);
             if (attacker && attacker.startSpinThrow) {
                 attacker.startSpinThrow(
@@ -612,10 +614,13 @@ export class NetworkManager implements INetworkManager {
 
                     // Apply damage to dummy
                     if (throwData.damage) {
+                        const oldHP = dummy.currentHP;
                         dummy.currentHP = Math.max(0, dummy.currentHP - throwData.damage);
-                        logger.debug(
-                            `Dummy ${dummyIndex} took ${throwData.damage} damage from spin throw, HP: ${dummy.currentHP}`
+                        console.log(
+                            `[SpinThrow] Dummy ${dummyIndex}: HP ${oldHP} -> ${dummy.currentHP} (damage: ${throwData.damage})`
                         );
+                    } else {
+                        console.log(`[SpinThrow] No damage in throwData:`, throwData);
                     }
                 }
             } else if (throwData.targetId === this.playerId) {
