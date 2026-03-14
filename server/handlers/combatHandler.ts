@@ -1441,7 +1441,9 @@ export function registerCombatHandlers(socket: TypedSocket, io: TypedServer): vo
         const dy = targetY - attacker.y;
         const distance = Math.sqrt(dx * dx + dy * dy);
 
-        if (distance > SERVER_CONFIG.SKILL_SPIN_THROW.GRAB_RANGE * 1.2) {
+        // Allow larger tolerance for network latency and position sync issues
+        // GRAB_RANGE is 150px, allow up to 3x for better UX
+        if (distance > SERVER_CONFIG.SKILL_SPIN_THROW.GRAB_RANGE * 3.0) {
             logger.cheat(`Spin throw target too far: ${distance}px`);
             return;
         }
