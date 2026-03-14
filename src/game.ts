@@ -1460,6 +1460,28 @@ function handleQSkill(): void {
 
                 logger.debug(`Used skill: ${throwSkill.name} - grabbing ${target.type}`);
 
+                // Calculate throw end position for local prediction
+                let throwDistance = GAME_CONFIG.SKILL_SPIN_THROW.THROW_DISTANCE;
+                if (gameState.rageActive) {
+                    throwDistance *= GAME_CONFIG.SKILL_RAGE.THROW_MULTIPLIER;
+                }
+                // Apply rage stacks bonus
+                throwDistance *= 1 + gameState.hulkRageStacks * GAME_CONFIG.HULK_PASSIVE.THROW_PER_STACK;
+
+                const throwEndX = Math.max(50, Math.min(GAME_WIDTH - 50, target.x + dirX * throwDistance));
+                const throwEndY = Math.max(50, Math.min(GAME_HEIGHT - 50, target.y + dirY * throwDistance));
+
+                // Update local dummy position immediately (client-side prediction)
+                if (target.type === 'dummy' && target.dummyIndex !== undefined) {
+                    const dummy = gameState.dummies[target.dummyIndex];
+                    if (dummy) {
+                        dummy.x = throwEndX;
+                        dummy.y = throwEndY;
+                        dummy.hitFlashTime = Date.now();
+                        logger.debug(`Local dummy ${target.dummyIndex} moved to (${throwEndX.toFixed(0)}, ${throwEndY.toFixed(0)})`);
+                    }
+                }
+
                 // Send spin throw to server
                 if (gameState.networkManager) {
                     const targetId = target.type === 'dummy' ? target.dummyIndex : target.playerId;
