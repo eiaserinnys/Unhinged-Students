@@ -1435,58 +1435,55 @@ function handleQSkill(): void {
 
         case 'big-sis-hulk': {
             // 헐크 언니 - 돌려 던지기
+            // 먼저 타겟을 찾고, 유효한 타겟이 있을 때만 스킬 사용
+            const target = findNearestEnemy(false) as EnemyTarget | null; // players AND dummies
+            if (!target || (target.type !== 'dummy' && !target.playerId)) {
+                logger.debug('No enemy to grab');
+                break;
+            }
+
+            const dx = target.x - playerPos.x;
+            const dy = target.y - playerPos.y;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+
+            if (distance > GAME_CONFIG.SKILL_SPIN_THROW.GRAB_RANGE) {
+                logger.debug('Enemy too far to grab');
+                break;
+            }
+
+            // 유효한 타겟이 있을 때만 스킬 사용
             const throwSkill = skillManager.useSkill('q');
             if (throwSkill) {
-                // Find nearest enemy to grab (including dummies)
-                const target = findNearestEnemy(false) as EnemyTarget | null; // players AND dummies
-                if (target && (target.playerId || target.type === 'dummy')) {
-                    const dx = target.x - playerPos.x;
-                    const dy = target.y - playerPos.y;
-                    const distance = Math.sqrt(dx * dx + dy * dy);
+                // Calculate throw direction (away from hulk)
+                const dirX = dx / distance;
+                const dirY = dy / distance;
 
-                    if (distance <= GAME_CONFIG.SKILL_SPIN_THROW.GRAB_RANGE) {
-                        // Calculate throw direction (away from hulk)
-                        const dirX = dx / distance;
-                        const dirY = dy / distance;
+                logger.debug(`Used skill: ${throwSkill.name} - grabbing ${target.type}`);
 
-                        logger.debug(`Used skill: ${throwSkill.name} - grabbing ${target.type}`);
-
-                        // Send spin throw to server
-                        if (gameState.networkManager) {
-                            const targetId =
-                                target.type === 'dummy' ? target.dummyIndex : target.playerId;
-                            gameState.networkManager.sendSpinThrow(
-                                targetId,
-                                dirX,
-                                dirY,
-                                target.type
-                            );
-                        }
-
-                        // Show local effect
-                        if (!spinThrowEffect) {
-                            spinThrowEffect = {
-                                active: false,
-                                x: 0,
-                                y: 0,
-                                targetX: 0,
-                                targetY: 0,
-                                startTime: 0,
-                                duration: GAME_CONFIG.SKILL_SPIN_THROW.EFFECT_DURATION_MS,
-                            };
-                        }
-                        spinThrowEffect.active = true;
-                        spinThrowEffect.x = playerPos.x;
-                        spinThrowEffect.y = playerPos.y;
-                        spinThrowEffect.targetX = target.x;
-                        spinThrowEffect.targetY = target.y;
-                        spinThrowEffect.startTime = Date.now();
-                    } else {
-                        logger.debug('Enemy too far to grab');
-                    }
-                } else {
-                    logger.debug('No enemy to grab');
+                // Send spin throw to server
+                if (gameState.networkManager) {
+                    const targetId = target.type === 'dummy' ? target.dummyIndex : target.playerId;
+                    gameState.networkManager.sendSpinThrow(targetId, dirX, dirY, target.type);
                 }
+
+                // Show local effect
+                if (!spinThrowEffect) {
+                    spinThrowEffect = {
+                        active: false,
+                        x: 0,
+                        y: 0,
+                        targetX: 0,
+                        targetY: 0,
+                        startTime: 0,
+                        duration: GAME_CONFIG.SKILL_SPIN_THROW.EFFECT_DURATION_MS,
+                    };
+                }
+                spinThrowEffect.active = true;
+                spinThrowEffect.x = playerPos.x;
+                spinThrowEffect.y = playerPos.y;
+                spinThrowEffect.targetX = target.x;
+                spinThrowEffect.targetY = target.y;
+                spinThrowEffect.startTime = Date.now();
             }
             break;
         }
