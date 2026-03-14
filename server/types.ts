@@ -425,11 +425,10 @@ export interface StoredDamageUpdateData {
 export interface SpinThrowData {
     targetId: string | number;
     targetType?: string;
+    // dirX/dirY are sent by client but currently ignored by server
+    // Server calculates direction from its own authoritative positions
     dirX: number;
     dirY: number;
-    // Client's known target position (for range validation)
-    clientTargetX?: number;
-    clientTargetY?: number;
 }
 
 export interface PlayerSpinThrowData {
@@ -442,6 +441,9 @@ export interface PlayerSpinThrowData {
     endY: number;
     damage: number;
     collisionDamage?: number;
+    // Server-authoritative HP values for the thrown target
+    targetCurrentHP: number;
+    targetMaxHP: number;
 }
 
 // Spin Throw Collision events

@@ -15,6 +15,7 @@ import {
     TELEPATHY_DAMAGE_PER_TICK,
     TELEPATHY_MAX_HEAL_PER_TICK,
     RATE_LIMIT_ATTACK,
+    RATE_LIMIT_SPIN_THROW,
     PLAYER_RESPAWN_DELAY,
     WAVE_RADIUS,
     WAVE_DAMAGE,
@@ -1404,7 +1405,12 @@ export function registerCombatHandlers(socket: TypedSocket, io: TypedServer): vo
 
     // Handle spin throw (Hulk Sister Q skill)
     socket.on('spinThrow', (data) => {
-        logger.info(`SpinThrow request: targetId=${data.targetId}, targetType=${data.targetType}, clientTarget=(${data.clientTargetX},${data.clientTargetY})`);
+        // === RATE LIMITING ===
+        if (!rateLimit(socket.id, 'spinThrow', RATE_LIMIT_SPIN_THROW)) {
+            return; // Skill on cooldown, silently ignore
+        }
+
+        logger.info(`SpinThrow request: targetId=${data.targetId}, targetType=${data.targetType}`);
 
         const attacker = players.get(socket.id);
         if (!attacker) {
@@ -1424,11 +1430,11 @@ export function registerCombatHandlers(socket: TypedSocket, io: TypedServer): vo
 
         const targetType = data.targetType || 'player';
         const targetId = data.targetId;
-        let target: { x: number; y: number; currentHP: number; isDead?: boolean };
+        let target: { x: number; y: number; currentHP: number; maxHP: number; isDead?: boolean };
         let targetX: number;
         let targetY: number;
 
-        // Get target based on type
+        // Get target based on type (use SERVER-SIDE position only for anti-cheat)
         if (targetType === 'dummy') {
             const dummyIndex = targetId as number;
             const dummy = dummies.get(dummyIndex);
@@ -1450,62 +1456,27 @@ export function registerCombatHandlers(socket: TypedSocket, io: TypedServer): vo
             targetY = player.y;
         }
 
-        // Validate target is in range
-        // Use client's known target position if provided (handles position sync issues)
-        const clientTargetX = data.clientTargetX;
-        const clientTargetY = data.clientTargetY;
+        // Validate target is in range using SERVER-SIDE positions only
+        // Allow tolerance for network latency
+        const dx = targetX - attacker.x;
+        const dy = targetY - attacker.y;
+        const distance = Math.sqrt(dx * dx + dy * dy);
 
-        // If client sent target position, verify it's reasonable
-        if (isValidNumber(clientTargetX) && isValidNumber(clientTargetY)) {
-            // Check if client's target position is within sync tolerance of server's position
-            const syncDx = clientTargetX - targetX;
-            const syncDy = clientTargetY - targetY;
-            const syncDistance = Math.sqrt(syncDx * syncDx + syncDy * syncDy);
-
-            // Allow up to 500px sync difference (accounts for throw distance + network lag)
-            const maxSyncDifference = 500;
-            if (syncDistance > maxSyncDifference) {
-                logger.cheat(`Spin throw target position mismatch: client=(${clientTargetX},${clientTargetY}), server=(${targetX},${targetY}), diff=${syncDistance}px`);
-                return;
-            }
-
-            // Use client's target position for range check (since client may have more recent state)
-            const dx = clientTargetX - attacker.x;
-            const dy = clientTargetY - attacker.y;
-            const distance = Math.sqrt(dx * dx + dy * dy);
-
-            // GRAB_RANGE is 150px, allow up to 2x for client-provided position
-            if (distance > SERVER_CONFIG.SKILL_SPIN_THROW.GRAB_RANGE * 2.0) {
-                logger.cheat(
-                    `Spin throw target too far (client pos): dist=${distance.toFixed(0)}px, ` +
-                    `attacker=(${attacker.x.toFixed(0)},${attacker.y.toFixed(0)}), ` +
-                    `clientTarget=(${clientTargetX.toFixed(0)},${clientTargetY.toFixed(0)}), ` +
-                    `serverTarget=(${targetX.toFixed(0)},${targetY.toFixed(0)})`
-                );
-                return;
-            }
-        } else {
-            // Fallback: use server's position with larger tolerance
-            const dx = targetX - attacker.x;
-            const dy = targetY - attacker.y;
-            const distance = Math.sqrt(dx * dx + dy * dy);
-
-            // Allow larger tolerance for network latency and position sync issues
-            // GRAB_RANGE is 150px, allow up to 3x for better UX
-            if (distance > SERVER_CONFIG.SKILL_SPIN_THROW.GRAB_RANGE * 3.0) {
-                logger.cheat(
-                    `Spin throw target too far: dist=${distance.toFixed(0)}px, ` +
-                    `attacker=(${attacker.x.toFixed(0)},${attacker.y.toFixed(0)}), ` +
-                    `serverTarget=(${targetX.toFixed(0)},${targetY.toFixed(0)})`
-                );
-                return;
-            }
+        // GRAB_RANGE is 150px, allow 2x tolerance for network latency
+        const grabRangeTolerance = SERVER_CONFIG.SKILL_SPIN_THROW.GRAB_RANGE * 2.0;
+        if (distance > grabRangeTolerance) {
+            logger.cheat(
+                `Spin throw target too far: dist=${distance.toFixed(0)}px (max: ${grabRangeTolerance.toFixed(0)}px), ` +
+                `attacker=(${attacker.x.toFixed(0)},${attacker.y.toFixed(0)}), ` +
+                `target=(${targetX.toFixed(0)},${targetY.toFixed(0)})`
+            );
+            return;
         }
 
-        // Calculate throw direction
-        const dirLength = Math.sqrt(data.dirX * data.dirX + data.dirY * data.dirY);
-        const dirX = dirLength > 0 ? data.dirX / dirLength : 1;
-        const dirY = dirLength > 0 ? data.dirY / dirLength : 0;
+        // Calculate throw direction (from attacker to target)
+        const dirLength = Math.sqrt(dx * dx + dy * dy);
+        const dirX = dirLength > 0 ? dx / dirLength : 1;
+        const dirY = dirLength > 0 ? dy / dirLength : 0;
 
         // Calculate throw damage (with rage multiplier if active)
         let throwDamage = SERVER_CONFIG.SKILL_SPIN_THROW.DAMAGE;
@@ -1521,11 +1492,13 @@ export function registerCombatHandlers(socket: TypedSocket, io: TypedServer): vo
         throwDamage *= 1 + rageStacks * SERVER_CONFIG.HULK_PASSIVE.DAMAGE_PER_STACK;
         throwDistance *= 1 + rageStacks * SERVER_CONFIG.HULK_PASSIVE.THROW_PER_STACK;
 
+        const finalDamage = Math.floor(throwDamage);
+
         // Apply damage to target
         if (targetType === 'dummy') {
-            target.currentHP = Math.max(0, target.currentHP - Math.floor(throwDamage));
+            target.currentHP = Math.max(0, target.currentHP - finalDamage);
         } else {
-            applyDamageWithStorage(target as Player, Math.floor(throwDamage), io);
+            applyDamageWithStorage(target as Player, finalDamage, io);
         }
 
         // Calculate throw end position
@@ -1542,7 +1515,7 @@ export function registerCombatHandlers(socket: TypedSocket, io: TypedServer): vo
         target.y = endY;
 
         logger.info(
-            `SpinThrow SUCCESS: ${socket.id} threw ${targetType}:${targetId} for ${Math.floor(throwDamage)} damage, ` +
+            `SpinThrow SUCCESS: ${socket.id} threw ${targetType}:${targetId} for ${finalDamage} damage, ` +
             `from=(${targetX.toFixed(0)},${targetY.toFixed(0)}) to=(${endX.toFixed(0)},${endY.toFixed(0)})`
         );
 
@@ -1658,7 +1631,7 @@ export function registerCombatHandlers(socket: TypedSocket, io: TypedServer): vo
             }
         });
 
-        // Broadcast collision damage
+        // Broadcast collision damage FIRST (before playerSpinThrow)
         if (collisionHitPlayers.length > 0) {
             io.emit('spinThrowCollision', {
                 attackerId: socket.id,
@@ -1685,7 +1658,8 @@ export function registerCombatHandlers(socket: TypedSocket, io: TypedServer): vo
             });
         }
 
-        // Broadcast spin throw effect
+        // Broadcast spin throw effect with server-authoritative HP values
+        // This is the SINGLE source of truth for the thrown target's state
         io.emit('playerSpinThrow', {
             attackerId: socket.id,
             targetId: targetId,
@@ -1694,20 +1668,20 @@ export function registerCombatHandlers(socket: TypedSocket, io: TypedServer): vo
             startY: attacker.y,
             endX: endX,
             endY: endY,
-            damage: Math.floor(throwDamage),
+            damage: finalDamage,
             collisionDamage: thrownTargetTookCollisionDamage ? collisionDamage : 0,
+            // Server-authoritative HP for the thrown target (after all damage applied)
+            targetCurrentHP: target.currentHP,
+            targetMaxHP: target.maxHP,
         });
 
         // Check if target died (including from collision damage)
+        // Only emit playerDied, NOT dummyDamaged (already included in playerSpinThrow)
         if (target.currentHP <= 0) {
             if (targetType === 'dummy') {
-                // Broadcast dummy death
-                io.emit('dummyDamaged', {
-                    dummyIndex: targetId as number,
-                    damage: Math.floor(throwDamage),
-                    currentHP: 0,
-                    attackerId: socket.id,
-                });
+                // Dummy death is handled by client reading targetCurrentHP from playerSpinThrow
+                // No separate dummyDamaged event needed
+                logger.debug(`Dummy ${targetId} died from spin throw`);
             } else if (!target.isDead) {
                 (target as Player).isDead = true;
                 (target as Player).deathTime = Date.now();
@@ -1718,15 +1692,9 @@ export function registerCombatHandlers(socket: TypedSocket, io: TypedServer): vo
                 });
                 logger.info(`${targetId} has been killed by spin throw from ${socket.id}!`);
             }
-        } else if (targetType === 'dummy') {
-            // Broadcast dummy damage
-            io.emit('dummyDamaged', {
-                dummyIndex: targetId as number,
-                damage: Math.floor(throwDamage),
-                currentHP: target.currentHP,
-                attackerId: socket.id,
-            });
         }
+        // NOTE: No separate dummyDamaged event for the thrown target
+        // The playerSpinThrow event contains all necessary info (targetCurrentHP, targetMaxHP)
     });
 
     // Handle rage start (Hulk Sister E skill)

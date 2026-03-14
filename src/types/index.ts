@@ -251,9 +251,7 @@ export interface INetworkManager {
         targetId: string | number | undefined,
         dirX: number,
         dirY: number,
-        targetType?: string,
-        clientTargetX?: number,
-        clientTargetY?: number
+        targetType?: string
     ): void;
     sendRageStart(): void;
     sendRageEnd(): void;

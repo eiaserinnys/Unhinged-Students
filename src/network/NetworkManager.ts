@@ -65,6 +65,9 @@ interface SpinThrowData {
     endY: number;
     damage?: number;
     collisionDamage?: number;
+    // Server-authoritative HP values for the thrown target
+    targetCurrentHP: number;
+    targetMaxHP: number;
 }
 
 /**
@@ -589,7 +592,7 @@ export class NetworkManager implements INetworkManager {
         // Spin throw (Hulk Sister Q skill)
         this.socket.on('playerSpinThrow', (data: unknown) => {
             const throwData = data as SpinThrowData;
-            console.log('[SpinThrow] Received:', throwData);
+            logger.debug(`[SpinThrow] Received: target=${throwData.targetType}:${throwData.targetId}, HP=${throwData.targetCurrentHP}/${throwData.targetMaxHP}`);
 
             // Handle visual effect for attacker (if remote player)
             const attacker = this.remotePlayers.get(throwData.attackerId);
@@ -603,45 +606,48 @@ export class NetworkManager implements INetworkManager {
             }
 
             // Handle target being thrown based on type
+            // Use SERVER-AUTHORITATIVE HP values (targetCurrentHP, targetMaxHP)
             if (throwData.targetType === 'dummy') {
-                // Dummy got thrown - update local dummy position and apply damage
+                // Dummy got thrown - update position and HP from server
                 const dummyIndex = throwData.targetId as number;
                 if (this.dummies && this.dummies[dummyIndex]) {
                     const dummy = this.dummies[dummyIndex];
+                    const oldHP = dummy.currentHP;
+
+                    // Update position from server
                     dummy.x = throwData.endX;
                     dummy.y = throwData.endY;
                     dummy.hitFlashTime = Date.now();
 
-                    // Apply damage to dummy
-                    if (throwData.damage) {
-                        const oldHP = dummy.currentHP;
-                        dummy.currentHP = Math.max(0, dummy.currentHP - throwData.damage);
-                        console.log(
-                            `[SpinThrow] Dummy ${dummyIndex}: HP ${oldHP} -> ${dummy.currentHP} (damage: ${throwData.damage})`
-                        );
-                    } else {
-                        console.log(`[SpinThrow] No damage in throwData:`, throwData);
+                    // Use server-authoritative HP (NOT damage calculation)
+                    dummy.currentHP = throwData.targetCurrentHP;
+                    dummy.maxHP = throwData.targetMaxHP;
+
+                    logger.debug(
+                        `[SpinThrow] Dummy ${dummyIndex}: HP ${oldHP} -> ${dummy.currentHP}/${dummy.maxHP}`
+                    );
+
+                    // Mark as dead if HP is 0
+                    if (dummy.currentHP <= 0) {
+                        dummy.deathTime = Date.now();
                     }
                 }
             } else if (throwData.targetId === this.playerId) {
                 // Local player got thrown
                 if (this.localPlayer) {
-                    // Move to throw position
+                    const oldHP = this.localPlayer.currentHP;
+
+                    // Move to throw position from server
                     this.localPlayer.x = throwData.endX;
                     this.localPlayer.y = throwData.endY;
                     this.localPlayer.hitFlashTime = Date.now();
 
-                    // Apply damage to local player
-                    if (throwData.damage) {
-                        const oldHP = this.localPlayer.currentHP;
-                        this.localPlayer.currentHP = Math.max(
-                            0,
-                            this.localPlayer.currentHP - throwData.damage
-                        );
-                        console.log(
-                            `[SpinThrow] Local player: HP ${oldHP} -> ${this.localPlayer.currentHP} (damage: ${throwData.damage})`
-                        );
-                    }
+                    // Use server-authoritative HP (NOT damage calculation)
+                    this.localPlayer.currentHP = throwData.targetCurrentHP;
+
+                    logger.debug(
+                        `[SpinThrow] Local player: HP ${oldHP} -> ${this.localPlayer.currentHP}/${throwData.targetMaxHP}`
+                    );
 
                     // Trigger vignette
                     if (typeof triggerHitVignette === 'function') {
@@ -652,18 +658,20 @@ export class NetworkManager implements INetworkManager {
                 // Remote player got thrown
                 const target = this.remotePlayers.get(throwData.targetId as string);
                 if (target) {
+                    const oldHP = target.currentHP;
+
+                    // Update position from server
                     target.x = throwData.endX;
                     target.y = throwData.endY;
                     target.hitFlashTime = Date.now();
 
-                    // Apply damage to remote player
-                    if (throwData.damage) {
-                        const oldHP = target.currentHP;
-                        target.currentHP = Math.max(0, target.currentHP - throwData.damage);
-                        console.log(
-                            `[SpinThrow] Remote player ${throwData.targetId}: HP ${oldHP} -> ${target.currentHP} (damage: ${throwData.damage})`
-                        );
-                    }
+                    // Use server-authoritative HP (NOT damage calculation)
+                    target.currentHP = throwData.targetCurrentHP;
+                    target.maxHP = throwData.targetMaxHP;
+
+                    logger.debug(
+                        `[SpinThrow] Remote player ${throwData.targetId}: HP ${oldHP} -> ${target.currentHP}/${target.maxHP}`
+                    );
                 }
             }
         });
@@ -696,12 +704,14 @@ export class NetworkManager implements INetworkManager {
             }
 
             // If local player was the thrown target, they also take collision damage
+            // Note: HP update comes from playerSpinThrow event (targetCurrentHP) which is sent AFTER this event
+            // Server emits: spinThrowCollision first, then playerSpinThrow with final HP
             if (
                 collisionData.thrownTargetType === 'player' &&
                 collisionData.thrownTargetId === this.playerId &&
                 this.localPlayer
             ) {
-                // HP update will come from the playerDamaged event
+                // Just trigger visual effect - HP update comes from playerSpinThrow event
                 this.localPlayer.hitFlashTime = Date.now();
             }
         });
@@ -1069,13 +1079,13 @@ export class NetworkManager implements INetworkManager {
     }
 
     // Send spin throw to server (Hulk Sister Q skill)
+    // Server calculates direction from its own authoritative positions
+    // dirX/dirY are sent for compatibility but currently ignored by server
     sendSpinThrow(
         targetId: string | number | undefined,
         dirX: number,
         dirY: number,
-        targetType: string = 'player',
-        clientTargetX?: number,
-        clientTargetY?: number
+        targetType: string = 'player'
     ): void {
         if (!this.connected || !this.socket) return;
         this.socket.emit('spinThrow', {
@@ -1083,8 +1093,6 @@ export class NetworkManager implements INetworkManager {
             dirX,
             dirY,
             targetType,
-            clientTargetX,
-            clientTargetY,
         });
     }
 

@@ -15,6 +15,7 @@ interface ServerOnlyConfig {
         MOVE_MS: number;
         ATTACK_MS: number;
         CHAT_MS: number;
+        SPIN_THROW_MS: number;
     };
 }
 
@@ -29,6 +30,7 @@ const SERVER_ONLY_CONFIG: ServerOnlyConfig = {
         MOVE_MS: 50, // 50ms = 20 requests per second
         ATTACK_MS: 500, // Same as attack cooldown
         CHAT_MS: 1000, // 1 message per second
+        SPIN_THROW_MS: 2000, // Same as SKILL_SPIN_THROW.COOLDOWN_MS
     },
 };
 
@@ -111,6 +113,7 @@ export const SPIN_THROW_COLLISION_DAMAGE = SERVER_CONFIG.SKILL_SPIN_THROW.COLLIS
 export const RAGE_DURATION = SERVER_CONFIG.SKILL_RAGE.DURATION_MS;
 export const RAGE_DAMAGE_MULTIPLIER = SERVER_CONFIG.SKILL_RAGE.DAMAGE_MULTIPLIER;
 export const RAGE_THROW_MULTIPLIER = SERVER_CONFIG.SKILL_RAGE.THROW_MULTIPLIER;
+export const RATE_LIMIT_SPIN_THROW = SERVER_CONFIG.RATE_LIMIT.SPIN_THROW_MS;
 
 // Re-export GAME_CONFIG for consumers that need it
 export { GAME_CONFIG };
