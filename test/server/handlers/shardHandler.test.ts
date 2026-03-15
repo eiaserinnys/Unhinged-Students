@@ -29,7 +29,6 @@ const mockConfig = {
             RESPAWN_VARIANCE_MS: 2000,
         },
     },
-    SHARD_COLLECT_DISTANCE: 100,
 };
 
 const mockValidation = {

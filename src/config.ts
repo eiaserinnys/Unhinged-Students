@@ -158,54 +158,36 @@ export const GAME_CONFIG: GameConfig = {
     // SQUEAK-SQUEAK skills — client only (not in shared yet)
     // =====================================
     SKILL_RAT_ILLUSION: {
-        COOLDOWN_MS: 5000,
-        RAT_COUNT: 5,
-        DURATION_MS: 5000,
-        HP_DRAIN_PER_SECOND: 10,
-        RAT_SPEED: 150,
-        EFFECT_RADIUS: 200,
+        ...SHARED_CONFIG.SKILL_RAT_ILLUSION,
         COLOR: '#FFB6C1',
     },
 
     SKILL_SLEEP_POWDER: {
-        COOLDOWN_MS: 12000,
-        RADIUS: 150,
-        SLEEP_DURATION_MS: 3000,
+        ...SHARED_CONFIG.SKILL_SLEEP_POWDER,
         EFFECT_DURATION_MS: 500,
         COLOR: '#9370DB',
     },
 
     SKILL_RAT_BOMB: {
-        COOLDOWN_MS: 8000,
-        EXPLOSION_DAMAGE: 25,
-        EXPLOSION_RADIUS: 120,
-        RAT_COUNT: 4,
-        RAT_DAMAGE: 8,
-        RAT_DURATION_MS: 4000,
+        ...SHARED_CONFIG.SKILL_RAT_BOMB,
         EFFECT_DURATION_MS: 500,
         COLOR: '#FF6B6B',
     },
 
     SKILL_DOLL_HUG: {
-        COOLDOWN_MS: 15000,
-        SHIELD_HP: 50,
-        REFLECT_RATIO: 0.5,
-        DURATION_MS: 5000,
-        WEAK_POINTS: 3,
+        ...SHARED_CONFIG.SKILL_DOLL_HUG,
         EFFECT_DURATION_MS: 500,
         COLOR: '#FFC0CB',
     },
 
     SKILL_RAT_REVIVE: {
-        COOLDOWN_MS: 60000,
-        REVIVE_HP_RATIO: 0.5,
+        ...SHARED_CONFIG.SKILL_RAT_REVIVE,
         EFFECT_DURATION_MS: 1500,
         COLOR: '#FFD700',
     },
 
     SQUEAK_STATS: {
-        MAX_HP: 70,
-        SPEED: 350,
+        ...SHARED_CONFIG.SQUEAK_STATS,
     },
 
     // =====================================

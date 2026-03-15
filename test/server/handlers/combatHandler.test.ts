@@ -24,12 +24,40 @@ const mockConfig = {
             LASER_DISTANCE: 50,
             BOUNDARY_MARGIN: 50,
         },
+        COMBAT: {
+            ATTACK_POWER: 10,
+            ATTACK_RANGE: 150,
+            ATTACK_COOLDOWN_MS: 500,
+            HIT_RADIUS: 67.5,
+            DUMMY_RADIUS_BONUS: 67.5,
+        },
+        PLAYER: {
+            RESPAWN_DELAY_MS: 3000,
+        },
+        SKILL_LASER: {
+            DAMAGE: 44,
+            MAX_LENGTH: 2000,
+            COOLDOWN_MS: 10000,
+        },
+        SKILL_TELEPORT: {
+            MAX_DISTANCE: 400,
+            DAMAGE_RADIUS: 100,
+            DAMAGE: 12,
+            COOLDOWN_MS: 8000,
+        },
         SKILL_TELEPATHY: {
             RADIUS: 180,
             DAMAGE_PER_TICK: 2,
             MAX_HEAL_PER_TICK: 4,
             DURATION_MS: 3000,
-            TICK_INTERVAL_MS: 200, // 200ms between ticks
+            TICK_INTERVAL_MS: 200,
+            COOLDOWN_MS: 15000,
+        },
+        SKILL_WAVE: {
+            RADIUS: 250,
+            DAMAGE: 15,
+            CONFUSION_DURATION_MS: 3000,
+            COOLDOWN_MS: 2000,
         },
         SKILL_MADNESS: {
             RADIUS: 150,
@@ -37,6 +65,19 @@ const mockConfig = {
             DURATION_MS: 5000,
             TICK_INTERVAL_MS: 200,
             COOLDOWN_MS: 10000,
+        },
+        SKILL_POT_SMASH: {
+            DAMAGE: 45,
+            SPLASH_DAMAGE: 20,
+            RANGE: 250,
+            ANGLE: 150,
+            SPLASH_RADIUS: 120,
+            COOLDOWN_MS: 1500,
+        },
+        SKILL_CURRY_RECOVERY: {
+            MAX_STORED_DAMAGE: 50,
+            STORE_RATIO: 0.5,
+            COOLDOWN_MS: 8000,
         },
         SKILL_RAGE: {
             DURATION_MS: 5000,
@@ -49,6 +90,7 @@ const mockConfig = {
             THROW_DISTANCE: 300,
             DAMAGE: 30,
             COLLISION_DAMAGE: 20,
+            COLLISION_RADIUS: 80,
             COOLDOWN_MS: 2000,
         },
         HULK_PASSIVE: {
@@ -57,44 +99,20 @@ const mockConfig = {
             THROW_PER_STACK: 0.05,
             STACK_DURATION_MS: 10000,
         },
-        PLAYER: {
-            RESPAWN_DELAY_MS: 3000,
+        RATE_LIMIT: {
+            ATTACK_MS: 500,
+            TELEPORT_MS: 8000,
+            TELEPORT_DAMAGE_MS: 8000,
+            LASER_MS: 10000,
+            TELEPATHY_MS: 15000,
+            WAVE_MS: 2000,
+            MADNESS_MS: 10000,
+            POT_SMASH_MS: 1500,
+            CURRY_RECOVERY_MS: 8000,
+            RAGE_MS: 20000,
+            SPIN_THROW_MS: 2000,
         },
     },
-    TELEPATHY_RADIUS: 180,
-    TELEPATHY_DAMAGE_PER_TICK: 2,
-    TELEPATHY_MAX_HEAL_PER_TICK: 4,
-    PLAYER_RESPAWN_DELAY: 3000,
-    RATE_LIMIT_ATTACK: 500,
-    RATE_LIMIT_TELEPORT: 8000,
-    RATE_LIMIT_TELEPORT_DAMAGE: 8000,
-    RATE_LIMIT_LASER: 10000,
-    RATE_LIMIT_TELEPATHY: 15000,
-    RATE_LIMIT_WAVE: 2000,
-    RATE_LIMIT_MADNESS: 10000,
-    RATE_LIMIT_POT_SMASH: 1500,
-    RATE_LIMIT_CURRY_RECOVERY: 8000,
-    RATE_LIMIT_RAGE: 20000,
-    RATE_LIMIT_SPIN_THROW: 2000,
-    ATTACK_POWER: 10,
-    ATTACK_RANGE: 150,
-    TELEPORT_MAX_DISTANCE: 400,
-    TELEPORT_DAMAGE_RADIUS: 100,
-    TELEPORT_DAMAGE: 12,
-    LASER_DAMAGE: 44,
-    LASER_MAX_LENGTH: 2000,
-    WAVE_RADIUS: 250,
-    WAVE_DAMAGE: 15,
-    WAVE_CONFUSION_DURATION: 3000,
-    MADNESS_RADIUS: 150,
-    MADNESS_DAMAGE_PER_TICK: 1,
-    POT_SMASH_DAMAGE: 45,
-    POT_SMASH_SPLASH_DAMAGE: 20,
-    POT_SMASH_RANGE: 250,
-    POT_SMASH_ANGLE: 150,
-    POT_SMASH_SPLASH_RADIUS: 120,
-    CURRY_RECOVERY_MAX_STORED: 50,
-    CURRY_RECOVERY_STORE_RATIO: 0.5,
 };
 
 // Mock validation
@@ -145,9 +163,38 @@ const mockGameState = {
     rateLimit: mockRateLimit,
 };
 
+const mockSharedConfig = {
+    GAME_CONFIG: {
+        COMBAT: {
+            ATTACK_POWER: 10,
+            ATTACK_RANGE: 150,
+            ATTACK_COOLDOWN_MS: 500,
+            HIT_RADIUS: 67.5,
+            DUMMY_RADIUS_BONUS: 67.5,
+        },
+        PLAYER: {
+            SPEED: 300,
+            MAX_HP: 100,
+            RESPAWN_DELAY_MS: 3000,
+            RESPAWN_X: 960,
+            RESPAWN_Y: 540,
+        },
+        SKILL_RAT_ILLUSION: {
+            COOLDOWN_MS: 5000,
+            RAT_COUNT: 5,
+            DURATION_MS: 5000,
+            HP_DRAIN_PER_SECOND: 10,
+            RAT_SPEED: 150,
+            EFFECT_RADIUS: 200,
+            DUMMY_DAMAGE_MULTIPLIER: 3,
+        },
+    },
+};
+
 // Setup mocks before requiring the module
 jest.mock('../../../logger', () => mockLogger);
 jest.mock('../../../server/config', () => mockConfig);
+jest.mock('../../../shared/config', () => mockSharedConfig);
 jest.mock('../../../server/validation', () => mockValidation);
 jest.mock('../../../server/gameState', () => mockGameState);
 
@@ -802,7 +849,7 @@ describe('CombatHandler Security', () => {
 
             const curry = mockPlayers.get('test-socket-2')!;
             expect(curry.storedDamage).toBeGreaterThan(0);
-            expect(curry.storedDamage).toBeLessThanOrEqual(mockConfig.CURRY_RECOVERY_MAX_STORED);
+            expect(curry.storedDamage).toBeLessThanOrEqual(mockConfig.SERVER_CONFIG.SKILL_CURRY_RECOVERY.MAX_STORED_DAMAGE);
         });
 
         it('should cap storedDamage at CURRY_RECOVERY_MAX_STORED', () => {
@@ -824,14 +871,14 @@ describe('CombatHandler Security', () => {
                 maxHP: 100,
                 isDead: false,
                 characterId: 'curry-bear',
-                storedDamage: mockConfig.CURRY_RECOVERY_MAX_STORED, // Already at max
+                storedDamage: mockConfig.SERVER_CONFIG.SKILL_CURRY_RECOVERY.MAX_STORED_DAMAGE, // Already at max
             });
 
             mockRateLimit.mockReturnValue(true);
             handlers.playerAttack({ x: 100, y: 100 });
 
             const curry = mockPlayers.get('test-socket-2')!;
-            expect(curry.storedDamage).toBe(mockConfig.CURRY_RECOVERY_MAX_STORED);
+            expect(curry.storedDamage).toBe(mockConfig.SERVER_CONFIG.SKILL_CURRY_RECOVERY.MAX_STORED_DAMAGE);
         });
     });
 

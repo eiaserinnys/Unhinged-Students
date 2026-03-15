@@ -2,13 +2,8 @@
  * @fileoverview Wave attack handler (Crazy-Eyes basic attack)
  */
 import logger from '../../../logger';
-import {
-    WAVE_RADIUS,
-    WAVE_DAMAGE,
-    WAVE_CONFUSION_DURATION,
-    RATE_LIMIT_WAVE,
-    PLAYER_RESPAWN_DELAY,
-} from '../../config';
+import { SERVER_CONFIG } from '../../config';
+import { GAME_CONFIG } from '../../../shared/config';
 import { players, dummies, rateLimit } from '../../gameState';
 import { applyDamageWithPassives } from './damageProcessor';
 import type {
@@ -21,7 +16,7 @@ import type {
 
 export function registerWaveHandlers(socket: TypedSocket, io: TypedServer): void {
     socket.on('waveAttack', (_data) => {
-        if (!rateLimit(socket.id, 'wave', RATE_LIMIT_WAVE)) {
+        if (!rateLimit(socket.id, 'wave', SERVER_CONFIG.RATE_LIMIT.WAVE_MS)) {
             return;
         }
 
@@ -32,9 +27,9 @@ export function registerWaveHandlers(socket: TypedSocket, io: TypedServer): void
         const x = attacker.x;
         const y = attacker.y;
 
-        const radius = WAVE_RADIUS;
-        const damage = WAVE_DAMAGE;
-        const confusionDuration = WAVE_CONFUSION_DURATION;
+        const radius = SERVER_CONFIG.SKILL_WAVE.RADIUS;
+        const damage = SERVER_CONFIG.SKILL_WAVE.DAMAGE;
+        const confusionDuration = SERVER_CONFIG.SKILL_WAVE.CONFUSION_DURATION_MS;
 
         logger.debug(`Wave attack from ${socket.id} at (${x.toFixed(0)}, ${y.toFixed(0)})`);
 
@@ -82,7 +77,7 @@ export function registerWaveHandlers(socket: TypedSocket, io: TypedServer): void
                     killedPlayers.push({
                         playerId: playerId,
                         killedBy: socket.id,
-                        respawnDelay: PLAYER_RESPAWN_DELAY,
+                        respawnDelay: SERVER_CONFIG.PLAYER.RESPAWN_DELAY_MS,
                     });
                     logger.info(`${playerId} has been killed by wave from ${socket.id}!`);
                 }
@@ -114,7 +109,7 @@ export function registerWaveHandlers(socket: TypedSocket, io: TypedServer): void
             const dy = dummy.y - y;
             const distance = Math.sqrt(dx * dx + dy * dy);
 
-            if (distance <= radius + 67.5) {
+            if (distance <= radius + GAME_CONFIG.COMBAT.DUMMY_RADIUS_BONUS) {
                 dummy.currentHP = Math.max(0, dummy.currentHP - damage);
 
                 hitDummies.push({

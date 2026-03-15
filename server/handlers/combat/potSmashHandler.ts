@@ -2,15 +2,8 @@
  * @fileoverview Pot smash handler (Curry-Bear basic attack)
  */
 import logger from '../../../logger';
-import {
-    POT_SMASH_DAMAGE,
-    POT_SMASH_SPLASH_DAMAGE,
-    POT_SMASH_RANGE,
-    POT_SMASH_ANGLE,
-    POT_SMASH_SPLASH_RADIUS,
-    RATE_LIMIT_POT_SMASH,
-    PLAYER_RESPAWN_DELAY,
-} from '../../config';
+import { SERVER_CONFIG } from '../../config';
+import { GAME_CONFIG } from '../../../shared/config';
 import { isValidNumber, calculateKnockbackEndPosition } from '../../validation';
 import { players, dummies, rateLimit } from '../../gameState';
 import { applyDamageWithPassives } from './damageProcessor';
@@ -24,7 +17,7 @@ import type {
 
 export function registerPotSmashHandlers(socket: TypedSocket, io: TypedServer): void {
     socket.on('potSmash', (data) => {
-        if (!rateLimit(socket.id, 'potSmash', RATE_LIMIT_POT_SMASH)) {
+        if (!rateLimit(socket.id, 'potSmash', SERVER_CONFIG.RATE_LIMIT.POT_SMASH_MS)) {
             return;
         }
 
@@ -46,11 +39,11 @@ export function registerPotSmashHandlers(socket: TypedSocket, io: TypedServer): 
         const normDirX = dirLength > 0 ? dirX / dirLength : 1;
         const normDirY = dirLength > 0 ? dirY / dirLength : 0;
 
-        const range = POT_SMASH_RANGE;
-        const angle = POT_SMASH_ANGLE;
-        const damage = POT_SMASH_DAMAGE;
-        const splashDamage = POT_SMASH_SPLASH_DAMAGE;
-        const splashRadius = POT_SMASH_SPLASH_RADIUS;
+        const range = SERVER_CONFIG.SKILL_POT_SMASH.RANGE;
+        const angle = SERVER_CONFIG.SKILL_POT_SMASH.ANGLE;
+        const damage = SERVER_CONFIG.SKILL_POT_SMASH.DAMAGE;
+        const splashDamage = SERVER_CONFIG.SKILL_POT_SMASH.SPLASH_DAMAGE;
+        const splashRadius = SERVER_CONFIG.SKILL_POT_SMASH.SPLASH_RADIUS;
         const halfAngleRad = ((angle / 2) * Math.PI) / 180;
 
         logger.debug(
@@ -123,7 +116,7 @@ export function registerPotSmashHandlers(socket: TypedSocket, io: TypedServer): 
                     killedPlayers.push({
                         playerId: playerId,
                         killedBy: socket.id,
-                        respawnDelay: PLAYER_RESPAWN_DELAY,
+                        respawnDelay: SERVER_CONFIG.PLAYER.RESPAWN_DELAY_MS,
                     });
                 }
             }
@@ -198,7 +191,7 @@ export function registerPotSmashHandlers(socket: TypedSocket, io: TypedServer): 
                         killedPlayers.push({
                             playerId: playerId,
                             killedBy: socket.id,
-                            respawnDelay: PLAYER_RESPAWN_DELAY,
+                            respawnDelay: SERVER_CONFIG.PLAYER.RESPAWN_DELAY_MS,
                         });
                     }
                 }
@@ -212,7 +205,7 @@ export function registerPotSmashHandlers(socket: TypedSocket, io: TypedServer): 
                 const dy = dummy.y - hitPos.y;
                 const distance = Math.sqrt(dx * dx + dy * dy);
 
-                if (distance <= splashRadius + 67.5) {
+                if (distance <= splashRadius + GAME_CONFIG.COMBAT.DUMMY_RADIUS_BONUS) {
                     dummy.currentHP = Math.max(0, dummy.currentHP - splashDamage);
 
                     hitDummies.push({

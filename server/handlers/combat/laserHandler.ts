@@ -2,13 +2,8 @@
  * @fileoverview Laser aiming and attack handlers (Alien Q skill)
  */
 import logger from '../../../logger';
-import {
-    SERVER_CONFIG,
-    LASER_DAMAGE,
-    LASER_MAX_LENGTH,
-    RATE_LIMIT_LASER,
-    PLAYER_RESPAWN_DELAY,
-} from '../../config';
+import { SERVER_CONFIG } from '../../config';
+import { GAME_CONFIG } from '../../../shared/config';
 import {
     isValidNumber,
     calculateDistance,
@@ -53,7 +48,7 @@ export function registerLaserHandlers(socket: TypedSocket, io: TypedServer): voi
 
     // Handle laser attack (Q skill)
     socket.on('laserAttack', (data) => {
-        if (!rateLimit(socket.id, 'laser', RATE_LIMIT_LASER)) {
+        if (!rateLimit(socket.id, 'laser', SERVER_CONFIG.RATE_LIMIT.LASER_MS)) {
             return;
         }
 
@@ -78,18 +73,18 @@ export function registerLaserHandlers(socket: TypedSocket, io: TypedServer): voi
         let y2 = data.y2;
         const laserLength = calculateDistance(x1, y1, x2, y2);
 
-        if (laserLength > LASER_MAX_LENGTH) {
+        if (laserLength > SERVER_CONFIG.SKILL_LASER.MAX_LENGTH) {
             const angle = Math.atan2(y2 - y1, x2 - x1);
-            x2 = x1 + Math.cos(angle) * LASER_MAX_LENGTH;
-            y2 = y1 + Math.sin(angle) * LASER_MAX_LENGTH;
+            x2 = x1 + Math.cos(angle) * SERVER_CONFIG.SKILL_LASER.MAX_LENGTH;
+            y2 = y1 + Math.sin(angle) * SERVER_CONFIG.SKILL_LASER.MAX_LENGTH;
         }
 
-        const damage = LASER_DAMAGE;
-        const hitRadius = 67.5;
+        const damage = SERVER_CONFIG.SKILL_LASER.DAMAGE;
+        const hitRadius = GAME_CONFIG.COMBAT.DUMMY_RADIUS_BONUS;
 
-        if (data.damage && data.damage > LASER_DAMAGE * 1.1) {
+        if (data.damage && data.damage > SERVER_CONFIG.SKILL_LASER.DAMAGE * 1.1) {
             logger.cheat(
-                `Suspicious laser damage from ${socket.id}: ${data.damage} (server: ${LASER_DAMAGE})`
+                `Suspicious laser damage from ${socket.id}: ${data.damage} (server: ${SERVER_CONFIG.SKILL_LASER.DAMAGE})`
             );
         }
 
@@ -146,7 +141,7 @@ export function registerLaserHandlers(socket: TypedSocket, io: TypedServer): voi
                     killedPlayers.push({
                         playerId: playerId,
                         killedBy: socket.id,
-                        respawnDelay: PLAYER_RESPAWN_DELAY,
+                        respawnDelay: SERVER_CONFIG.PLAYER.RESPAWN_DELAY_MS,
                     });
                     logger.info(`${playerId} has been killed by laser from ${socket.id}!`);
                 }

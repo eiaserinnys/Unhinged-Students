@@ -3,7 +3,8 @@
  * Reduces code duplication across different attack types
  */
 import logger from '../../../logger';
-import { SERVER_CONFIG, CURRY_RECOVERY_STORE_RATIO, CURRY_RECOVERY_MAX_STORED } from '../../config';
+import { SERVER_CONFIG } from '../../config';
+import { GAME_CONFIG } from '../../../shared/config';
 import {
     calculateDistance,
     calculateKnockbackDistance,
@@ -40,22 +41,22 @@ export function applyDamageWithPassives(
 
     // Curry-bear passive: store half the damage taken
     if (player.characterId === 'curry-bear' && actualDamage > 0) {
-        const storageAmount = Math.floor(actualDamage * CURRY_RECOVERY_STORE_RATIO);
+        const storageAmount = Math.floor(actualDamage * SERVER_CONFIG.SKILL_CURRY_RECOVERY.STORE_RATIO);
         player.storedDamage = player.storedDamage || 0;
         player.storedDamage = Math.min(
             player.storedDamage + storageAmount,
-            CURRY_RECOVERY_MAX_STORED
+            SERVER_CONFIG.SKILL_CURRY_RECOVERY.MAX_STORED_DAMAGE
         );
         storedDamageChanged = true;
         logger.debug(
-            `Curry-bear stored ${storageAmount} damage (total: ${player.storedDamage}/${CURRY_RECOVERY_MAX_STORED})`
+            `Curry-bear stored ${storageAmount} damage (total: ${player.storedDamage}/${SERVER_CONFIG.SKILL_CURRY_RECOVERY.MAX_STORED_DAMAGE})`
         );
 
         // Notify the curry-bear player of their stored damage
         if (player.socketId) {
             io.to(player.socketId).emit('storedDamageUpdate', {
                 storedDamage: player.storedDamage,
-                maxStored: CURRY_RECOVERY_MAX_STORED,
+                maxStored: SERVER_CONFIG.SKILL_CURRY_RECOVERY.MAX_STORED_DAMAGE,
             });
         }
     }
@@ -168,7 +169,7 @@ export function processAreaDamageToDummies(
         damage,
         applyKnockback = true,
         knockbackDistance,
-        dummyRadiusBonus = 67.5,
+        dummyRadiusBonus = GAME_CONFIG.COMBAT.DUMMY_RADIUS_BONUS,
     } = options;
 
     const hitDummies: HitDummyInfo[] = [];

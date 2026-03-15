@@ -2,7 +2,7 @@
  * @fileoverview Basic attack handler (spacebar attack)
  */
 import logger from '../../../logger';
-import { ATTACK_POWER, ATTACK_RANGE, RATE_LIMIT_ATTACK, PLAYER_RESPAWN_DELAY } from '../../config';
+import { SERVER_CONFIG } from '../../config';
 import { players, rateLimit } from '../../gameState';
 import { processAreaDamageToPlayers, processAreaDamageToDummies, broadcastDamageEvents } from './damageProcessor';
 import type {
@@ -12,7 +12,7 @@ import type {
 
 export function registerBasicAttackHandlers(socket: TypedSocket, io: TypedServer): void {
     socket.on('playerAttack', (data) => {
-        if (!rateLimit(socket.id, 'attack', RATE_LIMIT_ATTACK)) {
+        if (!rateLimit(socket.id, 'attack', SERVER_CONFIG.RATE_LIMIT.ATTACK_MS)) {
             return;
         }
 
@@ -22,17 +22,17 @@ export function registerBasicAttackHandlers(socket: TypedSocket, io: TypedServer
 
         const attackX = attacker.x;
         const attackY = attacker.y;
-        const attackRange = ATTACK_RANGE;
-        const attackPower = ATTACK_POWER;
+        const attackRange = SERVER_CONFIG.COMBAT.ATTACK_RANGE;
+        const attackPower = SERVER_CONFIG.COMBAT.ATTACK_POWER;
 
-        if (data.range && data.range > ATTACK_RANGE * 1.1) {
+        if (data.range && data.range > SERVER_CONFIG.COMBAT.ATTACK_RANGE * 1.1) {
             logger.cheat(
-                `Suspicious attack range from ${socket.id}: ${data.range} (server: ${ATTACK_RANGE})`
+                `Suspicious attack range from ${socket.id}: ${data.range} (server: ${SERVER_CONFIG.COMBAT.ATTACK_RANGE})`
             );
         }
-        if (data.power && data.power > ATTACK_POWER * 1.1) {
+        if (data.power && data.power > SERVER_CONFIG.COMBAT.ATTACK_POWER * 1.1) {
             logger.cheat(
-                `Suspicious attack power from ${socket.id}: ${data.power} (server: ${ATTACK_POWER})`
+                `Suspicious attack power from ${socket.id}: ${data.power} (server: ${SERVER_CONFIG.COMBAT.ATTACK_POWER})`
             );
         }
 
@@ -50,7 +50,7 @@ export function registerBasicAttackHandlers(socket: TypedSocket, io: TypedServer
             y: attackY,
             radius: attackRange,
             damage: attackPower,
-            respawnDelay: PLAYER_RESPAWN_DELAY,
+            respawnDelay: SERVER_CONFIG.PLAYER.RESPAWN_DELAY_MS,
             applyKnockback: true,
             applyPassives: true,
             io,

@@ -1,15 +1,7 @@
 // ========================================
 // INPUT VALIDATION UTILITIES
 // ========================================
-import {
-    GAME_WIDTH,
-    GAME_HEIGHT,
-    KNOCKBACK_MIN,
-    KNOCKBACK_MAX,
-    KNOCKBACK_MULTIPLIER_MIN,
-    KNOCKBACK_MULTIPLIER_MAX,
-    SERVER_CONFIG,
-} from './config';
+import { SERVER_CONFIG } from './config';
 
 // Import geometry functions from shared module
 import { calculateDistance, lineCircleIntersect } from '../shared/geometry';
@@ -32,9 +24,9 @@ export function isValidCoordinate(x: number, y: number, margin = 0): boolean {
         isValidNumber(x) &&
         isValidNumber(y) &&
         x >= margin &&
-        x <= GAME_WIDTH - margin &&
+        x <= SERVER_CONFIG.WORLD.WIDTH - margin &&
         y >= margin &&
-        y <= GAME_HEIGHT - margin
+        y <= SERVER_CONFIG.WORLD.HEIGHT - margin
     );
 }
 
@@ -43,8 +35,8 @@ export function isValidCoordinate(x: number, y: number, margin = 0): boolean {
  */
 export function clampCoordinates(x: number, y: number, margin = 50): { x: number; y: number } {
     return {
-        x: Math.max(margin, Math.min(GAME_WIDTH - margin, x)),
-        y: Math.max(margin, Math.min(GAME_HEIGHT - margin, y)),
+        x: Math.max(margin, Math.min(SERVER_CONFIG.WORLD.WIDTH - margin, x)),
+        y: Math.max(margin, Math.min(SERVER_CONFIG.WORLD.HEIGHT - margin, y)),
     };
 }
 
@@ -68,10 +60,10 @@ export function isValidPositiveInt(value: unknown, max = 1000): value is number 
  */
 export function calculateKnockbackDistance(attackRange: number, distance: number): number {
     const ratio = Math.min(1, distance / attackRange);
-    const baseKnockback = KNOCKBACK_MAX - ratio * (KNOCKBACK_MAX - KNOCKBACK_MIN);
+    const baseKnockback = SERVER_CONFIG.KNOCKBACK.MAX_DISTANCE - ratio * (SERVER_CONFIG.KNOCKBACK.MAX_DISTANCE - SERVER_CONFIG.KNOCKBACK.MIN_DISTANCE);
     const multiplier =
-        KNOCKBACK_MULTIPLIER_MIN +
-        Math.random() * (KNOCKBACK_MULTIPLIER_MAX - KNOCKBACK_MULTIPLIER_MIN);
+        SERVER_CONFIG.KNOCKBACK.MULTIPLIER_MIN +
+        Math.random() * (SERVER_CONFIG.KNOCKBACK.MULTIPLIER_MAX - SERVER_CONFIG.KNOCKBACK.MULTIPLIER_MIN);
     return baseKnockback * multiplier;
 }
 
@@ -106,8 +98,8 @@ export function calculateKnockbackEndPosition(
 
     // Clamp to game bounds (with margin for character size)
     const margin = SERVER_CONFIG.KNOCKBACK.BOUNDARY_MARGIN;
-    endX = Math.max(margin, Math.min(GAME_WIDTH - margin, endX));
-    endY = Math.max(margin, Math.min(GAME_HEIGHT - margin, endY));
+    endX = Math.max(margin, Math.min(SERVER_CONFIG.WORLD.WIDTH - margin, endX));
+    endY = Math.max(margin, Math.min(SERVER_CONFIG.WORLD.HEIGHT - margin, endY));
 
     return { x: endX, y: endY };
 }

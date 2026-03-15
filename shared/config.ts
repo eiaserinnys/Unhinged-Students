@@ -27,6 +27,7 @@ export interface GameConfigType {
         ATTACK_RANGE: number;
         ATTACK_COOLDOWN_MS: number;
         HIT_RADIUS: number;
+        DUMMY_RADIUS_BONUS: number;
     };
     KNOCKBACK: {
         MIN_DISTANCE: number;
@@ -109,6 +110,7 @@ export interface GameConfigType {
         THROW_DISTANCE: number;
         DAMAGE: number;
         COLLISION_DAMAGE: number;
+        COLLISION_RADIUS: number;
         COOLDOWN_MS: number;
     };
     SKILL_RAGE: {
@@ -125,6 +127,43 @@ export interface GameConfigType {
     };
     HULK_STATS: {
         MAX_HP: number;
+    };
+    SKILL_RAT_ILLUSION: {
+        COOLDOWN_MS: number;
+        RAT_COUNT: number;
+        DURATION_MS: number;
+        HP_DRAIN_PER_SECOND: number;
+        RAT_SPEED: number;
+        EFFECT_RADIUS: number;
+        DUMMY_DAMAGE_MULTIPLIER: number;
+    };
+    SKILL_SLEEP_POWDER: {
+        COOLDOWN_MS: number;
+        RADIUS: number;
+        SLEEP_DURATION_MS: number;
+    };
+    SKILL_RAT_BOMB: {
+        COOLDOWN_MS: number;
+        EXPLOSION_DAMAGE: number;
+        EXPLOSION_RADIUS: number;
+        RAT_COUNT: number;
+        RAT_DAMAGE: number;
+        RAT_DURATION_MS: number;
+    };
+    SKILL_DOLL_HUG: {
+        COOLDOWN_MS: number;
+        SHIELD_HP: number;
+        REFLECT_RATIO: number;
+        DURATION_MS: number;
+        WEAK_POINTS: number;
+    };
+    SKILL_RAT_REVIVE: {
+        COOLDOWN_MS: number;
+        REVIVE_HP_RATIO: number;
+    };
+    SQUEAK_STATS: {
+        MAX_HP: number;
+        SPEED: number;
     };
 }
 
@@ -156,6 +195,7 @@ export const GAME_CONFIG: GameConfigType = {
         ATTACK_RANGE: 150,
         ATTACK_COOLDOWN_MS: 500,
         HIT_RADIUS: 67.5, // Half of character size for collision
+        DUMMY_RADIUS_BONUS: 67.5, // Extra radius for dummy hit detection
     },
 
     // =====================================
@@ -294,6 +334,7 @@ export const GAME_CONFIG: GameConfigType = {
         THROW_DISTANCE: 300, // 던지는 거리
         DAMAGE: 30, // 기본 대미지
         COLLISION_DAMAGE: 20, // 충돌 대미지
+        COLLISION_RADIUS: 80, // 충돌 판정 반경
         COOLDOWN_MS: 2000,
     },
 
@@ -322,5 +363,66 @@ export const GAME_CONFIG: GameConfigType = {
     // =====================================
     HULK_STATS: {
         MAX_HP: 150, // 높은 체력!
+    },
+
+    // =====================================
+    // Squeak-Squeak - Rat Illusion (기본 공격)
+    // =====================================
+    SKILL_RAT_ILLUSION: {
+        COOLDOWN_MS: 5000,
+        RAT_COUNT: 5,
+        DURATION_MS: 5000,
+        HP_DRAIN_PER_SECOND: 10,
+        RAT_SPEED: 150,
+        EFFECT_RADIUS: 200,
+        DUMMY_DAMAGE_MULTIPLIER: 3, // 더미에게는 N초치 데미지를 한번에
+    },
+
+    // =====================================
+    // Squeak-Squeak - Sleep Powder
+    // =====================================
+    SKILL_SLEEP_POWDER: {
+        COOLDOWN_MS: 12000,
+        RADIUS: 150,
+        SLEEP_DURATION_MS: 3000,
+    },
+
+    // =====================================
+    // Squeak-Squeak - Rat Bomb
+    // =====================================
+    SKILL_RAT_BOMB: {
+        COOLDOWN_MS: 8000,
+        EXPLOSION_DAMAGE: 25,
+        EXPLOSION_RADIUS: 120,
+        RAT_COUNT: 4,
+        RAT_DAMAGE: 8,
+        RAT_DURATION_MS: 4000,
+    },
+
+    // =====================================
+    // Squeak-Squeak - Doll Hug
+    // =====================================
+    SKILL_DOLL_HUG: {
+        COOLDOWN_MS: 15000,
+        SHIELD_HP: 50,
+        REFLECT_RATIO: 0.5,
+        DURATION_MS: 5000,
+        WEAK_POINTS: 3,
+    },
+
+    // =====================================
+    // Squeak-Squeak - Rat Revive
+    // =====================================
+    SKILL_RAT_REVIVE: {
+        COOLDOWN_MS: 60000,
+        REVIVE_HP_RATIO: 0.5,
+    },
+
+    // =====================================
+    // Squeak-Squeak - Stats
+    // =====================================
+    SQUEAK_STATS: {
+        MAX_HP: 70,
+        SPEED: 350,
     },
 };

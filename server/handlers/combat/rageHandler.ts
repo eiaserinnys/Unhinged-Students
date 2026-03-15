@@ -2,14 +2,14 @@
  * @fileoverview Rage handlers (Hulk Sister E skill)
  */
 import logger from '../../../logger';
-import { SERVER_CONFIG, RATE_LIMIT_RAGE } from '../../config';
+import { SERVER_CONFIG } from '../../config';
 import { players, rateLimit } from '../../gameState';
 import type { TypedSocket, TypedServer } from '../../types';
 
 export function registerRageHandlers(socket: TypedSocket, io: TypedServer): void {
     // Handle rage start
     socket.on('rageStart', () => {
-        if (!rateLimit(socket.id, 'rage', RATE_LIMIT_RAGE)) {
+        if (!rateLimit(socket.id, 'rage', SERVER_CONFIG.RATE_LIMIT.RAGE_MS)) {
             return;
         }
 
