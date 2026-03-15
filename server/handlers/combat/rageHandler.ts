@@ -2,10 +2,7 @@
  * @fileoverview Rage handlers (Hulk Sister E skill)
  */
 import logger from '../../../logger';
-import {
-    SERVER_CONFIG,
-    RATE_LIMIT_RAGE,
-} from '../../config';
+import { SERVER_CONFIG, RATE_LIMIT_RAGE } from '../../config';
 import { players, rateLimit } from '../../gameState';
 import type { TypedSocket, TypedServer } from '../../types';
 

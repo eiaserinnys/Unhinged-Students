@@ -2,10 +2,7 @@
  * @fileoverview Curry recovery handler (Curry-Bear E skill)
  */
 import logger from '../../../logger';
-import {
-    RATE_LIMIT_CURRY_RECOVERY,
-    CURRY_RECOVERY_MAX_STORED,
-} from '../../config';
+import { RATE_LIMIT_CURRY_RECOVERY, CURRY_RECOVERY_MAX_STORED } from '../../config';
 import { players, rateLimit } from '../../gameState';
 import type { TypedSocket, TypedServer } from '../../types';
 

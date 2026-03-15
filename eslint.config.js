@@ -96,6 +96,9 @@ export default [
             // TypeScript 규칙
             'no-unused-vars': 'off',
             '@typescript-eslint/no-unused-vars': ['warn', { argsIgnorePattern: '^_' }],
+
+            // Jest CJS mock pattern requires require()
+            '@typescript-eslint/no-require-imports': 'off',
         },
     },
 ];

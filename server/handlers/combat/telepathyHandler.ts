@@ -12,7 +12,13 @@ import {
 } from '../../config';
 import { players, dummies, rateLimit } from '../../gameState';
 import { applyDamageWithPassives } from './damageProcessor';
-import type { TypedSocket, TypedServer, HitPlayerInfo, HitDummyInfo, KilledPlayerInfo } from '../../types';
+import type {
+    TypedSocket,
+    TypedServer,
+    HitPlayerInfo,
+    HitDummyInfo,
+    KilledPlayerInfo,
+} from '../../types';
 
 export function registerTelepathyHandlers(socket: TypedSocket, io: TypedServer): void {
     // Handle telepathy (sync with other players)

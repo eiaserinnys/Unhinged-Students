@@ -109,9 +109,7 @@ describe('chatHandler', () => {
         socket._trigger('chatMessage', { message: longMessage });
 
         expect(io.emit).not.toHaveBeenCalledWith('chatMessage', expect.any(Object));
-        expect(mockLogger.debug).toHaveBeenCalledWith(
-            expect.stringContaining('too long')
-        );
+        expect(mockLogger.debug).toHaveBeenCalledWith(expect.stringContaining('too long'));
     });
 
     it('should reject empty message', () => {

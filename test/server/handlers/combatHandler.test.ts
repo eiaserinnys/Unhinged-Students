@@ -678,7 +678,10 @@ describe('CombatHandler Security', () => {
 
             handlers.teleport({ startX: 100, startY: 100, endX: 200, endY: 200 });
 
-            expect(socket.broadcast.emit).not.toHaveBeenCalledWith('playerTeleport', expect.any(Object));
+            expect(socket.broadcast.emit).not.toHaveBeenCalledWith(
+                'playerTeleport',
+                expect.any(Object)
+            );
         });
 
         it('should rate limit wave attack', () => {
@@ -686,7 +689,10 @@ describe('CombatHandler Security', () => {
 
             handlers.waveAttack({});
 
-            expect(socket.broadcast.emit).not.toHaveBeenCalledWith('playerWave', expect.any(Object));
+            expect(socket.broadcast.emit).not.toHaveBeenCalledWith(
+                'playerWave',
+                expect.any(Object)
+            );
         });
 
         it('should rate limit laser attack', () => {
@@ -694,7 +700,10 @@ describe('CombatHandler Security', () => {
 
             handlers.laserAttack({ x1: 100, y1: 100, x2: 200, y2: 200 });
 
-            expect(socket.broadcast.emit).not.toHaveBeenCalledWith('laserFired', expect.any(Object));
+            expect(socket.broadcast.emit).not.toHaveBeenCalledWith(
+                'laserFired',
+                expect.any(Object)
+            );
         });
 
         it('should rate limit pot smash', () => {
@@ -702,7 +711,10 @@ describe('CombatHandler Security', () => {
 
             handlers.potSmash({ dirX: 1, dirY: 0 });
 
-            expect(socket.broadcast.emit).not.toHaveBeenCalledWith('playerPotSmash', expect.any(Object));
+            expect(socket.broadcast.emit).not.toHaveBeenCalledWith(
+                'playerPotSmash',
+                expect.any(Object)
+            );
         });
 
         it('should rate limit curry recovery', () => {
@@ -718,7 +730,10 @@ describe('CombatHandler Security', () => {
 
             handlers.madnessStart({});
 
-            expect(socket.broadcast.emit).not.toHaveBeenCalledWith('playerMadnessStart', expect.any(Object));
+            expect(socket.broadcast.emit).not.toHaveBeenCalledWith(
+                'playerMadnessStart',
+                expect.any(Object)
+            );
         });
 
         it('should rate limit telepathy', () => {
@@ -726,7 +741,10 @@ describe('CombatHandler Security', () => {
 
             handlers.telepathy({ x: 100, y: 100, radius: 180 });
 
-            expect(socket.broadcast.emit).not.toHaveBeenCalledWith('playerTelepathy', expect.any(Object));
+            expect(socket.broadcast.emit).not.toHaveBeenCalledWith(
+                'playerTelepathy',
+                expect.any(Object)
+            );
         });
 
         it('should rate limit rage start', () => {

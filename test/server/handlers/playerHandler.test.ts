@@ -40,8 +40,19 @@ const mockConfig = {
         TEAM: { RED: 'red', BLUE: 'blue', MAX_PLAYERS_PER_TEAM: 5 },
         RECONNECT_GRACE_PERIOD_MS: 30000,
         RATE_LIMIT: { MOVE_MS: 50 },
-        SKILL_RAGE: { DURATION_MS: 5000, DAMAGE_MULTIPLIER: 2.0, THROW_MULTIPLIER: 1.5, COOLDOWN_MS: 20000 },
-        SKILL_MADNESS: { RADIUS: 150, DAMAGE_PER_TICK: 1, DURATION_MS: 5000, TICK_INTERVAL_MS: 200, COOLDOWN_MS: 10000 },
+        SKILL_RAGE: {
+            DURATION_MS: 5000,
+            DAMAGE_MULTIPLIER: 2.0,
+            THROW_MULTIPLIER: 1.5,
+            COOLDOWN_MS: 20000,
+        },
+        SKILL_MADNESS: {
+            RADIUS: 150,
+            DAMAGE_PER_TICK: 1,
+            DURATION_MS: 5000,
+            TICK_INTERVAL_MS: 200,
+            COOLDOWN_MS: 10000,
+        },
     },
     PLAYER_SPEED: 300,
     PLAYER_SPEED_TOLERANCE: 1.5,
@@ -59,7 +70,9 @@ const mockValidation = {
     isValidNumber: jest.fn((val: unknown) => typeof val === 'number' && !isNaN(val as number)),
     isValidString: jest.fn(
         (val: unknown, maxLen: number) =>
-            typeof val === 'string' && (val as string).length > 0 && (val as string).length <= maxLen
+            typeof val === 'string' &&
+            (val as string).length > 0 &&
+            (val as string).length <= maxLen
     ),
     isValidPositiveInt: jest.fn((val: unknown) => Number.isInteger(val) && (val as number) > 0),
     clampCoordinates: jest.fn((x: number, y: number) => ({ x, y })),

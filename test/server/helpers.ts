@@ -123,12 +123,12 @@ export function createMockLogger() {
  */
 export function createMockValidation() {
     return {
-        isValidNumber: jest.fn(
-            (val: unknown) => typeof val === 'number' && !isNaN(val as number)
-        ),
+        isValidNumber: jest.fn((val: unknown) => typeof val === 'number' && !isNaN(val as number)),
         isValidString: jest.fn(
             (val: unknown, maxLen: number) =>
-                typeof val === 'string' && (val as string).length > 0 && (val as string).length <= maxLen
+                typeof val === 'string' &&
+                (val as string).length > 0 &&
+                (val as string).length <= maxLen
         ),
         isValidPositiveInt: jest.fn(
             (val: unknown) => Number.isInteger(val) && (val as number) >= 0

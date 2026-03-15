@@ -8,13 +8,7 @@
 import { GAME_CONFIG } from '../config.js';
 import { logger } from '../utils/logger.js';
 import { gameState, GAME_WIDTH, GAME_HEIGHT } from '../core/gameState.js';
-import {
-    Skill,
-    SkillManager,
-    LaserBeamEffect,
-    TeleportEffect,
-    TelepathyEffect,
-} from '../skill.js';
+import { Skill, SkillManager, LaserBeamEffect, TeleportEffect, TelepathyEffect } from '../skill.js';
 import { findNearestEnemy, findRandomEnemy } from '../combat/enemyFinder.js';
 import type { CharacterType } from '../types/index.js';
 import type {

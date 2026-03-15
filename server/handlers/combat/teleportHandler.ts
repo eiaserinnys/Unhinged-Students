@@ -19,7 +19,13 @@ import {
 } from '../../validation';
 import { players, dummies, rateLimit } from '../../gameState';
 import { applyDamageWithPassives } from './damageProcessor';
-import type { TypedSocket, TypedServer, HitPlayerInfo, HitDummyInfo, KilledPlayerInfo } from '../../types';
+import type {
+    TypedSocket,
+    TypedServer,
+    HitPlayerInfo,
+    HitDummyInfo,
+    KilledPlayerInfo,
+} from '../../types';
 
 export function registerTeleportHandlers(socket: TypedSocket, io: TypedServer): void {
     // Handle teleport (sync with other players)

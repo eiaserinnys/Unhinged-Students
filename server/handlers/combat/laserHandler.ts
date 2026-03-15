@@ -17,7 +17,13 @@ import {
 } from '../../validation';
 import { players, dummies, rateLimit } from '../../gameState';
 import { applyDamageWithPassives } from './damageProcessor';
-import type { TypedSocket, TypedServer, HitPlayerInfo, HitDummyInfo, KilledPlayerInfo } from '../../types';
+import type {
+    TypedSocket,
+    TypedServer,
+    HitPlayerInfo,
+    HitDummyInfo,
+    KilledPlayerInfo,
+} from '../../types';
 
 export function registerLaserHandlers(socket: TypedSocket, io: TypedServer): void {
     // Handle laser aiming (sync with other players)

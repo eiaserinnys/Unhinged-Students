@@ -2,19 +2,17 @@
  * @fileoverview Basic attack handler (spacebar attack)
  */
 import logger from '../../../logger';
-import {
-    ATTACK_POWER,
-    ATTACK_RANGE,
-    RATE_LIMIT_ATTACK,
-    PLAYER_RESPAWN_DELAY,
-} from '../../config';
-import {
-    calculateKnockbackDistance,
-    calculateKnockbackEndPosition,
-} from '../../validation';
+import { ATTACK_POWER, ATTACK_RANGE, RATE_LIMIT_ATTACK, PLAYER_RESPAWN_DELAY } from '../../config';
+import { calculateKnockbackDistance, calculateKnockbackEndPosition } from '../../validation';
 import { players, dummies, rateLimit } from '../../gameState';
 import { applyDamageWithPassives } from './damageProcessor';
-import type { TypedSocket, TypedServer, HitPlayerInfo, HitDummyInfo, KilledPlayerInfo } from '../../types';
+import type {
+    TypedSocket,
+    TypedServer,
+    HitPlayerInfo,
+    HitDummyInfo,
+    KilledPlayerInfo,
+} from '../../types';
 
 export function registerBasicAttackHandlers(socket: TypedSocket, io: TypedServer): void {
     socket.on('playerAttack', (data) => {

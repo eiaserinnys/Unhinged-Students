@@ -11,7 +11,13 @@ import {
 } from '../../config';
 import { players, dummies, rateLimit } from '../../gameState';
 import { applyDamageWithPassives } from './damageProcessor';
-import type { TypedSocket, TypedServer, HitPlayerInfo, HitDummyInfo, KilledPlayerInfo } from '../../types';
+import type {
+    TypedSocket,
+    TypedServer,
+    HitPlayerInfo,
+    HitDummyInfo,
+    KilledPlayerInfo,
+} from '../../types';
 
 export function registerWaveHandlers(socket: TypedSocket, io: TypedServer): void {
     socket.on('waveAttack', (_data) => {

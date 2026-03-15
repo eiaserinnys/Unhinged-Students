@@ -112,7 +112,14 @@ describe('shardHandler', () => {
     });
 
     it('should collect a valid shard when player is in range', () => {
-        mockShards.set(1, { id: 1, x: 110, y: 100, collected: false, collectedTime: 0, respawnDelay: 0 });
+        mockShards.set(1, {
+            id: 1,
+            x: 110,
+            y: 100,
+            collected: false,
+            collectedTime: 0,
+            respawnDelay: 0,
+        });
         mockValidation.calculateDistance.mockReturnValue(10); // within range
 
         socket._trigger('collectShard', { shardId: 1 });
@@ -127,7 +134,14 @@ describe('shardHandler', () => {
     });
 
     it('should reject collection of already-collected shard', () => {
-        mockShards.set(1, { id: 1, x: 110, y: 100, collected: true, collectedTime: Date.now(), respawnDelay: 3000 });
+        mockShards.set(1, {
+            id: 1,
+            x: 110,
+            y: 100,
+            collected: true,
+            collectedTime: Date.now(),
+            respawnDelay: 3000,
+        });
 
         socket._trigger('collectShard', { shardId: 1 });
 
@@ -136,7 +150,14 @@ describe('shardHandler', () => {
     });
 
     it('should reject collection when player is too far from shard', () => {
-        mockShards.set(1, { id: 1, x: 500, y: 500, collected: false, collectedTime: 0, respawnDelay: 0 });
+        mockShards.set(1, {
+            id: 1,
+            x: 500,
+            y: 500,
+            collected: false,
+            collectedTime: 0,
+            respawnDelay: 0,
+        });
         mockValidation.calculateDistance.mockReturnValue(200); // beyond SHARD_COLLECT_DISTANCE=100
 
         socket._trigger('collectShard', { shardId: 1 });
@@ -154,7 +175,14 @@ describe('shardHandler', () => {
         player.shardCollectCount = 2;
         player.level = 1;
 
-        mockShards.set(1, { id: 1, x: 110, y: 100, collected: false, collectedTime: 0, respawnDelay: 0 });
+        mockShards.set(1, {
+            id: 1,
+            x: 110,
+            y: 100,
+            collected: false,
+            collectedTime: 0,
+            respawnDelay: 0,
+        });
         mockValidation.calculateDistance.mockReturnValue(10);
 
         socket._trigger('collectShard', { shardId: 1 });
@@ -171,7 +199,14 @@ describe('shardHandler', () => {
         const player = mockPlayers.get('socket-1');
         player.isDead = true;
 
-        mockShards.set(1, { id: 1, x: 110, y: 100, collected: false, collectedTime: 0, respawnDelay: 0 });
+        mockShards.set(1, {
+            id: 1,
+            x: 110,
+            y: 100,
+            collected: false,
+            collectedTime: 0,
+            respawnDelay: 0,
+        });
 
         socket._trigger('collectShard', { shardId: 1 });
 

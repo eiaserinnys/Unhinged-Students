@@ -3,11 +3,7 @@
  * Reduces code duplication across different attack types
  */
 import logger from '../../../logger';
-import {
-    SERVER_CONFIG,
-    CURRY_RECOVERY_STORE_RATIO,
-    CURRY_RECOVERY_MAX_STORED,
-} from '../../config';
+import { SERVER_CONFIG, CURRY_RECOVERY_STORE_RATIO, CURRY_RECOVERY_MAX_STORED } from '../../config';
 import {
     calculateDistance,
     calculateKnockbackDistance,
@@ -70,9 +66,7 @@ export function applyDamageWithPassives(
         const maxStacks = SERVER_CONFIG.HULK_PASSIVE.MAX_STACKS;
         if (player.rageStacks < maxStacks) {
             player.rageStacks = Math.min(player.rageStacks + 1, maxStacks);
-            logger.debug(
-                `Hulk-sister rage stack +1 (total: ${player.rageStacks}/${maxStacks})`
-            );
+            logger.debug(`Hulk-sister rage stack +1 (total: ${player.rageStacks}/${maxStacks})`);
 
             // Notify the hulk-sister player of their rage stacks
             if (player.socketId) {

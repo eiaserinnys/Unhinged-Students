@@ -11,7 +11,13 @@ import {
 } from '../../config';
 import { players, dummies, rateLimit } from '../../gameState';
 import { applyDamageWithPassives } from './damageProcessor';
-import type { TypedSocket, TypedServer, HitPlayerInfo, HitDummyInfo, KilledPlayerInfo } from '../../types';
+import type {
+    TypedSocket,
+    TypedServer,
+    HitPlayerInfo,
+    HitDummyInfo,
+    KilledPlayerInfo,
+} from '../../types';
 
 export function registerMadnessHandlers(socket: TypedSocket, io: TypedServer): void {
     // Handle madness walk start
@@ -78,10 +84,7 @@ export function registerMadnessHandlers(socket: TypedSocket, io: TypedServer): v
         // === TICK RATE VALIDATION ===
         const tickInterval = SERVER_CONFIG.SKILL_MADNESS.TICK_INTERVAL_MS;
         const minTickInterval = tickInterval * 0.9;
-        if (
-            attacker.madnessLastTickTime &&
-            now - attacker.madnessLastTickTime < minTickInterval
-        ) {
+        if (attacker.madnessLastTickTime && now - attacker.madnessLastTickTime < minTickInterval) {
             logger.cheat(
                 `Madness tick too fast from ${socket.id}: ${now - attacker.madnessLastTickTime}ms (min: ${minTickInterval}ms)`
             );

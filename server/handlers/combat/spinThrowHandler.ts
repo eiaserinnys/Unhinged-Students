@@ -2,15 +2,18 @@
  * @fileoverview Spin throw handler (Hulk Sister Q skill)
  */
 import logger from '../../../logger';
-import {
-    SERVER_CONFIG,
-    RATE_LIMIT_SPIN_THROW,
-    PLAYER_RESPAWN_DELAY,
-} from '../../config';
+import { SERVER_CONFIG, RATE_LIMIT_SPIN_THROW, PLAYER_RESPAWN_DELAY } from '../../config';
 import { clampCoordinates } from '../../validation';
 import { players, dummies, rateLimit } from '../../gameState';
 import { applyDamageWithPassives } from './damageProcessor';
-import type { TypedSocket, TypedServer, Player, HitPlayerInfo, HitDummyInfo, KilledPlayerInfo } from '../../types';
+import type {
+    TypedSocket,
+    TypedServer,
+    Player,
+    HitPlayerInfo,
+    HitDummyInfo,
+    KilledPlayerInfo,
+} from '../../types';
 
 export function registerSpinThrowHandlers(socket: TypedSocket, io: TypedServer): void {
     socket.on('spinThrow', (data) => {

@@ -35,8 +35,19 @@ const mockConfig = {
         TEAM: { RED: 'red', BLUE: 'blue', MAX_PLAYERS_PER_TEAM: 5 },
         RECONNECT_GRACE_PERIOD_MS: 30000,
         RATE_LIMIT: { MOVE_MS: 50 },
-        SKILL_RAGE: { DURATION_MS: 5000, DAMAGE_MULTIPLIER: 2.0, THROW_MULTIPLIER: 1.5, COOLDOWN_MS: 20000 },
-        SKILL_MADNESS: { RADIUS: 150, DAMAGE_PER_TICK: 1, DURATION_MS: 5000, TICK_INTERVAL_MS: 200, COOLDOWN_MS: 10000 },
+        SKILL_RAGE: {
+            DURATION_MS: 5000,
+            DAMAGE_MULTIPLIER: 2.0,
+            THROW_MULTIPLIER: 1.5,
+            COOLDOWN_MS: 20000,
+        },
+        SKILL_MADNESS: {
+            RADIUS: 150,
+            DAMAGE_PER_TICK: 1,
+            DURATION_MS: 5000,
+            TICK_INTERVAL_MS: 200,
+            COOLDOWN_MS: 10000,
+        },
     },
     PLAYER_SPEED: 300,
     PLAYER_SPEED_TOLERANCE: 1.5,
@@ -54,7 +65,12 @@ const mockSharedConfig = {
 // Mock validation
 const mockValidation = {
     isValidNumber: jest.fn((val: unknown) => typeof val === 'number' && !isNaN(val as number)),
-    isValidString: jest.fn((val: unknown, maxLen: number) => typeof val === 'string' && (val as string).length > 0 && (val as string).length <= maxLen),
+    isValidString: jest.fn(
+        (val: unknown, maxLen: number) =>
+            typeof val === 'string' &&
+            (val as string).length > 0 &&
+            (val as string).length <= maxLen
+    ),
     isValidPositiveInt: jest.fn((val: unknown) => Number.isInteger(val) && (val as number) > 0),
     clampCoordinates: jest.fn((x: number, y: number) => ({ x, y })),
     calculateDistance: jest.fn(() => 0),
@@ -298,19 +314,25 @@ describe('Player Reconnection', () => {
             expect(mockDisconnectedPlayers.has('uuid-abc')).toBe(false);
 
             // Should emit reconnected to the client
-            expect(socket2.emit).toHaveBeenCalledWith('reconnected', expect.objectContaining({
-                playerId: 'socket-2',
-                x: 500,
-                y: 300,
-                currentHP: 75,
-                level: 3,
-                experience: 2,
-            }));
+            expect(socket2.emit).toHaveBeenCalledWith(
+                'reconnected',
+                expect.objectContaining({
+                    playerId: 'socket-2',
+                    x: 500,
+                    y: 300,
+                    currentHP: 75,
+                    level: 3,
+                    experience: 2,
+                })
+            );
 
             // Should broadcast playerReconnected
-            expect(socket2.broadcast.emit).toHaveBeenCalledWith('playerReconnected', expect.objectContaining({
-                playerId: 'socket-2',
-            }));
+            expect(socket2.broadcast.emit).toHaveBeenCalledWith(
+                'playerReconnected',
+                expect.objectContaining({
+                    playerId: 'socket-2',
+                })
+            );
         });
 
         it('should clear cleanup timer on reconnection', () => {
@@ -340,9 +362,9 @@ describe('Player Reconnection', () => {
             // Player should still be active
             expect(mockPlayers.has('socket-2')).toBe(true);
             // playerLeft should NOT have been called for this player
-            const playerLeftCalls = (io.emit as jest.MockedFunction<typeof io.emit>).mock.calls.filter(
-                (call: unknown[]) => call[0] === 'playerLeft'
-            );
+            const playerLeftCalls = (
+                io.emit as jest.MockedFunction<typeof io.emit>
+            ).mock.calls.filter((call: unknown[]) => call[0] === 'playerLeft');
             expect(playerLeftCalls.length).toBe(0);
         });
 

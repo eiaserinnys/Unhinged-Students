@@ -11,13 +11,16 @@ import {
     RATE_LIMIT_POT_SMASH,
     PLAYER_RESPAWN_DELAY,
 } from '../../config';
-import {
-    isValidNumber,
-    calculateKnockbackEndPosition,
-} from '../../validation';
+import { isValidNumber, calculateKnockbackEndPosition } from '../../validation';
 import { players, dummies, rateLimit } from '../../gameState';
 import { applyDamageWithPassives } from './damageProcessor';
-import type { TypedSocket, TypedServer, HitPlayerInfo, HitDummyInfo, KilledPlayerInfo } from '../../types';
+import type {
+    TypedSocket,
+    TypedServer,
+    HitPlayerInfo,
+    HitDummyInfo,
+    KilledPlayerInfo,
+} from '../../types';
 
 export function registerPotSmashHandlers(socket: TypedSocket, io: TypedServer): void {
     socket.on('potSmash', (data) => {
