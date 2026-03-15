@@ -42,6 +42,11 @@ export function processAreaDamageToPlayers(options: AreaDamageOptions): AreaDama
         if (playerId === attackerId) return;
         if (player.isDead) return;
 
+        // 쥐 환상 무적 상태 체크
+        if (player.ratIllusionUntil && player.ratIllusionUntil > Date.now()) {
+            return; // 무적 상태면 데미지 스킵
+        }
+
         const distance = calculateDistance(x, y, player.x, player.y);
 
         if (distance <= radius) {

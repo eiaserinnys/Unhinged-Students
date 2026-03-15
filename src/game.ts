@@ -1273,112 +1273,197 @@ function renderRageEffect(ctx: CanvasRenderingContext2D): void {
 }
 
 // Render rat illusion effect (Squeak-Squeak Q skill)
+// 화면 전체를 쥐로 가득 채우는 효과!
 function renderRatIllusionEffect(ctx: CanvasRenderingContext2D): void {
     if (!ratIllusionEffect || !ratIllusionEffect.active) return;
 
     const elapsed = Date.now() - ratIllusionEffect.startTime;
     const progress = Math.min(elapsed / ratIllusionEffect.duration, 1);
 
-    // 페이드 아웃 효과 (마지막 1초)
-    const fadeProgress = progress > 0.8 ? (progress - 0.8) / 0.2 : 0;
-    const opacity = 1 - fadeProgress * 0.7;
+    // 페이드 인/아웃 효과
+    let opacity = 1;
+    if (progress < 0.1) {
+        opacity = progress / 0.1; // 페이드 인
+    } else if (progress > 0.8) {
+        opacity = 1 - (progress - 0.8) / 0.2; // 페이드 아웃
+    }
 
     ctx.save();
-    ctx.globalAlpha = opacity;
 
-    // 각 쥐 그리기
-    for (const rat of ratIllusionEffect.rats) {
+    // 파란색 배경 오버레이 (스크린샷처럼)
+    ctx.fillStyle = `rgba(180, 210, 230, ${opacity * 0.85})`;
+    ctx.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
+
+    // 화면 전체에 쥐 그리기 (다양한 크기와 투명도)
+    const time = Date.now() / 1000;
+    const ratSize = 60; // 기본 쥐 크기
+    const cols = Math.ceil(GAME_WIDTH / ratSize) + 2;
+    const rows = Math.ceil(GAME_HEIGHT / ratSize) + 2;
+
+    for (let row = 0; row < rows; row++) {
+        for (let col = 0; col < cols; col++) {
+            // 각 쥐마다 약간씩 다른 오프셋과 크기
+            const seed = row * cols + col;
+            const offsetX = Math.sin(seed * 1.7) * 15;
+            const offsetY = Math.cos(seed * 2.3) * 15;
+            const sizeVariation = 0.7 + Math.sin(seed * 0.9) * 0.3;
+            const alphaVariation = 0.5 + Math.sin(seed * 1.3) * 0.3;
+
+            // 약간의 움직임
+            const moveX = Math.sin(time * 0.5 + seed * 0.3) * 5;
+            const moveY = Math.cos(time * 0.7 + seed * 0.5) * 5;
+
+            const x = col * ratSize + offsetX + moveX - ratSize;
+            const y = row * ratSize + offsetY + moveY - ratSize;
+            const size = ratSize * sizeVariation;
+
+            ctx.save();
+            ctx.translate(x, y);
+            ctx.globalAlpha = opacity * alphaVariation;
+
+            // 쥐 얼굴 그리기 (귀여운 스타일)
+            drawCuteRat(ctx, size, seed, time);
+
+            ctx.restore();
+        }
+    }
+
+    // 클릭 가능한 쥐들 (진짜 찾아야 하는 쥐들)
+    ctx.globalAlpha = opacity;
+    for (let i = 0; i < ratIllusionEffect.rats.length; i++) {
+        const rat = ratIllusionEffect.rats[i];
         ctx.save();
         ctx.translate(rat.x, rat.y);
-        ctx.rotate(rat.angle);
 
-        // 흔들림
-        const wiggle = Math.sin(rat.wigglePhase) * 3;
-        ctx.translate(0, wiggle);
+        // 클릭 가능한 쥐는 더 크고 뚜렷하게
+        const pulseScale = 1 + Math.sin(time * 4 + i) * 0.1;
+        ctx.scale(pulseScale, pulseScale);
 
-        // 쥐 몸통 (타원)
-        ctx.beginPath();
-        ctx.ellipse(0, 0, 25, 15, 0, 0, Math.PI * 2);
-
-        // 진짜 쥐는 살짝 다르게 (하지만 너무 티나면 안됨!)
-        if (rat.isReal) {
-            ctx.fillStyle = '#FFD1DC'; // 살짝 더 밝은 핑크
-        } else {
-            ctx.fillStyle = '#FFB6C1'; // 반투명 핑크
-        }
-        ctx.fill();
-        ctx.strokeStyle = '#FF69B4';
-        ctx.lineWidth = 2;
-        ctx.stroke();
-
-        // 쥐 귀 (왼쪽)
-        ctx.beginPath();
-        ctx.ellipse(-15, -12, 10, 8, -0.3, 0, Math.PI * 2);
-        ctx.fillStyle = '#FFC0CB';
-        ctx.fill();
-        ctx.stroke();
-
-        // 쥐 귀 (오른쪽)
-        ctx.beginPath();
-        ctx.ellipse(-15, 12, 10, 8, 0.3, 0, Math.PI * 2);
-        ctx.fillStyle = '#FFC0CB';
-        ctx.fill();
-        ctx.stroke();
-
-        // 쥐 눈
-        ctx.beginPath();
-        ctx.arc(8, -5, 4, 0, Math.PI * 2);
-        ctx.fillStyle = '#333';
-        ctx.fill();
-
-        ctx.beginPath();
-        ctx.arc(8, 5, 4, 0, Math.PI * 2);
-        ctx.fillStyle = '#333';
-        ctx.fill();
-
-        // 쥐 코
-        ctx.beginPath();
-        ctx.arc(22, 0, 5, 0, Math.PI * 2);
-        ctx.fillStyle = '#FF69B4';
-        ctx.fill();
-
-        // 쥐 꼬리
-        ctx.beginPath();
-        ctx.moveTo(-25, 0);
-        ctx.quadraticCurveTo(-40, -15, -50, 0);
-        ctx.strokeStyle = '#FFB6C1';
-        ctx.lineWidth = 3;
-        ctx.stroke();
-
-        // 반짝이 효과 (쥐 주변)
-        const sparkleTime = Date.now() / 200;
-        for (let i = 0; i < 3; i++) {
-            const sparkleAngle = sparkleTime + (i * Math.PI * 2) / 3;
-            const sparkleX = Math.cos(sparkleAngle) * 35;
-            const sparkleY = Math.sin(sparkleAngle) * 20;
-            ctx.fillStyle = `rgba(255, 255, 255, ${0.3 + Math.sin(sparkleTime * 2 + i) * 0.2})`;
-            ctx.font = '12px sans-serif';
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'middle';
-            ctx.fillText('✨', sparkleX, sparkleY);
-        }
+        drawCuteRat(ctx, 80, i * 100, time, true);
 
         ctx.restore();
     }
 
-    // 남은 시간 표시 (중앙 위)
+    // 상단에 안내 메시지
     const remainingTime = Math.max(0, (ratIllusionEffect.duration - elapsed) / 1000);
-    ctx.fillStyle = '#FF69B4';
-    ctx.font = 'bold 20px Jua, sans-serif';
+    ctx.globalAlpha = opacity;
+    ctx.fillStyle = '#FFFFFF';
+    ctx.font = 'bold 32px Jua, sans-serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.shadowColor = '#000';
-    ctx.shadowBlur = 4;
-    ctx.fillText(
-        `🐭 쥐 환상! ${remainingTime.toFixed(1)}초`,
-        ratIllusionEffect.x,
-        ratIllusionEffect.y - ratIllusionEffect.radius - 40
-    );
+    ctx.shadowBlur = 6;
+    ctx.fillText(`🐭 진짜 쥐를 찾아라! ${remainingTime.toFixed(1)}초`, GAME_WIDTH / 2, 50);
+
+    ctx.restore();
+}
+
+// 귀여운 쥐 그리기 함수
+function drawCuteRat(
+    ctx: CanvasRenderingContext2D,
+    size: number,
+    seed: number,
+    time: number,
+    isClickable: boolean = false
+): void {
+    const scale = size / 60;
+
+    // 얼굴 색상 (약간씩 다른 톤)
+    const hue = 200 + Math.sin(seed * 0.7) * 20; // 파란색 계열
+    const lightness = 85 + Math.sin(seed * 1.1) * 10;
+    const faceColor = `hsl(${hue}, 30%, ${lightness}%)`;
+    const earColor = `hsl(${hue}, 35%, ${lightness - 5}%)`;
+
+    // 클릭 가능한 쥐는 핑크색
+    const actualFaceColor = isClickable ? '#FFD1DC' : faceColor;
+    const actualEarColor = isClickable ? '#FFC0CB' : earColor;
+
+    ctx.save();
+    ctx.scale(scale, scale);
+
+    // 귀 (큰 동그라미)
+    ctx.beginPath();
+    ctx.arc(-20, -20, 18, 0, Math.PI * 2);
+    ctx.fillStyle = actualEarColor;
+    ctx.fill();
+
+    ctx.beginPath();
+    ctx.arc(20, -20, 18, 0, Math.PI * 2);
+    ctx.fillStyle = actualEarColor;
+    ctx.fill();
+
+    // 얼굴 (큰 동그라미)
+    ctx.beginPath();
+    ctx.arc(0, 0, 25, 0, Math.PI * 2);
+    ctx.fillStyle = actualFaceColor;
+    ctx.fill();
+
+    // 눈 (작은 점)
+    ctx.beginPath();
+    ctx.arc(-10, -5, 4, 0, Math.PI * 2);
+    ctx.fillStyle = '#333';
+    ctx.fill();
+
+    ctx.beginPath();
+    ctx.arc(10, -5, 4, 0, Math.PI * 2);
+    ctx.fillStyle = '#333';
+    ctx.fill();
+
+    // 눈 반짝임
+    ctx.beginPath();
+    ctx.arc(-9, -6, 1.5, 0, Math.PI * 2);
+    ctx.fillStyle = '#FFF';
+    ctx.fill();
+
+    ctx.beginPath();
+    ctx.arc(11, -6, 1.5, 0, Math.PI * 2);
+    ctx.fillStyle = '#FFF';
+    ctx.fill();
+
+    // 코 (작은 타원)
+    ctx.beginPath();
+    ctx.ellipse(0, 5, 6, 4, 0, 0, Math.PI * 2);
+    ctx.fillStyle = isClickable ? '#FF69B4' : '#AAA';
+    ctx.fill();
+
+    // 입 (작은 미소)
+    ctx.beginPath();
+    ctx.arc(0, 10, 8, 0.1 * Math.PI, 0.9 * Math.PI);
+    ctx.strokeStyle = '#888';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+
+    // 수염 (양쪽 3개씩)
+    ctx.strokeStyle = '#AAA';
+    ctx.lineWidth = 1;
+    for (let i = 0; i < 3; i++) {
+        const angle = -0.3 + i * 0.3;
+        // 왼쪽 수염
+        ctx.beginPath();
+        ctx.moveTo(-15, 5 + i * 3);
+        ctx.lineTo(-30, 5 + i * 3 + Math.sin(angle) * 5);
+        ctx.stroke();
+        // 오른쪽 수염
+        ctx.beginPath();
+        ctx.moveTo(15, 5 + i * 3);
+        ctx.lineTo(30, 5 + i * 3 + Math.sin(-angle) * 5);
+        ctx.stroke();
+    }
+
+    // 클릭 가능한 쥐는 반짝임 효과
+    if (isClickable) {
+        const sparklePhase = time * 3 + seed;
+        for (let i = 0; i < 4; i++) {
+            const sparkleAngle = sparklePhase + (i * Math.PI) / 2;
+            const sparkleX = Math.cos(sparkleAngle) * 35;
+            const sparkleY = Math.sin(sparkleAngle) * 35;
+            ctx.fillStyle = `rgba(255, 255, 100, ${0.5 + Math.sin(sparklePhase * 2 + i) * 0.3})`;
+            ctx.font = '14px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('✨', sparkleX, sparkleY);
+        }
+    }
 
     ctx.restore();
 }

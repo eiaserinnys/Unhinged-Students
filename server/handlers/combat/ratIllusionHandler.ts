@@ -39,6 +39,12 @@ function endRatIllusion(targetId: string, io: TypedServer, reason: string): void
         clearInterval(illusion.drainInterval);
     }
 
+    // 무적 상태 해제
+    const target = players.get(targetId);
+    if (target) {
+        target.ratIllusionUntil = undefined;
+    }
+
     activeIllusions.delete(targetId);
 
     // 효과 종료 브로드캐스트
@@ -141,6 +147,9 @@ export function registerRatIllusionHandlers(socket: TypedSocket, io: TypedServer
         // 플레이어 타겟인 경우 (기존 로직)
         const target = players.get(targetId);
         if (!target || target.isDead) return;
+
+        // 무적 상태 설정 (쥐 환상 지속 시간 동안)
+        target.ratIllusionUntil = Date.now() + RAT_ILLUSION_CONFIG.DURATION_MS;
 
         // 이미 쥐 환상 효과가 있으면 종료
         if (activeIllusions.has(targetId)) {

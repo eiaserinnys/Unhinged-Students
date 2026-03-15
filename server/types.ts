@@ -46,6 +46,8 @@ export interface Player {
     rageActive?: boolean;
     rageStartTime?: number;
     rageStacks?: number;
+    // Squeak-squeak specific (rat illusion = invincible)
+    ratIllusionUntil?: number;
 }
 
 // ========================================
