@@ -4,7 +4,7 @@
  * 못 찾으면 초당 체력 10 감소
  */
 import logger from '../../../logger';
-import { players } from '../../gameState';
+import { players, dummies } from '../../gameState';
 import type { TypedSocket, TypedServer } from '../../types';
 
 // 쥐 환상 설정
@@ -60,12 +60,14 @@ export function registerRatIllusionHandlers(socket: TypedSocket, io: TypedServer
         if (!caster) return;
         if (caster.isDead) return;
 
-        // 타겟이 지정되지 않으면 가장 가까운 적을 찾음
+        // 타겟이 지정되지 않으면 가장 가까운 적(플레이어 또는 더미)을 찾음
         let targetId = data.targetId;
+        let targetType: 'player' | 'dummy' = 'player';
 
         if (!targetId) {
-            // 가장 가까운 적 플레이어 찾기
             let minDistance = Infinity;
+
+            // 가장 가까운 적 플레이어 찾기
             players.forEach((player, playerId) => {
                 if (playerId === socket.id) return;
                 if (player.isDead) return;
@@ -79,8 +81,26 @@ export function registerRatIllusionHandlers(socket: TypedSocket, io: TypedServer
                 if (distance < minDistance) {
                     minDistance = distance;
                     targetId = playerId;
+                    targetType = 'player';
                 }
             });
+
+            // 더미도 타겟 후보에 포함
+            dummies.forEach((dummy) => {
+                if (dummy.currentHP <= 0) return;
+
+                const dx = dummy.x - caster.x;
+                const dy = dummy.y - caster.y;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+
+                if (distance < minDistance) {
+                    minDistance = distance;
+                    targetId = `dummy_${dummy.id}`;
+                    targetType = 'dummy';
+                }
+            });
+        } else if (targetId.startsWith('dummy_')) {
+            targetType = 'dummy';
         }
 
         if (!targetId) {
@@ -88,6 +108,35 @@ export function registerRatIllusionHandlers(socket: TypedSocket, io: TypedServer
             return;
         }
 
+        // 더미 타겟인 경우 바로 데미지
+        if (targetType === 'dummy') {
+            const dummyId = parseInt(targetId.replace('dummy_', ''));
+            const dummy = dummies.get(dummyId);
+            if (!dummy || dummy.currentHP <= 0) return;
+
+            const damage = RAT_ILLUSION_CONFIG.HP_DRAIN_PER_SECOND * 3; // 더미에게는 3초치 데미지를 한번에
+            dummy.currentHP = Math.max(0, dummy.currentHP - damage);
+
+            logger.info(`Rat illusion hit dummy ${dummyId} for ${damage} damage (${dummy.currentHP}/${dummy.maxHP})`);
+
+            // 더미 데미지 브로드캐스트
+            io.emit('dummyDamaged', {
+                attackerId: socket.id,
+                dummyIndex: dummyId,
+                damage,
+                currentHP: dummy.currentHP,
+            });
+
+            // 더미 사망 체크
+            if (dummy.currentHP <= 0) {
+                dummy.deathTime = Date.now();
+                logger.info(`Dummy ${dummyId} killed by rat illusion from ${socket.id}`);
+            }
+
+            return; // 더미는 여기서 끝
+        }
+
+        // 플레이어 타겟인 경우 (기존 로직)
         const target = players.get(targetId);
         if (!target || target.isDead) return;
 
