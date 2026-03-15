@@ -18,7 +18,7 @@ export type TeamType = 'red' | 'blue';
 
 export type ScreenType = 'lobby' | 'waitingTeam' | 'teamAnnounce' | 'playing';
 
-export type SkillKey = 'q' | 'w' | 'e';
+export type SkillKey = 'q' | 'w' | 'e' | 'r' | 't';
 
 // =====================================================
 // Game State Types
@@ -628,6 +628,57 @@ export interface HulkStatsConfig {
     MAX_HP: number;
 }
 
+export interface SkillRatIllusionConfig {
+    COOLDOWN_MS: number;
+    RAT_COUNT: number;
+    DURATION_MS: number;
+    HP_DRAIN_PER_SECOND: number;
+    RAT_SPEED: number;
+    EFFECT_RADIUS: number;
+    COLOR: string;
+}
+
+export interface SkillSleepPowderConfig {
+    COOLDOWN_MS: number;
+    RADIUS: number;
+    SLEEP_DURATION_MS: number;
+    EFFECT_DURATION_MS: number;
+    COLOR: string;
+}
+
+export interface SkillRatBombConfig {
+    COOLDOWN_MS: number;
+    EXPLOSION_DAMAGE: number;
+    EXPLOSION_RADIUS: number;
+    RAT_COUNT: number;
+    RAT_DAMAGE: number;
+    RAT_DURATION_MS: number;
+    EFFECT_DURATION_MS: number;
+    COLOR: string;
+}
+
+export interface SkillDollHugConfig {
+    COOLDOWN_MS: number;
+    SHIELD_HP: number;
+    REFLECT_RATIO: number;
+    DURATION_MS: number;
+    WEAK_POINTS: number;
+    EFFECT_DURATION_MS: number;
+    COLOR: string;
+}
+
+export interface SkillRatReviveConfig {
+    COOLDOWN_MS: number;
+    REVIVE_HP_RATIO: number;
+    EFFECT_DURATION_MS: number;
+    COLOR: string;
+}
+
+export interface SqueakStatsConfig {
+    MAX_HP: number;
+    SPEED: number;
+}
+
 export interface ShardConfig {
     SIZE: number;
     SPAWN_MARGIN: number;
@@ -684,6 +735,12 @@ export interface GameConfig {
     SKILL_RAGE: SkillRageConfig;
     HULK_PASSIVE: HulkPassiveConfig;
     HULK_STATS: HulkStatsConfig;
+    SKILL_RAT_ILLUSION: SkillRatIllusionConfig;
+    SKILL_SLEEP_POWDER: SkillSleepPowderConfig;
+    SKILL_RAT_BOMB: SkillRatBombConfig;
+    SKILL_DOLL_HUG: SkillDollHugConfig;
+    SKILL_RAT_REVIVE: SkillRatReviveConfig;
+    SQUEAK_STATS: SqueakStatsConfig;
     SHARD: ShardConfig;
     DUMMY: DummyConfig;
     UI: UIConfig;

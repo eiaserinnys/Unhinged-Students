@@ -190,6 +190,75 @@ export const GAME_CONFIG: GameConfig = {
     },
 
     // =====================================
+    // SQUEAK-SQUEAK - RAT ILLUSION (쥐 환상, Q)
+    // =====================================
+    SKILL_RAT_ILLUSION: {
+        COOLDOWN_MS: 5000, // 5 seconds
+        RAT_COUNT: 5, // 쥐 마리 수 (1 진짜 + 4 가짜)
+        DURATION_MS: 5000, // 쥐들이 유지되는 시간
+        HP_DRAIN_PER_SECOND: 10, // 진짜 쥐를 못 찾으면 초당 10 체력 감소
+        RAT_SPEED: 150, // 쥐 이동 속도
+        EFFECT_RADIUS: 200, // 쥐들이 퍼지는 반경
+        COLOR: '#FFB6C1', // Light Pink
+    },
+
+    // =====================================
+    // SQUEAK-SQUEAK - SLEEP POWDER (수면 가루, W)
+    // =====================================
+    SKILL_SLEEP_POWDER: {
+        COOLDOWN_MS: 12000, // 12 seconds
+        RADIUS: 150, // 수면 가루 범위
+        SLEEP_DURATION_MS: 3000, // 3초 수면
+        EFFECT_DURATION_MS: 500, // 이펙트 지속
+        COLOR: '#9370DB', // Medium Purple
+    },
+
+    // =====================================
+    // SQUEAK-SQUEAK - RAT BOMB (쥐 폭탄, E)
+    // =====================================
+    SKILL_RAT_BOMB: {
+        COOLDOWN_MS: 8000, // 8 seconds
+        EXPLOSION_DAMAGE: 25, // 폭발 데미지
+        EXPLOSION_RADIUS: 120, // 폭발 범위
+        RAT_COUNT: 4, // 폭탄 터지고 나오는 쥐 마리 수
+        RAT_DAMAGE: 8, // 쥐 한 마리당 데미지
+        RAT_DURATION_MS: 4000, // 쥐들이 유지되는 시간
+        EFFECT_DURATION_MS: 500, // 이펙트 지속
+        COLOR: '#FF6B6B', // Light Red
+    },
+
+    // =====================================
+    // SQUEAK-SQUEAK - DOLL HUG (인형 안고 자기, R)
+    // =====================================
+    SKILL_DOLL_HUG: {
+        COOLDOWN_MS: 15000, // 15 seconds
+        SHIELD_HP: 50, // 방어막 체력
+        REFLECT_RATIO: 0.5, // 공격의 50% 반사
+        DURATION_MS: 5000, // 5초 지속 (집중)
+        WEAK_POINTS: 3, // 쥐 모양 약점 (귀2 + 얼굴1)
+        EFFECT_DURATION_MS: 500, // 이펙트 지속
+        COLOR: '#FFC0CB', // Pink
+    },
+
+    // =====================================
+    // SQUEAK-SQUEAK - RAT REVIVE (쥐 살리기, T)
+    // =====================================
+    SKILL_RAT_REVIVE: {
+        COOLDOWN_MS: 60000, // 60 seconds (궁극기!)
+        REVIVE_HP_RATIO: 0.5, // 최대 체력의 50%로 부활
+        EFFECT_DURATION_MS: 1500, // 이펙트 지속 (화려하게!)
+        COLOR: '#FFD700', // Gold
+    },
+
+    // =====================================
+    // SQUEAK-SQUEAK - STATS
+    // =====================================
+    SQUEAK_STATS: {
+        MAX_HP: 70, // 낮은 체력
+        SPEED: 350, // 빠른 속도!
+    },
+
+    // =====================================
     // SHARDS
     // =====================================
     SHARD: {

@@ -223,6 +223,13 @@ function startGame(): void {
         gameState.player.maxHP = GAME_CONFIG.HULK_STATS.MAX_HP;
         gameState.player.currentHP = GAME_CONFIG.HULK_STATS.MAX_HP;
         logger.debug(`Hulk Sister: HP set to ${GAME_CONFIG.HULK_STATS.MAX_HP}`);
+    } else if (gameState.selectedCharacter === 'squeak-squeak') {
+        gameState.player.maxHP = GAME_CONFIG.SQUEAK_STATS.MAX_HP;
+        gameState.player.currentHP = GAME_CONFIG.SQUEAK_STATS.MAX_HP;
+        gameState.player.speed = GAME_CONFIG.SQUEAK_STATS.SPEED;
+        logger.debug(
+            `Squeak-Squeak: HP=${GAME_CONFIG.SQUEAK_STATS.MAX_HP}, Speed=${GAME_CONFIG.SQUEAK_STATS.SPEED}`
+        );
     }
 
     // Create test dummies for combat practice
@@ -483,6 +490,16 @@ function update(deltaTime: number): void {
         // E - Character-specific skill
         if (isKeyJustPressed('e')) {
             handleESkill();
+        }
+
+        // R - Additional skill (squeak-squeak only for now)
+        if (isKeyJustPressed('r')) {
+            handleRSkill();
+        }
+
+        // T - Ultimate skill (squeak-squeak only for now)
+        if (isKeyJustPressed('t')) {
+            handleTSkill();
         }
     }
 
@@ -1495,6 +1512,20 @@ function handleQSkill(): void {
             break;
         }
 
+        case 'squeak-squeak': {
+            // 찍찍찍찍찍 - 쥐 환상
+            const ratSkill = skillManager.useSkill('q');
+            if (ratSkill) {
+                logger.debug(`Used skill: ${ratSkill.name} - rat illusion`);
+
+                // TODO: Phase 2에서 구현
+                // - 쥐 여러 마리 소환 (진짜 1 + 가짜 4)
+                // - 진짜 쥐 못 찾으면 체력 감소
+                // - 서버 연동
+            }
+            break;
+        }
+
         case 'alien': // 외계인 - 레이저 빔
         default: {
             if (laserBeamEffect && !laserBeamEffect.active) {
@@ -1533,8 +1564,23 @@ function handleWSkill(): void {
     switch (gameState.selectedCharacter) {
         case 'crazy-eyes': // 눈 돌아가는 사람 - W 스킬 없음
         case 'curry-bear': // 카레 곰돌이 - W 스킬 없음
+        case 'big-sis-hulk': // 헐크 언니 - W 스킬 없음
             // 이 캐릭터들은 W 스킬이 없음
             break;
+
+        case 'squeak-squeak': {
+            // 찍찍찍찍찍 - 수면 가루
+            const sleepSkill = skillManager.useSkill('w');
+            if (sleepSkill) {
+                logger.debug(`Used skill: ${sleepSkill.name} - sleep powder`);
+
+                // TODO: Phase 2에서 구현
+                // - 수면 가루 효과
+                // - 적 수면 상태
+                // - 서버 연동
+            }
+            break;
+        }
 
         case 'alien': // 외계인 - 순간이동
         default: {
@@ -1655,6 +1701,20 @@ function handleESkill(): void {
             break;
         }
 
+        case 'squeak-squeak': {
+            // 찍찍찍찍찍 - 쥐 폭탄
+            const bombSkill = skillManager.useSkill('e');
+            if (bombSkill) {
+                logger.debug(`Used skill: ${bombSkill.name} - rat bomb`);
+
+                // TODO: Phase 2에서 구현
+                // - 폭탄 폭발 + 쥐 4마리 소환
+                // - 쥐들이 적 공격
+                // - 서버 연동
+            }
+            break;
+        }
+
         case 'alien': // 외계인 - 텔레파시
         default: {
             if (telepathyEffect && !telepathyEffect.active) {
@@ -1675,6 +1735,41 @@ function handleESkill(): void {
             }
             break;
         }
+    }
+}
+
+// Handle R skill based on selected character (squeak-squeak: 인형 안고 자기)
+function handleRSkill(): void {
+    if (!gameState.player || !skillManager) return;
+
+    // Only squeak-squeak has R skill for now
+    if (gameState.selectedCharacter !== 'squeak-squeak') return;
+
+    const rSkill = skillManager.useSkill('r');
+    if (rSkill) {
+        logger.debug(`Used skill: ${rSkill.name} - doll hug shield`);
+
+        // TODO: Phase 2에서 구현
+        // - 쥐 모양 방어막 생성
+        // - 공격 반사
+        // - 서버 연동
+    }
+}
+
+// Handle T skill based on selected character (squeak-squeak: 쥐 살리기)
+function handleTSkill(): void {
+    if (!gameState.player || !skillManager) return;
+
+    // Only squeak-squeak has T skill for now
+    if (gameState.selectedCharacter !== 'squeak-squeak') return;
+
+    const tSkill = skillManager.useSkill('t');
+    if (tSkill) {
+        logger.debug(`Used skill: ${tSkill.name} - rat revive!`);
+
+        // TODO: Phase 2에서 구현
+        // - 죽은 아군 전원 부활
+        // - 서버 연동
     }
 }
 
@@ -1757,6 +1852,60 @@ function initializeCharacterSkills(characterId: CharacterType): void {
                 )
             );
             logger.info('Initialized skills for 헐크 언니');
+            break;
+
+        case 'squeak-squeak': // 찍찍찍찍찍 🐭
+            // Q = 쥐 환상
+            skillManager.addSkill(
+                new Skill(
+                    '쥐 환상',
+                    'q',
+                    GAME_CONFIG.SKILL_RAT_ILLUSION.COOLDOWN_MS,
+                    GAME_CONFIG.SKILL_RAT_ILLUSION.COLOR,
+                    '👻'
+                )
+            );
+            // W = 수면 가루
+            skillManager.addSkill(
+                new Skill(
+                    '수면 가루',
+                    'w',
+                    GAME_CONFIG.SKILL_SLEEP_POWDER.COOLDOWN_MS,
+                    GAME_CONFIG.SKILL_SLEEP_POWDER.COLOR,
+                    '😴'
+                )
+            );
+            // E = 쥐 폭탄
+            skillManager.addSkill(
+                new Skill(
+                    '쥐 폭탄',
+                    'e',
+                    GAME_CONFIG.SKILL_RAT_BOMB.COOLDOWN_MS,
+                    GAME_CONFIG.SKILL_RAT_BOMB.COLOR,
+                    '💣'
+                )
+            );
+            // R = 인형 안고 자기
+            skillManager.addSkill(
+                new Skill(
+                    '인형 안고 자기',
+                    'r',
+                    GAME_CONFIG.SKILL_DOLL_HUG.COOLDOWN_MS,
+                    GAME_CONFIG.SKILL_DOLL_HUG.COLOR,
+                    '🧸'
+                )
+            );
+            // T = 쥐 살리기
+            skillManager.addSkill(
+                new Skill(
+                    '쥐 살리기',
+                    't',
+                    GAME_CONFIG.SKILL_RAT_REVIVE.COOLDOWN_MS,
+                    GAME_CONFIG.SKILL_RAT_REVIVE.COLOR,
+                    '🐭'
+                )
+            );
+            logger.info('Initialized skills for 찍찍찍찍찍 (5 skills)');
             break;
 
         case 'alien': // 외계인 (기본)
