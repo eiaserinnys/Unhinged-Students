@@ -42,12 +42,17 @@ export interface Player {
     telepathyLastTickTime?: number;
     // Crazy-eyes specific
     confusedUntil?: number;
+    madnessLastTickTime?: number;
+    madnessStartTime?: number;
     // Hulk-sister specific
     rageActive?: boolean;
     rageStartTime?: number;
     rageStacks?: number;
+    rageTimeout?: ReturnType<typeof setTimeout>;
     // Squeak-squeak specific (rat illusion = invincible)
     ratIllusionUntil?: number;
+    // Shard collection tracking (server-authoritative leveling)
+    shardCollectCount?: number;
 }
 
 // ========================================
@@ -158,6 +163,7 @@ export interface ServerToClientEvents {
     spinThrowCollision: (data: SpinThrowCollisionData) => void;
     playerRageStart: (data: PlayerRageStartData) => void;
     playerRageEnd: (data: PlayerRageEndData) => void;
+    rageStacksUpdate: (data: RageStacksUpdateData) => void;
 
     // Dummy events
     dummyDamaged: (data: DummyDamagedData) => void;
@@ -189,8 +195,6 @@ export interface PlayerMoveData {
     x: number;
     y: number;
     playerName?: string;
-    level?: number;
-    experience?: number;
     characterId?: string;
 }
 
@@ -472,6 +476,11 @@ export interface PlayerRageStartData {
     duration: number;
 }
 
+export interface RageStacksUpdateData {
+    playerId: string;
+    stacks: number;
+}
+
 export interface PlayerRageEndData {
     playerId: string;
 }
@@ -511,6 +520,8 @@ export interface CollectShardData {
 }
 
 export interface ShardCollectedData {
+    level: number;
+    experience: number;
     shardId: number;
     playerId: string;
 }

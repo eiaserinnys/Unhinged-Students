@@ -63,6 +63,7 @@ export interface GameConfigType {
         COLLECT_DISTANCE: number;
         RESPAWN_MIN_MS: number;
         RESPAWN_VARIANCE_MS: number;
+        SHARDS_PER_LEVEL: number;
     };
     DUMMY: {
         MAX_HP: number;
@@ -211,6 +212,7 @@ export const GAME_CONFIG: GameConfigType = {
         COLLECT_DISTANCE: 100,
         RESPAWN_MIN_MS: 3000,
         RESPAWN_VARIANCE_MS: 2000,
+        SHARDS_PER_LEVEL: 3, // Shards needed to gain one level
     },
 
     // =====================================

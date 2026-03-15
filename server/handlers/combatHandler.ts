@@ -15,6 +15,15 @@ import {
     TELEPATHY_DAMAGE_PER_TICK,
     TELEPATHY_MAX_HEAL_PER_TICK,
     RATE_LIMIT_ATTACK,
+    RATE_LIMIT_TELEPORT,
+    RATE_LIMIT_TELEPORT_DAMAGE,
+    RATE_LIMIT_LASER,
+    RATE_LIMIT_TELEPATHY,
+    RATE_LIMIT_WAVE,
+    RATE_LIMIT_MADNESS,
+    RATE_LIMIT_POT_SMASH,
+    RATE_LIMIT_CURRY_RECOVERY,
+    RATE_LIMIT_RAGE,
     RATE_LIMIT_SPIN_THROW,
     PLAYER_RESPAWN_DELAY,
     WAVE_RADIUS,
@@ -48,9 +57,10 @@ import type {
     KilledPlayerInfo,
 } from '../types';
 
-// Helper function to apply damage and store for curry-bear passive
-// Returns { currentHP, storedDamageChanged: boolean }
-function applyDamageWithStorage(
+// Helper function to apply damage with character-specific passive effects
+// - Curry-bear: stores portion of damage taken for recovery skill
+// - Hulk-sister: gains rage stacks when taking damage
+function applyDamageWithPassives(
     player: Player,
     damage: number,
     io: TypedServer
@@ -60,7 +70,7 @@ function applyDamageWithStorage(
 
     let storedDamageChanged = false;
 
-    // If player is curry-bear, store half the damage taken
+    // Curry-bear passive: store half the damage taken
     if (player.characterId === 'curry-bear' && actualDamage > 0) {
         const storageAmount = Math.floor(actualDamage * CURRY_RECOVERY_STORE_RATIO);
         player.storedDamage = player.storedDamage || 0;
@@ -79,6 +89,26 @@ function applyDamageWithStorage(
                 storedDamage: player.storedDamage,
                 maxStored: CURRY_RECOVERY_MAX_STORED,
             });
+        }
+    }
+
+    // Hulk-sister passive: gain rage stacks when taking damage
+    if (player.characterId === 'big-sis-hulk' && actualDamage > 0) {
+        player.rageStacks = player.rageStacks || 0;
+        const maxStacks = SERVER_CONFIG.HULK_PASSIVE.MAX_STACKS;
+        if (player.rageStacks < maxStacks) {
+            player.rageStacks = Math.min(player.rageStacks + 1, maxStacks);
+            logger.debug(
+                `Hulk-sister rage stack +1 (total: ${player.rageStacks}/${maxStacks})`
+            );
+
+            // Notify the hulk-sister player of their rage stacks
+            if (player.socketId) {
+                io.to(player.socketId).emit('rageStacksUpdate', {
+                    playerId: player.playerId,
+                    stacks: player.rageStacks,
+                });
+            }
         }
     }
 
@@ -143,7 +173,7 @@ export function registerCombatHandlers(socket: TypedSocket, io: TypedServer): vo
             // Check if in range (server-authoritative range)
             if (distance <= attackRange) {
                 // Apply damage with curry-bear storage (server-authoritative power)
-                applyDamageWithStorage(player, attackPower, io);
+                applyDamageWithPassives(player, attackPower, io);
 
                 // Calculate knockback
                 const knockbackDist = calculateKnockbackDistance(attackRange, distance);
@@ -268,6 +298,11 @@ export function registerCombatHandlers(socket: TypedSocket, io: TypedServer): vo
 
     // Handle teleport (sync with other players)
     socket.on('teleport', (data) => {
+        // === RATE LIMITING ===
+        if (!rateLimit(socket.id, 'teleport', RATE_LIMIT_TELEPORT)) {
+            return; // Skill on cooldown, silently ignore
+        }
+
         const player = players.get(socket.id);
         if (!player) return;
 
@@ -328,6 +363,11 @@ export function registerCombatHandlers(socket: TypedSocket, io: TypedServer): vo
 
     // Handle teleport damage
     socket.on('teleportDamage', (data) => {
+        // === RATE LIMITING ===
+        if (!rateLimit(socket.id, 'teleportDamage', RATE_LIMIT_TELEPORT_DAMAGE)) {
+            return; // Skill on cooldown, silently ignore
+        }
+
         const attacker = players.get(socket.id);
         if (!attacker) return;
 
@@ -367,7 +407,7 @@ export function registerCombatHandlers(socket: TypedSocket, io: TypedServer): vo
             const distance = Math.sqrt(dx * dx + dy * dy);
 
             if (distance <= radius) {
-                applyDamageWithStorage(player, damage, io);
+                applyDamageWithPassives(player, damage, io);
 
                 const knockbackDist = calculateKnockbackDistance(radius, distance);
                 const knockbackEnd = calculateKnockbackEndPosition(
@@ -498,6 +538,11 @@ export function registerCombatHandlers(socket: TypedSocket, io: TypedServer): vo
 
     // Handle laser attack (Q skill)
     socket.on('laserAttack', (data) => {
+        // === RATE LIMITING ===
+        if (!rateLimit(socket.id, 'laser', RATE_LIMIT_LASER)) {
+            return; // Skill on cooldown, silently ignore
+        }
+
         const attacker = players.get(socket.id);
         if (!attacker) return;
 
@@ -566,7 +611,7 @@ export function registerCombatHandlers(socket: TypedSocket, io: TypedServer): vo
             // Check line-circle collision
             if (lineCircleIntersect(x1, y1, x2, y2, player.x, player.y, hitRadius)) {
                 // Apply damage (server-authoritative)
-                applyDamageWithStorage(player, damage, io);
+                applyDamageWithPassives(player, damage, io);
 
                 // Calculate knockback direction from laser origin
                 const knockbackDist = SERVER_CONFIG.KNOCKBACK.LASER_DISTANCE;
@@ -683,6 +728,11 @@ export function registerCombatHandlers(socket: TypedSocket, io: TypedServer): vo
 
     // Handle telepathy (sync with other players)
     socket.on('telepathy', (data) => {
+        // === RATE LIMITING ===
+        if (!rateLimit(socket.id, 'telepathy', RATE_LIMIT_TELEPATHY)) {
+            return; // Skill on cooldown, silently ignore
+        }
+
         // Broadcast telepathy effect to all other players
         socket.broadcast.emit('playerTelepathy', {
             playerId: socket.id,
@@ -752,7 +802,7 @@ export function registerCombatHandlers(socket: TypedSocket, io: TypedServer): vo
             const distance = Math.sqrt(dx * dx + dy * dy);
 
             if (distance <= radius) {
-                applyDamageWithStorage(player, damagePerTarget, io);
+                applyDamageWithPassives(player, damagePerTarget, io);
                 totalDamageDealt += damagePerTarget;
 
                 hitPlayers.push({
@@ -848,6 +898,11 @@ export function registerCombatHandlers(socket: TypedSocket, io: TypedServer): vo
 
     // Handle wave attack (Crazy-Eyes basic attack)
     socket.on('waveAttack', (_data) => {
+        // === RATE LIMITING ===
+        if (!rateLimit(socket.id, 'wave', RATE_LIMIT_WAVE)) {
+            return; // Skill on cooldown, silently ignore
+        }
+
         const attacker = players.get(socket.id);
         if (!attacker) return;
 
@@ -885,7 +940,7 @@ export function registerCombatHandlers(socket: TypedSocket, io: TypedServer): vo
             const distance = Math.sqrt(dx * dx + dy * dy);
 
             if (distance <= radius) {
-                applyDamageWithStorage(player, damage, io);
+                applyDamageWithPassives(player, damage, io);
 
                 // Apply confusion effect
                 player.confusedUntil = Date.now() + confusionDuration;
@@ -976,9 +1031,18 @@ export function registerCombatHandlers(socket: TypedSocket, io: TypedServer): vo
 
     // Handle madness walk start (Crazy-Eyes E skill)
     socket.on('madnessStart', () => {
+        // === RATE LIMITING ===
+        if (!rateLimit(socket.id, 'madness', RATE_LIMIT_MADNESS)) {
+            return; // Skill on cooldown, silently ignore
+        }
+
         const player = players.get(socket.id);
         if (!player) return;
         if (player.isDead) return;
+
+        // Track madness start time for duration validation
+        player.madnessStartTime = Date.now();
+        player.madnessLastTickTime = undefined;
 
         logger.debug(`Madness walk started by ${socket.id}`);
 
@@ -993,6 +1057,10 @@ export function registerCombatHandlers(socket: TypedSocket, io: TypedServer): vo
         const player = players.get(socket.id);
         if (!player) return;
 
+        // Clear madness tracking
+        player.madnessStartTime = undefined;
+        player.madnessLastTickTime = undefined;
+
         logger.debug(`Madness walk ended by ${socket.id}`);
 
         // Broadcast madness end to all other players
@@ -1006,6 +1074,41 @@ export function registerCombatHandlers(socket: TypedSocket, io: TypedServer): vo
         const attacker = players.get(socket.id);
         if (!attacker) return;
         if (attacker.isDead) return;
+
+        // === DURATION VALIDATION ===
+        const now = Date.now();
+        if (!attacker.madnessStartTime) {
+            logger.cheat(`Madness damage without madnessStart from ${socket.id}`);
+            return;
+        }
+        if (attacker.madnessStartTime) {
+            const elapsed = now - attacker.madnessStartTime;
+            const maxDuration = SERVER_CONFIG.SKILL_MADNESS.DURATION_MS;
+            if (elapsed > maxDuration * 1.1) { // 10% tolerance
+                logger.cheat(
+                    `Madness duration exceeded from ${socket.id}: ${elapsed}ms (max: ${maxDuration}ms)`
+                );
+                // Auto-end madness
+                attacker.madnessStartTime = undefined;
+                attacker.madnessLastTickTime = undefined;
+                socket.broadcast.emit('playerMadnessEnd', { playerId: socket.id });
+                return;
+            }
+        }
+
+        // === TICK RATE VALIDATION ===
+        const tickInterval = SERVER_CONFIG.SKILL_MADNESS.TICK_INTERVAL_MS;
+        const minTickInterval = tickInterval * 0.9; // 10% tolerance
+        if (
+            attacker.madnessLastTickTime &&
+            now - attacker.madnessLastTickTime < minTickInterval
+        ) {
+            logger.cheat(
+                `Madness tick too fast from ${socket.id}: ${now - attacker.madnessLastTickTime}ms (min: ${minTickInterval}ms)`
+            );
+            return;
+        }
+        attacker.madnessLastTickTime = now;
 
         const x = attacker.x;
         const y = attacker.y;
@@ -1024,7 +1127,7 @@ export function registerCombatHandlers(socket: TypedSocket, io: TypedServer): vo
             const distance = Math.sqrt(dx * dx + dy * dy);
 
             if (distance <= radius) {
-                applyDamageWithStorage(player, damage, io);
+                applyDamageWithPassives(player, damage, io);
 
                 hitPlayers.push({
                     playerId: playerId,
@@ -1105,6 +1208,11 @@ export function registerCombatHandlers(socket: TypedSocket, io: TypedServer): vo
 
     // Handle pot smash attack (Curry-Bear basic attack)
     socket.on('potSmash', (data) => {
+        // === RATE LIMITING ===
+        if (!rateLimit(socket.id, 'potSmash', RATE_LIMIT_POT_SMASH)) {
+            return; // Skill on cooldown, silently ignore
+        }
+
         const attacker = players.get(socket.id);
         if (!attacker) return;
         if (attacker.isDead) return;
@@ -1174,7 +1282,7 @@ export function registerCombatHandlers(socket: TypedSocket, io: TypedServer): vo
             if (player.isDead) return;
 
             if (isInCone(player.x, player.y)) {
-                applyDamageWithStorage(player, damage, io);
+                applyDamageWithPassives(player, damage, io);
                 mainHitPositions.push({ x: player.x, y: player.y });
 
                 // Calculate knockback
@@ -1265,7 +1373,7 @@ export function registerCombatHandlers(socket: TypedSocket, io: TypedServer): vo
                 const distance = Math.sqrt(dx * dx + dy * dy);
 
                 if (distance <= splashRadius) {
-                    applyDamageWithStorage(player, splashDamage, io);
+                    applyDamageWithPassives(player, splashDamage, io);
 
                     hitPlayers.push({
                         playerId: playerId,
@@ -1350,6 +1458,11 @@ export function registerCombatHandlers(socket: TypedSocket, io: TypedServer): vo
 
     // Handle curry recovery (Curry-Bear E skill)
     socket.on('curryRecovery', () => {
+        // === RATE LIMITING ===
+        if (!rateLimit(socket.id, 'curryRecovery', RATE_LIMIT_CURRY_RECOVERY)) {
+            return; // Skill on cooldown, silently ignore
+        }
+
         const player = players.get(socket.id);
         if (!player) return;
         if (player.isDead) return;
@@ -1500,7 +1613,7 @@ export function registerCombatHandlers(socket: TypedSocket, io: TypedServer): vo
         if (targetType === 'dummy') {
             target.currentHP = Math.max(0, target.currentHP - finalDamage);
         } else {
-            applyDamageWithStorage(target as Player, finalDamage, io);
+            applyDamageWithPassives(target as Player, finalDamage, io);
         }
 
         // Calculate throw end position
@@ -1543,7 +1656,7 @@ export function registerCombatHandlers(socket: TypedSocket, io: TypedServer): vo
 
             if (collisionDist <= collisionRadius) {
                 // Apply collision damage to the collided player
-                applyDamageWithStorage(player, collisionDamage, io);
+                applyDamageWithPassives(player, collisionDamage, io);
 
                 collisionHitPlayers.push({
                     playerId: playerId,
@@ -1565,7 +1678,7 @@ export function registerCombatHandlers(socket: TypedSocket, io: TypedServer): vo
                     if (targetType === 'dummy') {
                         target.currentHP = Math.max(0, target.currentHP - collisionDamage);
                     } else {
-                        applyDamageWithStorage(target as Player, collisionDamage, io);
+                        applyDamageWithPassives(target as Player, collisionDamage, io);
                     }
                     logger.debug(
                         `Spin throw collision: thrown target took ${collisionDamage} collision damage`
@@ -1620,7 +1733,7 @@ export function registerCombatHandlers(socket: TypedSocket, io: TypedServer): vo
                     if (targetType === 'dummy') {
                         target.currentHP = Math.max(0, target.currentHP - collisionDamage);
                     } else {
-                        applyDamageWithStorage(target as Player, collisionDamage, io);
+                        applyDamageWithPassives(target as Player, collisionDamage, io);
                     }
                     logger.debug(
                         `Spin throw collision: thrown target took ${collisionDamage} collision damage`
@@ -1701,6 +1814,11 @@ export function registerCombatHandlers(socket: TypedSocket, io: TypedServer): vo
 
     // Handle rage start (Hulk Sister E skill)
     socket.on('rageStart', () => {
+        // === RATE LIMITING ===
+        if (!rateLimit(socket.id, 'rage', RATE_LIMIT_RAGE)) {
+            return; // Skill on cooldown, silently ignore
+        }
+
         const player = players.get(socket.id);
         if (!player) return;
         if (player.isDead) return;
@@ -1714,21 +1832,48 @@ export function registerCombatHandlers(socket: TypedSocket, io: TypedServer): vo
         player.rageActive = true;
         player.rageStartTime = Date.now();
 
-        logger.debug(`Rage started by ${socket.id}`);
+        // Clear any existing rage timeout
+        if (player.rageTimeout) {
+            clearTimeout(player.rageTimeout);
+        }
+
+        // Server-authoritative rage duration: auto-end after DURATION_MS
+        const rageDuration = SERVER_CONFIG.SKILL_RAGE.DURATION_MS;
+        player.rageTimeout = setTimeout(() => {
+            const p = players.get(socket.id);
+            if (p && p.rageActive) {
+                p.rageActive = false;
+                p.rageTimeout = undefined;
+                logger.debug(`Rage auto-ended by server for ${socket.id}`);
+
+                // Broadcast rage end to all players
+                io.emit('playerRageEnd', {
+                    playerId: socket.id,
+                });
+            }
+        }, rageDuration);
+
+        logger.debug(`Rage started by ${socket.id} (auto-end in ${rageDuration}ms)`);
 
         // Broadcast rage start
         socket.broadcast.emit('playerRageStart', {
             playerId: socket.id,
-            duration: SERVER_CONFIG.SKILL_RAGE.DURATION_MS,
+            duration: rageDuration,
         });
     });
 
-    // Handle rage end
+    // Handle rage end (client-initiated early end)
     socket.on('rageEnd', () => {
         const player = players.get(socket.id);
         if (!player) return;
 
         player.rageActive = false;
+
+        // Clear the server-side auto-end timer
+        if (player.rageTimeout) {
+            clearTimeout(player.rageTimeout);
+            player.rageTimeout = undefined;
+        }
 
         logger.debug(`Rage ended by ${socket.id}`);
 

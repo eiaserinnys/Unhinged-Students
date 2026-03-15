@@ -127,9 +127,9 @@ export function registerPlayerHandlers(socket: TypedSocket, _io: TypedServer): v
         }
 
         // Validate and sanitize other inputs
+        // NOTE: level/experience are server-authoritative (computed from shard collection)
+        // Client-sent level/experience are ignored
         const playerName = isValidString(data.playerName, 30) ? data.playerName : 'Player';
-        const level = isValidPositiveInt(data.level, 30) ? data.level : 1;
-        const experience = isValidPositiveInt(data.experience, 10000) ? data.experience : 0;
         const characterId = (
             isValidString(data.characterId, 20) ? data.characterId : 'alien'
         ) as CharacterId;
@@ -155,6 +155,7 @@ export function registerPlayerHandlers(socket: TypedSocket, _io: TypedServer): v
         }
 
         // Update player data, preserving HP, death state, team, and curry-bear stored damage
+        // level/experience are preserved from server state (shard-based leveling)
         players.set(socket.id, {
             playerId: socket.id,
             socketId: socket.id, // For sending events directly
@@ -162,8 +163,8 @@ export function registerPlayerHandlers(socket: TypedSocket, _io: TypedServer): v
             x: validX,
             y: validY,
             playerName: playerName,
-            level: level,
-            experience: experience,
+            level: existingPlayer ? existingPlayer.level : 1,
+            experience: existingPlayer ? existingPlayer.experience : 0,
             characterId: characterId,
             currentHP: initialCurrentHP,
             maxHP: initialMaxHP,
@@ -174,13 +175,15 @@ export function registerPlayerHandlers(socket: TypedSocket, _io: TypedServer): v
         });
 
         // Broadcast to other players (use validated position)
+        // level/experience come from server state, not client
+        const currentPlayer = players.get(socket.id);
         socket.broadcast.emit('playerMoved', {
             playerId: socket.id,
             x: validX,
             y: validY,
             playerName: playerName,
-            level: level,
-            experience: experience,
+            level: currentPlayer ? currentPlayer.level : 1,
+            experience: currentPlayer ? currentPlayer.experience : 0,
             characterId: characterId,
         });
     });
@@ -188,6 +191,13 @@ export function registerPlayerHandlers(socket: TypedSocket, _io: TypedServer): v
     // Handle disconnection
     socket.on('disconnect', () => {
         logger.info(`Player disconnected: ${socket.id}`);
+
+        // Clear rage timer to prevent orphaned setTimeout callbacks
+        const disconnectingPlayer = players.get(socket.id);
+        if (disconnectingPlayer?.rageTimeout) {
+            clearTimeout(disconnectingPlayer.rageTimeout);
+        }
+
         players.delete(socket.id);
         cleanupRateLimiter(socket.id); // Clean up all rate limit entries for this socket
 

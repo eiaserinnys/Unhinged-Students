@@ -41,14 +41,29 @@ export function registerShardHandlers(socket: TypedSocket, io: TypedServer): voi
             shard.respawnDelay =
                 SERVER_CONFIG.SHARD.RESPAWN_MIN_MS +
                 Math.random() * SERVER_CONFIG.SHARD.RESPAWN_VARIANCE_MS;
+
+            // Server-authoritative leveling: track shard collection count
+            player.shardCollectCount = (player.shardCollectCount || 0) + 1;
+            const shardsPerLevel = SERVER_CONFIG.SHARD.SHARDS_PER_LEVEL;
+            const newLevel = Math.floor(player.shardCollectCount / shardsPerLevel) + 1;
+            const newExperience = player.shardCollectCount % shardsPerLevel;
+
+            // Update player level/experience on server
+            player.level = newLevel;
+            player.experience = newExperience;
+
             logger.debug(
-                `Player ${socket.id} collected shard ${data.shardId} (will respawn in ${Math.round(shard.respawnDelay / 1000)}s)`
+                `Player ${socket.id} collected shard ${data.shardId} ` +
+                `(count: ${player.shardCollectCount}, level: ${newLevel}, ` +
+                `will respawn in ${Math.round(shard.respawnDelay / 1000)}s)`
             );
 
-            // Broadcast to all players
+            // Broadcast to all players (include server-authoritative level)
             io.emit('shardCollected', {
                 shardId: data.shardId,
                 playerId: socket.id,
+                level: newLevel,
+                experience: newExperience,
             });
         }
     });

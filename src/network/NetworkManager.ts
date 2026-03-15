@@ -1263,12 +1263,12 @@ export class NetworkManager implements INetworkManager {
 
         this.lastUpdateTime = currentTime;
 
+        // level/experience are server-authoritative (shard-based leveling)
+        // Only send position, name, and character
         this.socket.emit('playerMove', {
             x: x,
             y: y,
             playerName: playerName,
-            level: level,
-            experience: experience,
             characterId: characterId,
         });
     }
