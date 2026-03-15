@@ -3,7 +3,7 @@
  * Used by server for damage calculation and death handling
  */
 
-import type { KilledPlayerInfo } from '../server/types';
+import type { KilledPlayerInfo } from './types';
 
 interface DeathTarget {
     currentHP: number;

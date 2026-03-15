@@ -268,11 +268,8 @@ export interface PlayerDamagedData {
     hitPlayers: HitPlayerInfo[];
 }
 
-export interface KilledPlayerInfo {
-    playerId: string;
-    killedBy: string;
-    respawnDelay: number;
-}
+// Re-exported from shared/types.ts — shared/combat.ts uses this type
+export type { KilledPlayerInfo } from '../shared/types';
 
 export interface PlayerDiedData {
     playerId: string;
