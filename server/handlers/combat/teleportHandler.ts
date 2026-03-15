@@ -2,14 +2,8 @@
  * @fileoverview Teleport and teleport damage handlers
  */
 import logger from '../../../logger';
-import {
-    TELEPORT_MAX_DISTANCE,
-    TELEPORT_DAMAGE_RADIUS,
-    TELEPORT_DAMAGE,
-    RATE_LIMIT_TELEPORT,
-    RATE_LIMIT_TELEPORT_DAMAGE,
-    PLAYER_RESPAWN_DELAY,
-} from '../../config';
+import { SERVER_CONFIG } from '../../config';
+import { GAME_CONFIG } from '../../../shared/config';
 import {
     isValidNumber,
     clampCoordinates,
@@ -30,7 +24,7 @@ import type {
 export function registerTeleportHandlers(socket: TypedSocket, io: TypedServer): void {
     // Handle teleport (sync with other players)
     socket.on('teleport', (data) => {
-        if (!rateLimit(socket.id, 'teleport', RATE_LIMIT_TELEPORT)) {
+        if (!rateLimit(socket.id, 'teleport', SERVER_CONFIG.RATE_LIMIT.TELEPORT_MS)) {
             return;
         }
 
@@ -55,13 +49,13 @@ export function registerTeleportHandlers(socket: TypedSocket, io: TypedServer): 
         let endY = data.endY;
 
         const teleportDistance = calculateDistance(startX, startY, endX, endY);
-        if (teleportDistance > TELEPORT_MAX_DISTANCE * 1.2) {
+        if (teleportDistance > SERVER_CONFIG.SKILL_TELEPORT.MAX_DISTANCE * 1.2) {
             logger.cheat(
-                `Teleport distance exceeded from ${socket.id}: ${teleportDistance.toFixed(1)}px (max: ${TELEPORT_MAX_DISTANCE}px)`
+                `Teleport distance exceeded from ${socket.id}: ${teleportDistance.toFixed(1)}px (max: ${SERVER_CONFIG.SKILL_TELEPORT.MAX_DISTANCE}px)`
             );
             const angle = Math.atan2(endY - startY, endX - startX);
-            endX = startX + Math.cos(angle) * TELEPORT_MAX_DISTANCE;
-            endY = startY + Math.sin(angle) * TELEPORT_MAX_DISTANCE;
+            endX = startX + Math.cos(angle) * SERVER_CONFIG.SKILL_TELEPORT.MAX_DISTANCE;
+            endY = startY + Math.sin(angle) * SERVER_CONFIG.SKILL_TELEPORT.MAX_DISTANCE;
         }
 
         const clamped = clampCoordinates(endX, endY);
@@ -82,7 +76,7 @@ export function registerTeleportHandlers(socket: TypedSocket, io: TypedServer): 
 
     // Handle teleport damage
     socket.on('teleportDamage', (data) => {
-        if (!rateLimit(socket.id, 'teleportDamage', RATE_LIMIT_TELEPORT_DAMAGE)) {
+        if (!rateLimit(socket.id, 'teleportDamage', SERVER_CONFIG.RATE_LIMIT.TELEPORT_DAMAGE_MS)) {
             return;
         }
 
@@ -93,17 +87,17 @@ export function registerTeleportHandlers(socket: TypedSocket, io: TypedServer): 
         const x = attacker.x;
         const y = attacker.y;
 
-        const radius = TELEPORT_DAMAGE_RADIUS;
-        const damage = TELEPORT_DAMAGE;
+        const radius = SERVER_CONFIG.SKILL_TELEPORT.DAMAGE_RADIUS;
+        const damage = SERVER_CONFIG.SKILL_TELEPORT.DAMAGE;
 
-        if (data.radius && data.radius > TELEPORT_DAMAGE_RADIUS * 1.1) {
+        if (data.radius && data.radius > SERVER_CONFIG.SKILL_TELEPORT.DAMAGE_RADIUS * 1.1) {
             logger.cheat(
-                `Suspicious teleport damage radius from ${socket.id}: ${data.radius} (server: ${TELEPORT_DAMAGE_RADIUS})`
+                `Suspicious teleport damage radius from ${socket.id}: ${data.radius} (server: ${SERVER_CONFIG.SKILL_TELEPORT.DAMAGE_RADIUS})`
             );
         }
-        if (data.damage && data.damage > TELEPORT_DAMAGE * 1.1) {
+        if (data.damage && data.damage > SERVER_CONFIG.SKILL_TELEPORT.DAMAGE * 1.1) {
             logger.cheat(
-                `Suspicious teleport damage from ${socket.id}: ${data.damage} (server: ${TELEPORT_DAMAGE})`
+                `Suspicious teleport damage from ${socket.id}: ${data.damage} (server: ${SERVER_CONFIG.SKILL_TELEPORT.DAMAGE})`
             );
         }
 
@@ -148,7 +142,7 @@ export function registerTeleportHandlers(socket: TypedSocket, io: TypedServer): 
                     killedPlayers.push({
                         playerId: playerId,
                         killedBy: socket.id,
-                        respawnDelay: PLAYER_RESPAWN_DELAY,
+                        respawnDelay: SERVER_CONFIG.PLAYER.RESPAWN_DELAY_MS,
                     });
                 }
             }
@@ -179,7 +173,7 @@ export function registerTeleportHandlers(socket: TypedSocket, io: TypedServer): 
             const dy = dummy.y - y;
             const distance = Math.sqrt(dx * dx + dy * dy);
 
-            if (distance <= radius + 67.5) {
+            if (distance <= radius + GAME_CONFIG.COMBAT.DUMMY_RADIUS_BONUS) {
                 dummy.currentHP = Math.max(0, dummy.currentHP - damage);
 
                 const knockbackDist = calculateKnockbackDistance(radius, distance);

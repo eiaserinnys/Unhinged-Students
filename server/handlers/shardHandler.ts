@@ -2,7 +2,7 @@
 // SHARD EVENT HANDLERS
 // ========================================
 import logger from '../../logger';
-import { SERVER_CONFIG, SHARD_COLLECT_DISTANCE } from '../config';
+import { SERVER_CONFIG } from '../config';
 import { isValidPositiveInt, calculateDistance } from '../validation';
 import { players, shards } from '../gameState';
 import type { TypedSocket, TypedServer, CollectShardData } from '../types';
@@ -28,9 +28,9 @@ export function registerShardHandlers(socket: TypedSocket, io: TypedServer): voi
         if (shard && !shard.collected) {
             // Verify player is close enough to collect (anti-cheat: prevent remote collection)
             const distance = calculateDistance(player.x, player.y, shard.x, shard.y);
-            if (distance > SHARD_COLLECT_DISTANCE) {
+            if (distance > SERVER_CONFIG.SHARD.COLLECT_DISTANCE) {
                 logger.cheat(
-                    `Remote shard collection attempt from ${socket.id}: distance=${distance.toFixed(1)}px (max: ${SHARD_COLLECT_DISTANCE}px)`
+                    `Remote shard collection attempt from ${socket.id}: distance=${distance.toFixed(1)}px (max: ${SERVER_CONFIG.SHARD.COLLECT_DISTANCE}px)`
                 );
                 return;
             }

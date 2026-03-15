@@ -2,14 +2,8 @@
  * @fileoverview Telepathy handlers (Alien E skill)
  */
 import logger from '../../../logger';
-import {
-    SERVER_CONFIG,
-    TELEPATHY_RADIUS,
-    TELEPATHY_DAMAGE_PER_TICK,
-    TELEPATHY_MAX_HEAL_PER_TICK,
-    RATE_LIMIT_TELEPATHY,
-    PLAYER_RESPAWN_DELAY,
-} from '../../config';
+import { SERVER_CONFIG } from '../../config';
+import { GAME_CONFIG } from '../../../shared/config';
 import { players, dummies, rateLimit } from '../../gameState';
 import { applyDamageWithPassives } from './damageProcessor';
 import type {
@@ -23,7 +17,7 @@ import type {
 export function registerTelepathyHandlers(socket: TypedSocket, io: TypedServer): void {
     // Handle telepathy (sync with other players)
     socket.on('telepathy', (data) => {
-        if (!rateLimit(socket.id, 'telepathy', RATE_LIMIT_TELEPATHY)) {
+        if (!rateLimit(socket.id, 'telepathy', SERVER_CONFIG.RATE_LIMIT.TELEPATHY_MS)) {
             return;
         }
 
@@ -60,18 +54,18 @@ export function registerTelepathyHandlers(socket: TypedSocket, io: TypedServer):
         const x = attacker.x;
         const y = attacker.y;
 
-        const radius = TELEPATHY_RADIUS;
-        const damagePerTarget = TELEPATHY_DAMAGE_PER_TICK;
-        const maxHeal = TELEPATHY_MAX_HEAL_PER_TICK;
+        const radius = SERVER_CONFIG.SKILL_TELEPATHY.RADIUS;
+        const damagePerTarget = SERVER_CONFIG.SKILL_TELEPATHY.DAMAGE_PER_TICK;
+        const maxHeal = SERVER_CONFIG.SKILL_TELEPATHY.MAX_HEAL_PER_TICK;
 
-        if (data.radius && data.radius > TELEPATHY_RADIUS * 1.1) {
+        if (data.radius && data.radius > SERVER_CONFIG.SKILL_TELEPATHY.RADIUS * 1.1) {
             logger.cheat(
-                `Suspicious telepathy radius from ${socket.id}: ${data.radius} (server: ${TELEPATHY_RADIUS})`
+                `Suspicious telepathy radius from ${socket.id}: ${data.radius} (server: ${SERVER_CONFIG.SKILL_TELEPATHY.RADIUS})`
             );
         }
-        if (data.damagePerTarget && data.damagePerTarget > TELEPATHY_DAMAGE_PER_TICK * 1.1) {
+        if (data.damagePerTarget && data.damagePerTarget > SERVER_CONFIG.SKILL_TELEPATHY.DAMAGE_PER_TICK * 1.1) {
             logger.cheat(
-                `Suspicious telepathy damage from ${socket.id}: ${data.damagePerTarget} (server: ${TELEPATHY_DAMAGE_PER_TICK})`
+                `Suspicious telepathy damage from ${socket.id}: ${data.damagePerTarget} (server: ${SERVER_CONFIG.SKILL_TELEPATHY.DAMAGE_PER_TICK})`
             );
         }
 
@@ -107,7 +101,7 @@ export function registerTelepathyHandlers(socket: TypedSocket, io: TypedServer):
                     killedPlayers.push({
                         playerId: playerId,
                         killedBy: socket.id,
-                        respawnDelay: PLAYER_RESPAWN_DELAY,
+                        respawnDelay: SERVER_CONFIG.PLAYER.RESPAWN_DELAY_MS,
                     });
                 }
             }
@@ -121,7 +115,7 @@ export function registerTelepathyHandlers(socket: TypedSocket, io: TypedServer):
             const dy = dummy.y - y;
             const distance = Math.sqrt(dx * dx + dy * dy);
 
-            if (distance <= radius + 67.5) {
+            if (distance <= radius + GAME_CONFIG.COMBAT.DUMMY_RADIUS_BONUS) {
                 dummy.currentHP = Math.max(0, dummy.currentHP - damagePerTarget);
                 totalDamageDealt += damagePerTarget;
 

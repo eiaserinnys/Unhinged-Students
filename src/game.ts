@@ -254,6 +254,13 @@ function startGame(): void {
         logger.info(`Team assigned: ${team}`);
     };
 
+    gameState.networkManager.setGameCallbacks({
+        onStoredDamageUpdate: updateStoredDamage,
+        onCurryRecoveryEffect: triggerCurryRecoveryEffect,
+        onRatIllusionStart: startRatIllusionOnMe,
+        onRatIllusionEnd: endRatIllusionOnMe,
+    });
+
     gameState.networkManager.connect();
 
     setTimeout(() => {
@@ -720,12 +727,6 @@ function render(): void {
     renderConfusionEffect(ctx);
 }
 
-// Expose to window for backward compatibility with network callbacks
-window.updateStoredDamage = updateStoredDamage;
-window.triggerCurryRecoveryEffect = triggerCurryRecoveryEffect;
-window.startRatIllusionOnMe = startRatIllusionOnMe;
-window.endRatIllusionOnMe = endRatIllusionOnMe;
-
 // Cleanup game resources to prevent memory leaks
 function cleanupGame(): void {
     gameState.running = false;
@@ -762,16 +763,6 @@ function cleanupGame(): void {
     cleanupSkillSystem();
 
     logger.info('Game cleaned up');
-}
-
-// Extend Window interface for global functions
-declare global {
-    interface Window {
-        updateStoredDamage: typeof updateStoredDamage;
-        triggerCurryRecoveryEffect: typeof triggerCurryRecoveryEffect;
-        startRatIllusionOnMe: typeof startRatIllusionOnMe;
-        endRatIllusionOnMe: typeof endRatIllusionOnMe;
-    }
 }
 
 // Start game when page loads

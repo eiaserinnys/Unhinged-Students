@@ -2,7 +2,7 @@
 // CHAT EVENT HANDLERS
 // ========================================
 import logger from '../../logger';
-import { CHAT_MAX_MESSAGE_LENGTH, RATE_LIMIT_CHAT } from '../config';
+import { SERVER_CONFIG } from '../config';
 import { players, rateLimit } from '../gameState';
 import type { TypedSocket, TypedServer, ChatMessageData } from '../types';
 
@@ -10,7 +10,7 @@ export function registerChatHandlers(socket: TypedSocket, io: TypedServer): void
     // Handle chat messages (CRITICAL-2 fix: Server-side validation)
     socket.on('chatMessage', (data: ChatMessageData) => {
         // 1. Rate limiting (1 message per second) - check first to avoid unnecessary processing
-        if (!rateLimit(socket.id, 'chat', RATE_LIMIT_CHAT)) {
+        if (!rateLimit(socket.id, 'chat', SERVER_CONFIG.RATE_LIMIT.CHAT_MS)) {
             logger.debug(`Chat rate limit exceeded by ${socket.id}`);
             return;
         }
@@ -28,7 +28,7 @@ export function registerChatHandlers(socket: TypedSocket, io: TypedServer): void
         }
 
         // 4. Length limit (max 200 characters)
-        if (trimmedMessage.length > CHAT_MAX_MESSAGE_LENGTH) {
+        if (trimmedMessage.length > SERVER_CONFIG.CHAT.MAX_MESSAGE_LENGTH) {
             logger.debug(`Chat message too long from ${socket.id}: ${trimmedMessage.length} chars`);
             return;
         }

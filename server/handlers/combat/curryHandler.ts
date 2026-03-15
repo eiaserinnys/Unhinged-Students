@@ -2,14 +2,14 @@
  * @fileoverview Curry recovery handler (Curry-Bear E skill)
  */
 import logger from '../../../logger';
-import { RATE_LIMIT_CURRY_RECOVERY, CURRY_RECOVERY_MAX_STORED } from '../../config';
+import { SERVER_CONFIG } from '../../config';
 import { players, rateLimit } from '../../gameState';
 import type { TypedSocket, TypedServer } from '../../types';
 
 export function registerCurryHandlers(socket: TypedSocket, io: TypedServer): void {
     // Handle curry recovery
     socket.on('curryRecovery', () => {
-        if (!rateLimit(socket.id, 'curryRecovery', RATE_LIMIT_CURRY_RECOVERY)) {
+        if (!rateLimit(socket.id, 'curryRecovery', SERVER_CONFIG.RATE_LIMIT.CURRY_RECOVERY_MS)) {
             return;
         }
 
@@ -62,7 +62,7 @@ export function registerCurryHandlers(socket: TypedSocket, io: TypedServer): voi
 
         socket.emit('storedDamageUpdate', {
             storedDamage: player.storedDamage || 0,
-            maxStored: CURRY_RECOVERY_MAX_STORED,
+            maxStored: SERVER_CONFIG.SKILL_CURRY_RECOVERY.MAX_STORED_DAMAGE,
         });
     });
 }

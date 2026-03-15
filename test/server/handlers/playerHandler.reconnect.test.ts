@@ -49,14 +49,15 @@ const mockConfig = {
             COOLDOWN_MS: 10000,
         },
     },
-    PLAYER_SPEED: 300,
-    PLAYER_SPEED_TOLERANCE: 1.5,
-    RATE_LIMIT_MOVE: 50,
 };
 
 // Mock shared config (GAME_CONFIG used by playerHandler for time-based cleanup)
 const mockSharedConfig = {
     GAME_CONFIG: {
+        PLAYER: {
+            RESPAWN_X: 960,
+            RESPAWN_Y: 540,
+        },
         SKILL_RAGE: { DURATION_MS: 5000 },
         SKILL_MADNESS: { DURATION_MS: 5000 },
     },

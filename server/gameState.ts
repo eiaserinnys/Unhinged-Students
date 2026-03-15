@@ -2,7 +2,8 @@
 // GAME STATE MANAGEMENT
 // ========================================
 import logger from '../logger';
-import { SERVER_CONFIG, GAME_WIDTH, GAME_HEIGHT, PLAYER_RESPAWN_DELAY } from './config';
+import { SERVER_CONFIG } from './config';
+import { GAME_CONFIG } from '../shared/config';
 import type { Player, Dummy, Shard, TypedServer, Team } from './types';
 
 // Team configuration
@@ -109,8 +110,8 @@ export function cleanupRateLimiter(socketId: string): void {
 export function initializeDummies(): void {
     const dummyConfig = SERVER_CONFIG.DUMMY;
     const dummyPositions = dummyConfig.POSITIONS.map((pos) => ({
-        x: GAME_WIDTH / 2 + pos.offsetX,
-        y: GAME_HEIGHT / 2 + pos.offsetY,
+        x: SERVER_CONFIG.WORLD.WIDTH / 2 + pos.offsetX,
+        y: SERVER_CONFIG.WORLD.HEIGHT / 2 + pos.offsetY,
         name: pos.name,
     }));
 
@@ -136,8 +137,8 @@ export function initializeShards(): void {
     const shardConfig = SERVER_CONFIG.SHARD;
     const margin = shardConfig.SPAWN_MARGIN;
     for (let i = 0; i < shardConfig.INITIAL_COUNT; i++) {
-        const x = margin + Math.random() * (GAME_WIDTH - margin * 2);
-        const y = margin + Math.random() * (GAME_HEIGHT - margin * 2);
+        const x = margin + Math.random() * (SERVER_CONFIG.WORLD.WIDTH - margin * 2);
+        const y = margin + Math.random() * (SERVER_CONFIG.WORLD.HEIGHT - margin * 2);
         const shardId = shardIdCounter++;
         shards.set(shardId, {
             id: shardId,
@@ -191,11 +192,11 @@ export function checkPlayerRespawn(io: TypedServer): void {
         if (player.isDead && player.deathTime > 0) {
             const elapsedTime = currentTime - player.deathTime;
 
-            if (elapsedTime >= PLAYER_RESPAWN_DELAY) {
+            if (elapsedTime >= SERVER_CONFIG.PLAYER.RESPAWN_DELAY_MS) {
                 // Respawn player
                 player.currentHP = player.maxHP;
-                player.x = 960; // Center of game world
-                player.y = 540;
+                player.x = GAME_CONFIG.PLAYER.RESPAWN_X;
+                player.y = GAME_CONFIG.PLAYER.RESPAWN_Y;
                 player.deathTime = 0;
                 player.isDead = false;
 

@@ -8,6 +8,7 @@ import { RemotePlayer } from './RemotePlayer.js';
 import type {
     CharacterType,
     TeamType,
+    GameEventCallbacks,
     INetworkManager,
     IRemotePlayer,
     IShardManager,
@@ -155,6 +156,7 @@ export class NetworkManager implements INetworkManager {
     onReconnected: ((data: unknown) => void) | null;
     isConfused: boolean;
     confusionEndTime: number;
+    private gameCallbacks: GameEventCallbacks | null;
 
     constructor() {
         this.socket = null;
@@ -175,6 +177,7 @@ export class NetworkManager implements INetworkManager {
         // Confusion effect (from wave attack)
         this.isConfused = false;
         this.confusionEndTime = 0;
+        this.gameCallbacks = null;
     }
 
     setShardManager(shardManager: IShardManager): void {
@@ -187,6 +190,10 @@ export class NetworkManager implements INetworkManager {
 
     setDummies(dummies: ICharacter[]): void {
         this.dummies = dummies;
+    }
+
+    setGameCallbacks(callbacks: GameEventCallbacks): void {
+        this.gameCallbacks = callbacks;
     }
 
     connect(serverUrl: string | null = null): void {
@@ -625,16 +632,7 @@ export class NetworkManager implements INetworkManager {
                 storedDamage: number;
                 maxStored: number;
             };
-            // Note: updateStoredDamage should be imported if used
-            // Currently left as global check for compatibility
-            if (
-                typeof (window as { updateStoredDamage?: (s: number, m: number) => void })
-                    .updateStoredDamage === 'function'
-            ) {
-                (
-                    window as { updateStoredDamage: (s: number, m: number) => void }
-                ).updateStoredDamage(storedDamage, maxStored);
-            }
+            this.gameCallbacks?.onStoredDamageUpdate(storedDamage, maxStored);
         });
 
         // Curry recovery (Curry-Bear E skill)
@@ -646,23 +644,9 @@ export class NetworkManager implements INetworkManager {
                     this.localPlayer.currentHP = recoveryData.currentHP;
                 }
                 // Update stored damage to 0
-                if (
-                    typeof (window as { updateStoredDamage?: (s: number, m: number) => void })
-                        .updateStoredDamage === 'function'
-                ) {
-                    (
-                        window as { updateStoredDamage: (s: number, m: number) => void }
-                    ).updateStoredDamage(0, recoveryData.maxHP);
-                }
+                this.gameCallbacks?.onStoredDamageUpdate(0, recoveryData.maxHP);
                 // Trigger recovery effect
-                if (
-                    typeof (window as { triggerCurryRecoveryEffect?: (h: number) => void })
-                        .triggerCurryRecoveryEffect === 'function'
-                ) {
-                    (
-                        window as { triggerCurryRecoveryEffect: (h: number) => void }
-                    ).triggerCurryRecoveryEffect(recoveryData.healAmount);
-                }
+                this.gameCallbacks?.onCurryRecoveryEffect(recoveryData.healAmount);
                 logger.debug(`Curry recovery: healed ${recoveryData.healAmount} HP`);
             } else {
                 // Remote player healed - visual effect
@@ -832,26 +816,15 @@ export class NetworkManager implements INetworkManager {
             };
             logger.info(`Rat illusion started on you by ${casterId}!`);
 
-            // 쥐 환상 효과 시작 (window.startRatIllusionOnMe 호출)
-            type RatIllusionOnMeData = {
-                casterId: string;
-                casterX: number;
-                casterY: number;
-                ratCount: number;
-                duration: number;
-                radius: number;
-            };
-            const win = window as { startRatIllusionOnMe?: (data: RatIllusionOnMeData) => void };
-            if (typeof win.startRatIllusionOnMe === 'function') {
-                win.startRatIllusionOnMe({
-                    casterId,
-                    casterX,
-                    casterY,
-                    ratCount,
-                    duration,
-                    radius,
-                });
-            }
+            // 쥐 환상 효과 시작
+            this.gameCallbacks?.onRatIllusionStart({
+                casterId,
+                casterX,
+                casterY,
+                ratCount,
+                duration,
+                radius,
+            });
         });
 
         // 내가 시전한 쥐 환상이 적용됨
@@ -882,11 +855,8 @@ export class NetworkManager implements INetworkManager {
 
             if (targetId === this.playerId) {
                 logger.info(`Rat illusion ended: ${reason}`);
-                // 쥐 환상 효과 종료 (window.endRatIllusionOnMe 호출)
-                const win = window as { endRatIllusionOnMe?: (reason: string) => void };
-                if (typeof win.endRatIllusionOnMe === 'function') {
-                    win.endRatIllusionOnMe(reason);
-                }
+                // 쥐 환상 효과 종료
+                this.gameCallbacks?.onRatIllusionEnd(reason);
             }
         });
 

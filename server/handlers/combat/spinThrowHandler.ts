@@ -2,10 +2,12 @@
  * @fileoverview Spin throw handler (Hulk Sister Q skill)
  */
 import logger from '../../../logger';
-import { SERVER_CONFIG, RATE_LIMIT_SPIN_THROW, PLAYER_RESPAWN_DELAY } from '../../config';
+import { SERVER_CONFIG } from '../../config';
+import { GAME_CONFIG } from '../../../shared/config';
 import { clampCoordinates } from '../../validation';
 import { players, dummies, rateLimit } from '../../gameState';
 import { applyDamageWithPassives } from './damageProcessor';
+import { checkAndHandleDeath } from '../../../shared/combat';
 import type {
     TypedSocket,
     TypedServer,
@@ -17,7 +19,7 @@ import type {
 
 export function registerSpinThrowHandlers(socket: TypedSocket, io: TypedServer): void {
     socket.on('spinThrow', (data) => {
-        if (!rateLimit(socket.id, 'spinThrow', RATE_LIMIT_SPIN_THROW)) {
+        if (!rateLimit(socket.id, 'spinThrow', SERVER_CONFIG.RATE_LIMIT.SPIN_THROW_MS)) {
             return;
         }
 
@@ -131,7 +133,7 @@ export function registerSpinThrowHandlers(socket: TypedSocket, io: TypedServer):
         );
 
         // === COLLISION DAMAGE ===
-        const collisionRadius = 80;
+        const collisionRadius = SERVER_CONFIG.SKILL_SPIN_THROW.COLLISION_RADIUS;
         const collisionDamage = SERVER_CONFIG.SKILL_SPIN_THROW.COLLISION_DAMAGE;
         const collisionHitPlayers: HitPlayerInfo[] = [];
         const collisionKilledPlayers: KilledPlayerInfo[] = [];
@@ -177,14 +179,7 @@ export function registerSpinThrowHandlers(socket: TypedSocket, io: TypedServer):
                     );
                 }
 
-                if (player.currentHP <= 0 && !player.isDead) {
-                    player.isDead = true;
-                    player.deathTime = Date.now();
-                    collisionKilledPlayers.push({
-                        playerId: playerId,
-                        killedBy: socket.id,
-                        respawnDelay: PLAYER_RESPAWN_DELAY,
-                    });
+                if (checkAndHandleDeath(player, playerId, socket.id, collisionKilledPlayers, SERVER_CONFIG.PLAYER.RESPAWN_DELAY_MS)) {
                     logger.info(`${playerId} has been killed by spin throw collision!`);
                 }
             }
@@ -199,7 +194,7 @@ export function registerSpinThrowHandlers(socket: TypedSocket, io: TypedServer):
             const cdy = dummy.y - endY;
             const collisionDist = Math.sqrt(cdx * cdx + cdy * cdy);
 
-            if (collisionDist <= collisionRadius + 67.5) {
+            if (collisionDist <= collisionRadius + GAME_CONFIG.COMBAT.DUMMY_RADIUS_BONUS) {
                 dummy.currentHP = Math.max(0, dummy.currentHP - collisionDamage);
 
                 collisionHitDummies.push({
@@ -280,15 +275,17 @@ export function registerSpinThrowHandlers(socket: TypedSocket, io: TypedServer):
         if (target.currentHP <= 0) {
             if (targetType === 'dummy') {
                 logger.debug(`Dummy ${targetId} died from spin throw`);
-            } else if (!target.isDead) {
-                (target as Player).isDead = true;
-                (target as Player).deathTime = Date.now();
-                io.emit('playerDied', {
-                    playerId: targetId as string,
-                    killedBy: socket.id,
-                    respawnDelay: PLAYER_RESPAWN_DELAY,
-                });
-                logger.info(`${targetId} has been killed by spin throw from ${socket.id}!`);
+            } else {
+                const targetKilledPlayers: KilledPlayerInfo[] = [];
+                checkAndHandleDeath(target as Player, targetId as string, socket.id, targetKilledPlayers, SERVER_CONFIG.PLAYER.RESPAWN_DELAY_MS);
+                for (const killed of targetKilledPlayers) {
+                    io.emit('playerDied', {
+                        playerId: killed.playerId,
+                        killedBy: killed.killedBy,
+                        respawnDelay: killed.respawnDelay,
+                    });
+                    logger.info(`${killed.playerId} has been killed by spin throw from ${socket.id}!`);
+                }
             }
         }
     });

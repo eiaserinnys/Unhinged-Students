@@ -4,17 +4,9 @@
  * 못 찾으면 초당 체력 10 감소
  */
 import logger from '../../../logger';
+import { GAME_CONFIG } from '../../../shared/config';
 import { players, dummies } from '../../gameState';
 import type { TypedSocket, TypedServer } from '../../types';
-
-// 쥐 환상 설정
-const RAT_ILLUSION_CONFIG = {
-    RAT_COUNT: 5,
-    DURATION_MS: 5000,
-    HP_DRAIN_PER_SECOND: 10,
-    TICK_INTERVAL_MS: 1000, // 1초마다 체력 감소 체크
-    EFFECT_RADIUS: 200,
-};
 
 // 활성화된 쥐 환상 효과 추적
 interface ActiveRatIllusion {
@@ -120,7 +112,7 @@ export function registerRatIllusionHandlers(socket: TypedSocket, io: TypedServer
             const dummy = dummies.get(dummyId);
             if (!dummy || dummy.currentHP <= 0) return;
 
-            const damage = RAT_ILLUSION_CONFIG.HP_DRAIN_PER_SECOND * 3; // 더미에게는 3초치 데미지를 한번에
+            const damage = GAME_CONFIG.SKILL_RAT_ILLUSION.HP_DRAIN_PER_SECOND * GAME_CONFIG.SKILL_RAT_ILLUSION.DUMMY_DAMAGE_MULTIPLIER; // 더미에게는 N초치 데미지를 한번에
             dummy.currentHP = Math.max(0, dummy.currentHP - damage);
 
             logger.info(
@@ -149,7 +141,7 @@ export function registerRatIllusionHandlers(socket: TypedSocket, io: TypedServer
         if (!target || target.isDead) return;
 
         // 무적 상태 설정 (쥐 환상 지속 시간 동안)
-        target.ratIllusionUntil = Date.now() + RAT_ILLUSION_CONFIG.DURATION_MS;
+        target.ratIllusionUntil = Date.now() + GAME_CONFIG.SKILL_RAT_ILLUSION.DURATION_MS;
 
         // 이미 쥐 환상 효과가 있으면 종료
         if (activeIllusions.has(targetId)) {
@@ -157,7 +149,7 @@ export function registerRatIllusionHandlers(socket: TypedSocket, io: TypedServer
         }
 
         // 진짜 쥐 인덱스 결정 (서버에서만 알고 있음!)
-        const realRatIndex = Math.floor(Math.random() * RAT_ILLUSION_CONFIG.RAT_COUNT);
+        const realRatIndex = Math.floor(Math.random() * GAME_CONFIG.SKILL_RAT_ILLUSION.RAT_COUNT);
 
         logger.info(`Rat illusion cast by ${socket.id} on ${targetId} (real rat: ${realRatIndex})`);
 
@@ -179,7 +171,7 @@ export function registerRatIllusionHandlers(socket: TypedSocket, io: TypedServer
             }
 
             // 체력 감소
-            const damage = RAT_ILLUSION_CONFIG.HP_DRAIN_PER_SECOND;
+            const damage = GAME_CONFIG.SKILL_RAT_ILLUSION.HP_DRAIN_PER_SECOND;
             targetPlayer.currentHP = Math.max(0, targetPlayer.currentHP - damage);
 
             logger.debug(
@@ -202,12 +194,12 @@ export function registerRatIllusionHandlers(socket: TypedSocket, io: TypedServer
                 io.emit('playerDied', {
                     playerId: targetId!,
                     killedBy: illusion.casterId,
-                    respawnDelay: 5000,
+                    respawnDelay: GAME_CONFIG.PLAYER.RESPAWN_DELAY_MS,
                 });
 
                 endRatIllusion(targetId!, io, 'killed');
             }
-        }, RAT_ILLUSION_CONFIG.TICK_INTERVAL_MS);
+        }, 1000); // 1초마다 체력 감소 체크
 
         activeIllusions.set(targetId, illusion);
 
@@ -216,22 +208,22 @@ export function registerRatIllusionHandlers(socket: TypedSocket, io: TypedServer
             if (activeIllusions.has(targetId!)) {
                 endRatIllusion(targetId!, io, 'timeout');
             }
-        }, RAT_ILLUSION_CONFIG.DURATION_MS);
+        }, GAME_CONFIG.SKILL_RAT_ILLUSION.DURATION_MS);
 
         // 타겟에게 쥐 환상 효과 전송 (진짜 쥐 인덱스는 보내지 않음!)
         io.to(targetId).emit('ratIllusionStart', {
             casterId: socket.id,
             casterX: caster.x,
             casterY: caster.y,
-            ratCount: RAT_ILLUSION_CONFIG.RAT_COUNT,
-            duration: RAT_ILLUSION_CONFIG.DURATION_MS,
-            radius: RAT_ILLUSION_CONFIG.EFFECT_RADIUS,
+            ratCount: GAME_CONFIG.SKILL_RAT_ILLUSION.RAT_COUNT,
+            duration: GAME_CONFIG.SKILL_RAT_ILLUSION.DURATION_MS,
+            radius: GAME_CONFIG.SKILL_RAT_ILLUSION.EFFECT_RADIUS,
         });
 
         // 시전자에게 확인 메시지
         socket.emit('ratIllusionCast', {
             targetId,
-            duration: RAT_ILLUSION_CONFIG.DURATION_MS,
+            duration: GAME_CONFIG.SKILL_RAT_ILLUSION.DURATION_MS,
         });
 
         // 다른 플레이어에게도 시각 효과 (구경꾼용)

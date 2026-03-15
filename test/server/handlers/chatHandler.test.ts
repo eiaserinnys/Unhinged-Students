@@ -21,8 +21,10 @@ const mockLogger = {
 };
 
 const mockConfig = {
-    CHAT_MAX_MESSAGE_LENGTH: 200,
-    RATE_LIMIT_CHAT: 1000,
+    SERVER_CONFIG: {
+        CHAT: { MAX_MESSAGE_LENGTH: 200 },
+        RATE_LIMIT: { CHAT_MS: 1000 },
+    },
 };
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any

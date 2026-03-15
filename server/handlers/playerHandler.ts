@@ -2,7 +2,7 @@
 // PLAYER EVENT HANDLERS
 // ========================================
 import logger from '../../logger';
-import { PLAYER_SPEED, PLAYER_SPEED_TOLERANCE, RATE_LIMIT_MOVE, SERVER_CONFIG } from '../config';
+import { SERVER_CONFIG } from '../config';
 import {
     isValidNumber,
     isValidString,
@@ -53,8 +53,8 @@ export function registerPlayerHandlers(socket: TypedSocket, io: TypedServer): vo
     players.set(socket.id, {
         playerId: socket.id,
         team: team,
-        x: 960, // Center of game world
-        y: 540,
+        x: GAME_CONFIG.PLAYER.RESPAWN_X,
+        y: GAME_CONFIG.PLAYER.RESPAWN_Y,
         playerName: 'Player',
         level: 1,
         experience: 0,
@@ -69,8 +69,8 @@ export function registerPlayerHandlers(socket: TypedSocket, io: TypedServer): vo
     socket.broadcast.emit('playerJoined', {
         playerId: socket.id,
         team: team,
-        x: 960,
-        y: 540,
+        x: GAME_CONFIG.PLAYER.RESPAWN_X,
+        y: GAME_CONFIG.PLAYER.RESPAWN_Y,
         playerName: 'Player',
         level: 1,
         experience: 0,
@@ -183,7 +183,7 @@ export function registerPlayerHandlers(socket: TypedSocket, io: TypedServer): vo
     // Handle player position updates
     socket.on('playerMove', (data: PlayerMoveData) => {
         // === RATE LIMITING ===
-        if (!rateLimit(socket.id, 'move', RATE_LIMIT_MOVE)) {
+        if (!rateLimit(socket.id, 'move', SERVER_CONFIG.RATE_LIMIT.MOVE_MS)) {
             return; // Too many move events, silently ignore
         }
 
@@ -212,7 +212,7 @@ export function registerPlayerHandlers(socket: TypedSocket, io: TypedServer): vo
             const currentTime = Date.now();
             const lastMoveTime = existingPlayer.lastMoveTime || currentTime;
             const timeDelta = Math.max(16, currentTime - lastMoveTime); // Minimum 16ms (60fps)
-            const maxAllowedDistance = PLAYER_SPEED * PLAYER_SPEED_TOLERANCE * (timeDelta / 1000);
+            const maxAllowedDistance = SERVER_CONFIG.PLAYER.SPEED * SERVER_CONFIG.PLAYER.SPEED_TOLERANCE * (timeDelta / 1000);
 
             if (moveDistance > maxAllowedDistance) {
                 // Log potential speed hack but allow within reasonable bounds

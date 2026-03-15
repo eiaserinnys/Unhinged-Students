@@ -205,6 +205,20 @@ export interface DummyHit {
     knockbackEndY?: number;
 }
 
+export interface GameEventCallbacks {
+    onStoredDamageUpdate(storedDamage: number, maxStored: number): void;
+    onCurryRecoveryEffect(healAmount: number): void;
+    onRatIllusionStart(data: {
+        casterId: string;
+        casterX: number;
+        casterY: number;
+        ratCount: number;
+        duration: number;
+        radius: number;
+    }): void;
+    onRatIllusionEnd(reason: string): void;
+}
+
 export interface INetworkManager {
     socket: SocketIOClient | null;
     playerId: string | null;
@@ -227,6 +241,7 @@ export interface INetworkManager {
     setShardManager(shardManager: IShardManager): void;
     setLocalPlayer(player: ICharacter): void;
     setDummies(dummies: ICharacter[]): void;
+    setGameCallbacks(callbacks: GameEventCallbacks): void;
     connect(serverUrl?: string | null): void;
     sendAttack(x: number, y: number, range: number, power: number): void;
     sendLaserAiming(x: number, y: number, dirX: number, dirY: number): void;

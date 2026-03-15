@@ -641,6 +641,8 @@ export interface AreaDamageOptions {
     applyKnockback?: boolean;
     knockbackDistance?: number;
     dummyRadiusBonus?: number;
+    applyPassives?: boolean;  // true면 applyDamageWithPassives 사용
+    io?: TypedServer;         // applyPassives=true일 때 필수
 }
 
 export interface AreaDamageResult {

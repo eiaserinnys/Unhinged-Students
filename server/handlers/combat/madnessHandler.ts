@@ -2,13 +2,8 @@
  * @fileoverview Madness walk handlers (Crazy-Eyes E skill)
  */
 import logger from '../../../logger';
-import {
-    SERVER_CONFIG,
-    MADNESS_RADIUS,
-    MADNESS_DAMAGE_PER_TICK,
-    RATE_LIMIT_MADNESS,
-    PLAYER_RESPAWN_DELAY,
-} from '../../config';
+import { SERVER_CONFIG } from '../../config';
+import { GAME_CONFIG } from '../../../shared/config';
 import { players, dummies, rateLimit } from '../../gameState';
 import { applyDamageWithPassives } from './damageProcessor';
 import type {
@@ -22,7 +17,7 @@ import type {
 export function registerMadnessHandlers(socket: TypedSocket, io: TypedServer): void {
     // Handle madness walk start
     socket.on('madnessStart', () => {
-        if (!rateLimit(socket.id, 'madness', RATE_LIMIT_MADNESS)) {
+        if (!rateLimit(socket.id, 'madness', SERVER_CONFIG.RATE_LIMIT.MADNESS_MS)) {
             return;
         }
 
@@ -94,8 +89,8 @@ export function registerMadnessHandlers(socket: TypedSocket, io: TypedServer): v
 
         const x = attacker.x;
         const y = attacker.y;
-        const radius = MADNESS_RADIUS;
-        const damage = MADNESS_DAMAGE_PER_TICK;
+        const radius = SERVER_CONFIG.SKILL_MADNESS.RADIUS;
+        const damage = SERVER_CONFIG.SKILL_MADNESS.DAMAGE_PER_TICK;
 
         const hitPlayers: HitPlayerInfo[] = [];
         const killedPlayers: KilledPlayerInfo[] = [];
@@ -126,7 +121,7 @@ export function registerMadnessHandlers(socket: TypedSocket, io: TypedServer): v
                     killedPlayers.push({
                         playerId: playerId,
                         killedBy: socket.id,
-                        respawnDelay: PLAYER_RESPAWN_DELAY,
+                        respawnDelay: SERVER_CONFIG.PLAYER.RESPAWN_DELAY_MS,
                     });
                     logger.info(`${playerId} has been killed by madness walk from ${socket.id}!`);
                 }
@@ -158,7 +153,7 @@ export function registerMadnessHandlers(socket: TypedSocket, io: TypedServer): v
             const dy = dummy.y - y;
             const distance = Math.sqrt(dx * dx + dy * dy);
 
-            if (distance <= radius + 67.5) {
+            if (distance <= radius + GAME_CONFIG.COMBAT.DUMMY_RADIUS_BONUS) {
                 dummy.currentHP = Math.max(0, dummy.currentHP - damage);
 
                 hitDummies.push({
