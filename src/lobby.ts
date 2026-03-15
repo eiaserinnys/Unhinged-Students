@@ -278,7 +278,7 @@ export class LobbyManager implements ILobbyManager {
             },
             'squeak-squeak': {
                 stats: '❤️ 체력: 낮음 | ⚡ 속도: 빠름',
-                skills: '👻 쥐 환상 | 😴 수면 가루 | 💣 쥐 폭탄',
+                skills: '👻 쥐 환상 | 😴 수면 가루 | 💣 쥐 폭탄 | 🧸 인형 안고 자기 | 🐭💖 쥐 살리기',
             },
         };
         return characterInfo[characterId] || characterInfo['alien'];
