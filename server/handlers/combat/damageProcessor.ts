@@ -94,6 +94,8 @@ export function processAreaDamageToPlayers(options: AreaDamageOptions): AreaDama
         respawnDelay,
         applyKnockback = true,
         knockbackDistance,
+        applyPassives = false,
+        io,
     } = options;
 
     const hitPlayers: HitPlayerInfo[] = [];
@@ -111,7 +113,11 @@ export function processAreaDamageToPlayers(options: AreaDamageOptions): AreaDama
         const distance = calculateDistance(x, y, player.x, player.y);
 
         if (distance <= radius) {
-            player.currentHP = Math.max(0, player.currentHP - damage);
+            if (applyPassives && io) {
+                applyDamageWithPassives(player, damage, io);
+            } else {
+                player.currentHP = Math.max(0, player.currentHP - damage);
+            }
 
             let knockbackEndX = player.x;
             let knockbackEndY = player.y;

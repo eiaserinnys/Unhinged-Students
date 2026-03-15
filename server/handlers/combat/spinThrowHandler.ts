@@ -6,6 +6,7 @@ import { SERVER_CONFIG, RATE_LIMIT_SPIN_THROW, PLAYER_RESPAWN_DELAY } from '../.
 import { clampCoordinates } from '../../validation';
 import { players, dummies, rateLimit } from '../../gameState';
 import { applyDamageWithPassives } from './damageProcessor';
+import { checkAndHandleDeath } from '../../../shared/combat';
 import type {
     TypedSocket,
     TypedServer,
@@ -177,14 +178,7 @@ export function registerSpinThrowHandlers(socket: TypedSocket, io: TypedServer):
                     );
                 }
 
-                if (player.currentHP <= 0 && !player.isDead) {
-                    player.isDead = true;
-                    player.deathTime = Date.now();
-                    collisionKilledPlayers.push({
-                        playerId: playerId,
-                        killedBy: socket.id,
-                        respawnDelay: PLAYER_RESPAWN_DELAY,
-                    });
+                if (checkAndHandleDeath(player, playerId, socket.id, collisionKilledPlayers, PLAYER_RESPAWN_DELAY)) {
                     logger.info(`${playerId} has been killed by spin throw collision!`);
                 }
             }
@@ -280,15 +274,17 @@ export function registerSpinThrowHandlers(socket: TypedSocket, io: TypedServer):
         if (target.currentHP <= 0) {
             if (targetType === 'dummy') {
                 logger.debug(`Dummy ${targetId} died from spin throw`);
-            } else if (!target.isDead) {
-                (target as Player).isDead = true;
-                (target as Player).deathTime = Date.now();
-                io.emit('playerDied', {
-                    playerId: targetId as string,
-                    killedBy: socket.id,
-                    respawnDelay: PLAYER_RESPAWN_DELAY,
-                });
-                logger.info(`${targetId} has been killed by spin throw from ${socket.id}!`);
+            } else {
+                const targetKilledPlayers: KilledPlayerInfo[] = [];
+                checkAndHandleDeath(target as Player, targetId as string, socket.id, targetKilledPlayers, PLAYER_RESPAWN_DELAY);
+                for (const killed of targetKilledPlayers) {
+                    io.emit('playerDied', {
+                        playerId: killed.playerId,
+                        killedBy: killed.killedBy,
+                        respawnDelay: killed.respawnDelay,
+                    });
+                    logger.info(`${killed.playerId} has been killed by spin throw from ${socket.id}!`);
+                }
             }
         }
     });
