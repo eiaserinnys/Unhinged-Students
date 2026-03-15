@@ -6,6 +6,7 @@ import { registerBasicAttackHandlers } from './basicAttack';
 import { registerTeleportHandlers } from './teleportHandler';
 import { registerLaserHandlers } from './laserHandler';
 import { registerTelepathyHandlers } from './telepathyHandler';
+import { registerRatIllusionHandlers } from './ratIllusionHandler';
 import type { TypedSocket, TypedServer } from '../../types';
 
 /**
@@ -16,4 +17,5 @@ export function registerCombatHandlers(socket: TypedSocket, io: TypedServer): vo
     registerTeleportHandlers(socket, io);
     registerLaserHandlers(socket, io);
     registerTelepathyHandlers(socket, io);
+    registerRatIllusionHandlers(socket, io);
 }

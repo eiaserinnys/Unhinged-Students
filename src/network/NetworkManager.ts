@@ -733,6 +733,91 @@ export class NetworkManager implements INetworkManager {
             }
         });
 
+        // Rat Illusion events (Squeak-Squeak Q skill)
+        // 내가 쥐 환상에 걸렸을 때 (상대방이 나한테 시전)
+        this.socket.on('ratIllusionStart', (data: unknown) => {
+            const { casterId, casterX, casterY, ratCount, duration, radius } = data as {
+                casterId: string;
+                casterX: number;
+                casterY: number;
+                ratCount: number;
+                duration: number;
+                radius: number;
+            };
+            logger.info(`Rat illusion started on you by ${casterId}!`);
+
+            // 쥐 환상 효과 시작 (window.startRatIllusionOnMe 호출)
+            if (typeof (window as { startRatIllusionOnMe?: Function }).startRatIllusionOnMe === 'function') {
+                (window as { startRatIllusionOnMe: Function }).startRatIllusionOnMe({
+                    casterId,
+                    casterX,
+                    casterY,
+                    ratCount,
+                    duration,
+                    radius,
+                });
+            }
+        });
+
+        // 내가 시전한 쥐 환상이 적용됨
+        this.socket.on('ratIllusionCast', (data: unknown) => {
+            const { targetId, duration } = data as { targetId: string; duration: number };
+            logger.info(`Rat illusion cast on ${targetId} for ${duration}ms`);
+        });
+
+        // 쥐 환상 체력 감소
+        this.socket.on('ratIllusionDrain', (data: unknown) => {
+            const { targetId, damage, currentHP, maxHP } = data as {
+                targetId: string;
+                damage: number;
+                currentHP: number;
+                maxHP: number;
+            };
+
+            if (targetId === this.playerId && this.localPlayer) {
+                this.localPlayer.currentHP = currentHP;
+                this.localPlayer.hitFlashTime = Date.now();
+                logger.debug(`Rat illusion drain: -${damage} HP (${currentHP}/${maxHP})`);
+            }
+        });
+
+        // 쥐 환상 종료
+        this.socket.on('ratIllusionEnd', (data: unknown) => {
+            const { targetId, reason } = data as { targetId: string; reason: string };
+
+            if (targetId === this.playerId) {
+                logger.info(`Rat illusion ended: ${reason}`);
+                // 쥐 환상 효과 종료 (window.endRatIllusionOnMe 호출)
+                if (typeof (window as { endRatIllusionOnMe?: Function }).endRatIllusionOnMe === 'function') {
+                    (window as { endRatIllusionOnMe: Function }).endRatIllusionOnMe(reason);
+                }
+            }
+        });
+
+        // 진짜 쥐를 찾았을 때
+        this.socket.on('ratIllusionSuccess', (data: unknown) => {
+            const { message } = data as { message: string };
+            logger.info(`Rat illusion success: ${message}`);
+        });
+
+        // 가짜 쥐를 클릭했을 때
+        this.socket.on('ratIllusionFail', (data: unknown) => {
+            const { clickedIndex, message } = data as { clickedIndex: number; message: string };
+            logger.debug(`Rat illusion fail: clicked ${clickedIndex}, ${message}`);
+        });
+
+        // 다른 플레이어의 쥐 환상 시각 효과 (구경꾼용)
+        this.socket.on('ratIllusionEffect', (data: unknown) => {
+            const { casterId, targetId, casterX, casterY } = data as {
+                casterId: string;
+                targetId: string;
+                casterX: number;
+                casterY: number;
+            };
+            logger.debug(`Rat illusion effect: ${casterId} -> ${targetId}`);
+            // TODO: 구경꾼용 시각 효과 표시
+        });
+
         // Shard events
         this.socket.on('existingShards', (data: unknown) => {
             const shards = data as Shard[];
@@ -1106,6 +1191,18 @@ export class NetworkManager implements INetworkManager {
     sendRageEnd(): void {
         if (!this.connected || !this.socket) return;
         this.socket.emit('rageEnd', {});
+    }
+
+    // Send rat illusion to server (Squeak-Squeak Q skill)
+    sendRatIllusion(targetId?: string): void {
+        if (!this.connected || !this.socket) return;
+        this.socket.emit('ratIllusion', { targetId });
+    }
+
+    // Send rat click to server (player clicking on a rat)
+    sendRatClick(ratIndex: number): void {
+        if (!this.connected || !this.socket) return;
+        this.socket.emit('ratClick', { ratIndex });
     }
 
     addRemotePlayer(playerData: PlayerData): void {

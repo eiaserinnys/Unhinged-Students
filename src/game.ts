@@ -30,6 +30,7 @@ import {
     isConfused,
     isKeyPressed,
     isKeyJustPressed,
+    Input,
 } from './input.js';
 import { LobbyManager } from './lobby.js';
 import { Character } from './character.js';
@@ -478,6 +479,33 @@ function update(deltaTime: number): void {
 
                 // 흔들림 애니메이션
                 rat.wigglePhase += 0.3;
+            }
+
+            // 마우스 클릭 시 쥐 클릭 처리
+            if (Input.mouse.pressed && Input.mouse.button === 0) {
+                // 캔버스 좌표를 게임 좌표로 변환
+                const scale = getScale();
+                const gameX = Input.mouse.x / scale;
+                const gameY = Input.mouse.y / scale;
+
+                const clickRadius = 40;
+                for (let i = 0; i < ratIllusionEffect.rats.length; i++) {
+                    const rat = ratIllusionEffect.rats[i];
+                    const rdx = gameX - rat.x;
+                    const rdy = gameY - rat.y;
+                    const distance = Math.sqrt(rdx * rdx + rdy * rdy);
+
+                    if (distance < clickRadius) {
+                        logger.debug(`Clicked rat ${i}`);
+                        // 서버에 쥐 클릭 전송
+                        if (gameState.networkManager) {
+                            gameState.networkManager.sendRatClick(i);
+                        }
+                        // 마우스 클릭 상태 리셋 (중복 클릭 방지)
+                        Input.mouse.pressed = false;
+                        break;
+                    }
+                }
             }
         }
     }
@@ -1526,6 +1554,101 @@ window.triggerHitVignette = triggerHitVignette;
 window.updateStoredDamage = updateStoredDamage;
 window.triggerCurryRecoveryEffect = triggerCurryRecoveryEffect;
 
+// ============================================================
+// 쥐 환상 (Rat Illusion) - 내가 걸렸을 때 처리
+// ============================================================
+
+interface RatIllusionOnMeData {
+    casterId: string;
+    casterX: number;
+    casterY: number;
+    ratCount: number;
+    duration: number;
+    radius: number;
+}
+
+// 내가 쥐 환상에 걸렸을 때 시작
+function startRatIllusionOnMe(data: RatIllusionOnMeData): void {
+    logger.info(`Rat illusion started on me! Caster: ${data.casterId}`);
+
+    // 쥐 환상 효과 생성 (내 위치 기준)
+    if (!gameState.player) return;
+
+    const playerPos = gameState.player.getPosition();
+    const rats: RatState[] = [];
+
+    for (let i = 0; i < data.ratCount; i++) {
+        const angle = (i / data.ratCount) * Math.PI * 2 + (Math.random() - 0.5) * 0.5;
+        const distance = data.radius * (0.5 + Math.random() * 0.5);
+        const x = playerPos.x + Math.cos(angle) * distance;
+        const y = playerPos.y + Math.sin(angle) * distance;
+
+        const targetAngle = Math.random() * Math.PI * 2;
+        const targetDistance = data.radius * (0.3 + Math.random() * 0.7);
+
+        rats.push({
+            x,
+            y,
+            targetX: playerPos.x + Math.cos(targetAngle) * targetDistance,
+            targetY: playerPos.y + Math.sin(targetAngle) * targetDistance,
+            isReal: false, // 서버만 알고 있음!
+            angle: Math.random() * Math.PI * 2,
+            wigglePhase: Math.random() * Math.PI * 2,
+        });
+    }
+
+    ratIllusionEffect = {
+        active: true,
+        x: playerPos.x,
+        y: playerPos.y,
+        startTime: Date.now(),
+        duration: data.duration,
+        radius: data.radius,
+        rats,
+    };
+}
+
+// 쥐 환상 효과 종료
+function endRatIllusionOnMe(reason: string): void {
+    logger.info(`Rat illusion ended: ${reason}`);
+    if (ratIllusionEffect) {
+        ratIllusionEffect.active = false;
+        ratIllusionEffect.rats = [];
+    }
+}
+
+// 쥐 클릭 처리
+function handleRatClick(mouseX: number, mouseY: number): boolean {
+    if (!ratIllusionEffect || !ratIllusionEffect.active) return false;
+
+    // 클릭한 위치에 쥐가 있는지 확인
+    const clickRadius = 40; // 클릭 판정 범위
+
+    for (let i = 0; i < ratIllusionEffect.rats.length; i++) {
+        const rat = ratIllusionEffect.rats[i];
+        const dx = mouseX - rat.x;
+        const dy = mouseY - rat.y;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+
+        if (distance < clickRadius) {
+            logger.debug(`Clicked rat ${i} at (${rat.x.toFixed(0)}, ${rat.y.toFixed(0)})`);
+
+            // 서버에 쥐 클릭 전송
+            if (gameState.networkManager) {
+                gameState.networkManager.sendRatClick(i);
+            }
+
+            return true;
+        }
+    }
+
+    return false;
+}
+
+// Window에 노출
+window.startRatIllusionOnMe = startRatIllusionOnMe;
+window.endRatIllusionOnMe = endRatIllusionOnMe;
+
 // Note: findNearestEnemy and findRandomEnemy are imported from combat/enemyFinder.js
 // Expose to window for backward compatibility
 window.findNearestEnemy = findNearestEnemy;
@@ -1689,43 +1812,10 @@ function handleQSkill(): void {
             if (ratSkill) {
                 logger.debug(`Used skill: ${ratSkill.name} - rat illusion`);
 
-                // 쥐 환상 효과 시작
-                const ratCount = GAME_CONFIG.SKILL_RAT_ILLUSION.RAT_COUNT;
-                const realRatIndex = Math.floor(Math.random() * ratCount);
-                const radius = GAME_CONFIG.SKILL_RAT_ILLUSION.EFFECT_RADIUS;
-
-                const rats: RatState[] = [];
-                for (let i = 0; i < ratCount; i++) {
-                    const angle = (i / ratCount) * Math.PI * 2 + (Math.random() - 0.5) * 0.5;
-                    const distance = radius * (0.5 + Math.random() * 0.5);
-                    const x = playerPos.x + Math.cos(angle) * distance;
-                    const y = playerPos.y + Math.sin(angle) * distance;
-
-                    const targetAngle = Math.random() * Math.PI * 2;
-                    const targetDistance = radius * (0.3 + Math.random() * 0.7);
-
-                    rats.push({
-                        x,
-                        y,
-                        targetX: playerPos.x + Math.cos(targetAngle) * targetDistance,
-                        targetY: playerPos.y + Math.sin(targetAngle) * targetDistance,
-                        isReal: i === realRatIndex,
-                        angle: Math.random() * Math.PI * 2,
-                        wigglePhase: Math.random() * Math.PI * 2,
-                    });
+                // 서버에 쥐 환상 시전 요청 (서버가 타겟 결정 및 효과 적용)
+                if (gameState.networkManager) {
+                    gameState.networkManager.sendRatIllusion();
                 }
-
-                ratIllusionEffect = {
-                    active: true,
-                    x: playerPos.x,
-                    y: playerPos.y,
-                    startTime: Date.now(),
-                    duration: GAME_CONFIG.SKILL_RAT_ILLUSION.DURATION_MS,
-                    radius,
-                    rats,
-                };
-
-                // TODO: 서버 연동 (다른 플레이어에게 효과 전파)
             }
             break;
         }
@@ -2203,6 +2293,8 @@ declare global {
     interface Window {
         updateStoredDamage: typeof updateStoredDamage;
         triggerCurryRecoveryEffect: typeof triggerCurryRecoveryEffect;
+        startRatIllusionOnMe: typeof startRatIllusionOnMe;
+        endRatIllusionOnMe: typeof endRatIllusionOnMe;
     }
 }
 

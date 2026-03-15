@@ -112,6 +112,10 @@ export interface ClientToServerEvents {
 
     // Chat events
     chatMessage: (data: ChatMessageData) => void;
+
+    // Rat Illusion events
+    ratIllusion: (data: RatIllusionData) => void;
+    ratClick: (data: RatClickData) => void;
 }
 
 // Server to Client Events
@@ -163,6 +167,15 @@ export interface ServerToClientEvents {
 
     // Chat events
     chatMessage: (data: ChatMessageBroadcastData) => void;
+
+    // Rat Illusion events
+    ratIllusionStart: (data: RatIllusionStartData) => void;
+    ratIllusionCast: (data: RatIllusionCastData) => void;
+    ratIllusionDrain: (data: RatIllusionDrainData) => void;
+    ratIllusionEnd: (data: RatIllusionEndData) => void;
+    ratIllusionSuccess: (data: RatIllusionSuccessData) => void;
+    ratIllusionFail: (data: RatIllusionFailData) => void;
+    ratIllusionEffect: (data: RatIllusionEffectData) => void;
 }
 
 // ========================================
@@ -513,6 +526,57 @@ export interface ChatMessageBroadcastData {
     playerName: string;
     message: string;
     timestamp: number;
+}
+
+// Rat Illusion events
+export interface RatIllusionData {
+    targetId?: string;
+}
+
+export interface RatClickData {
+    ratIndex: number;
+}
+
+export interface RatIllusionStartData {
+    casterId: string;
+    casterX: number;
+    casterY: number;
+    ratCount: number;
+    duration: number;
+    radius: number;
+}
+
+export interface RatIllusionCastData {
+    targetId: string;
+    duration: number;
+}
+
+export interface RatIllusionDrainData {
+    targetId: string;
+    damage: number;
+    currentHP: number;
+    maxHP: number;
+}
+
+export interface RatIllusionEndData {
+    targetId: string;
+    reason: string;
+}
+
+export interface RatIllusionSuccessData {
+    message: string;
+}
+
+export interface RatIllusionFailData {
+    clickedIndex: number;
+    message: string;
+}
+
+export interface RatIllusionEffectData {
+    casterId: string;
+    targetId: string;
+    casterX: number;
+    casterY: number;
 }
 
 // ========================================

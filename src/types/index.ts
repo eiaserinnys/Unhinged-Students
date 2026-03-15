@@ -255,6 +255,8 @@ export interface INetworkManager {
     ): void;
     sendRageStart(): void;
     sendRageEnd(): void;
+    sendRatIllusion(targetId?: string): void;
+    sendRatClick(ratIndex: number): void;
     addRemotePlayer(playerData: PlayerData): void;
     removeRemotePlayer(playerId: string): void;
     sendPlayerPosition(
