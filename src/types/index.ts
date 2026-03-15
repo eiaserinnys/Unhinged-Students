@@ -208,6 +208,7 @@ export interface DummyHit {
 export interface INetworkManager {
     socket: SocketIOClient | null;
     playerId: string | null;
+    persistentId: string;
     team: TeamType | null;
     connected: boolean;
     remotePlayers: Map<string, IRemotePlayer>;
@@ -219,6 +220,7 @@ export interface INetworkManager {
     reconnectUI: IReconnectUI | null;
     serverUrl: string | null;
     onTeamAssigned: ((team: TeamType) => void) | null;
+    onReconnected: ((data: unknown) => void) | null;
     isConfused: boolean;
     confusionEndTime: number;
 

@@ -23,6 +23,7 @@ export type CharacterId = 'alien' | 'crazy-eyes' | 'curry-bear' | 'big-sis-hulk'
 
 export interface Player {
     playerId: string;
+    persistentId?: string;
     socketId?: string;
     team: Team;
     x: number;
@@ -90,8 +91,31 @@ export interface Shard {
 // ========================================
 
 // Client to Server Events
+export interface IdentifyData {
+    playerId: string;
+    playerName: string;
+    characterId: string;
+}
+
+export interface ReconnectedData {
+    playerId: string;
+    team: Team;
+    x: number;
+    y: number;
+    currentHP: number;
+    maxHP: number;
+    level: number;
+    experience: number;
+    characterId: CharacterId;
+    playerName: string;
+    shardCollectCount: number;
+    storedDamage: number;
+    rageStacks: number;
+}
+
 export interface ClientToServerEvents {
     // Player events
+    identify: (data: IdentifyData) => void;
     playerMove: (data: PlayerMoveData) => void;
     disconnect: () => void;
 
@@ -129,9 +153,14 @@ export interface ClientToServerEvents {
 export interface ServerToClientEvents {
     // Connection events
     connected: (data: ConnectedData) => void;
+    reconnected: (data: ReconnectedData) => void;
     existingPlayers: (players: Player[]) => void;
     existingShards: (shards: Shard[]) => void;
     existingDummies: (dummies: Dummy[]) => void;
+
+    // Reconnection events
+    playerTemporarilyDisconnected: (data: PlayerLeftData) => void;
+    playerReconnected: (data: PlayerJoinedData) => void;
 
     // Player events
     playerJoined: (data: PlayerJoinedData) => void;

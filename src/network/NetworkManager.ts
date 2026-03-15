@@ -40,6 +40,25 @@ interface ConnectedResponse {
 }
 
 /**
+ * Interface for reconnection response (restored state from server)
+ */
+interface ReconnectedResponse {
+    playerId: string;
+    team: TeamType;
+    x: number;
+    y: number;
+    currentHP: number;
+    maxHP: number;
+    level: number;
+    experience: number;
+    characterId: CharacterType;
+    playerName: string;
+    shardCollectCount: number;
+    storedDamage: number;
+    rageStacks: number;
+}
+
+/**
  * Interface for player movement data
  */
 interface PlayerMoveData {
@@ -101,11 +120,27 @@ interface DeathData {
 }
 
 /**
+ * Get or create a persistent player ID stored in sessionStorage.
+ * This UUID survives page reloads within the same tab but isolates
+ * each tab to prevent two tabs from sharing the same persistentId
+ * (which would cause one to hijack the other's session on reconnect).
+ */
+function getOrCreatePersistentId(): string {
+    let id = sessionStorage.getItem('playerId');
+    if (!id) {
+        id = crypto.randomUUID();
+        sessionStorage.setItem('playerId', id);
+    }
+    return id;
+}
+
+/**
  * Manages network communication for multiplayer functionality
  */
 export class NetworkManager implements INetworkManager {
     socket: SocketIOClient | null;
     playerId: string | null;
+    persistentId: string;
     team: TeamType | null;
     connected: boolean;
     remotePlayers: Map<string, IRemotePlayer>;
@@ -117,12 +152,14 @@ export class NetworkManager implements INetworkManager {
     reconnectUI: IReconnectUI | null;
     serverUrl: string | null;
     onTeamAssigned: ((team: TeamType) => void) | null;
+    onReconnected: ((data: unknown) => void) | null;
     isConfused: boolean;
     confusionEndTime: number;
 
     constructor() {
         this.socket = null;
         this.playerId = null;
+        this.persistentId = getOrCreatePersistentId();
         this.team = null;
         this.connected = false;
         this.remotePlayers = new Map();
@@ -134,6 +171,7 @@ export class NetworkManager implements INetworkManager {
         this.reconnectUI = null;
         this.serverUrl = null;
         this.onTeamAssigned = null;
+        this.onReconnected = null;
         // Confusion effect (from wave attack)
         this.isConfused = false;
         this.confusionEndTime = 0;
@@ -177,6 +215,13 @@ export class NetworkManager implements INetworkManager {
             this.connected = true;
             logger.info(`Connected to server. Player ID: ${this.playerId}, Team: ${this.team}`);
 
+            // Send identify event with persistent UUID for reconnection support
+            this.socket!.emit('identify', {
+                playerId: this.persistentId,
+                playerName: this.localPlayer?.playerName || 'Player',
+                characterId: 'alien', // Default; actual characterId sent via playerMove
+            });
+
             // Hide reconnect UI on successful connection
             if (this.reconnectUI && this.reconnectUI.isVisible) {
                 this.reconnectUI.onReconnectSuccess();
@@ -185,6 +230,30 @@ export class NetworkManager implements INetworkManager {
             // Notify about team assignment
             if (this.onTeamAssigned && this.team) {
                 this.onTeamAssigned(this.team);
+            }
+        });
+
+        // Reconnection: server restored our previous state
+        this.socket.on('reconnected', (data: unknown) => {
+            const reconnectData = data as ReconnectedResponse;
+            this.playerId = reconnectData.playerId;
+            this.team = reconnectData.team;
+            this.connected = true;
+            logger.info(`Reconnected to server. Player ID: ${this.playerId}, Team: ${this.team}, HP: ${reconnectData.currentHP}/${reconnectData.maxHP}`);
+
+            // Hide reconnect UI
+            if (this.reconnectUI && this.reconnectUI.isVisible) {
+                this.reconnectUI.onReconnectSuccess();
+            }
+
+            // Notify about team reassignment
+            if (this.onTeamAssigned && this.team) {
+                this.onTeamAssigned(this.team);
+            }
+
+            // Notify game about restored state
+            if (this.onReconnected) {
+                this.onReconnected(reconnectData);
             }
         });
 
@@ -222,11 +291,26 @@ export class NetworkManager implements INetworkManager {
             }
         });
 
-        // Player left
+        // Player left (permanently)
         this.socket.on('playerLeft', (data: unknown) => {
             const { playerId } = data as { playerId: string };
             logger.info(`Player left: ${playerId}`);
             this.removeRemotePlayer(playerId);
+        });
+
+        // Player temporarily disconnected (may reconnect)
+        this.socket.on('playerTemporarilyDisconnected', (data: unknown) => {
+            const { playerId } = data as { playerId: string };
+            logger.info(`Player temporarily disconnected: ${playerId}`);
+            // For now, remove from view — they will reappear via playerReconnected
+            this.removeRemotePlayer(playerId);
+        });
+
+        // Player reconnected (restored state)
+        this.socket.on('playerReconnected', (data: unknown) => {
+            const playerData = data as PlayerData;
+            logger.info(`Player reconnected: ${playerData.playerId}`);
+            this.addRemotePlayer(playerData);
         });
 
         // Connection error
@@ -1308,6 +1392,9 @@ export class NetworkManager implements INetworkManager {
             this.socket.off('playerJoined');
             this.socket.off('playerMoved');
             this.socket.off('playerLeft');
+            this.socket.off('playerTemporarilyDisconnected');
+            this.socket.off('playerReconnected');
+            this.socket.off('reconnected');
             this.socket.off('connect_error');
             this.socket.off('disconnect');
             this.socket.off('chatMessage');

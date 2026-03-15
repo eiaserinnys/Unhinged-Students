@@ -11,6 +11,7 @@ interface ServerOnlyConfig {
     PLAYER: {
         SPEED_TOLERANCE: number;
     };
+    RECONNECT_GRACE_PERIOD_MS: number;
     RATE_LIMIT: {
         MOVE_MS: number;
         ATTACK_MS: number;
@@ -33,6 +34,9 @@ const SERVER_ONLY_CONFIG: ServerOnlyConfig = {
     PLAYER: {
         SPEED_TOLERANCE: 1.5, // Allow 50% variance for network latency
     },
+
+    // Reconnection grace period - player state preserved for this duration
+    RECONNECT_GRACE_PERIOD_MS: 30000, // 30 seconds
 
     // Rate limiting (in milliseconds) - server-only
     RATE_LIMIT: {
@@ -58,6 +62,7 @@ export interface ServerConfigType extends GameConfigType {
         ServerOnlyConfig['PLAYER'] & {
             MAX_MOVE_DISTANCE_PER_TICK: number;
         };
+    RECONNECT_GRACE_PERIOD_MS: number;
     RATE_LIMIT: ServerOnlyConfig['RATE_LIMIT'];
 }
 
@@ -74,6 +79,7 @@ export const SERVER_CONFIG: ServerConfigType = {
     },
 
     // Add server-only sections
+    RECONNECT_GRACE_PERIOD_MS: SERVER_ONLY_CONFIG.RECONNECT_GRACE_PERIOD_MS,
     RATE_LIMIT: SERVER_ONLY_CONFIG.RATE_LIMIT,
 };
 

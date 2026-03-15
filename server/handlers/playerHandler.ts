@@ -14,14 +14,16 @@ import {
     players,
     shards,
     dummies,
+    disconnectedPlayers,
     rateLimit,
     cleanupRateLimiter,
     assignTeam,
     getTeamCounts,
 } from '../gameState';
-import type { TypedSocket, TypedServer, PlayerMoveData, CharacterId } from '../types';
+import type { TypedSocket, TypedServer, PlayerMoveData, CharacterId, IdentifyData } from '../types';
+import { GAME_CONFIG } from '../../shared/config';
 
-export function registerPlayerHandlers(socket: TypedSocket, _io: TypedServer): void {
+export function registerPlayerHandlers(socket: TypedSocket, io: TypedServer): void {
     // Assign team to new player
     const team = assignTeam();
     const teamCounts = getTeamCounts();
@@ -76,6 +78,106 @@ export function registerPlayerHandlers(socket: TypedSocket, _io: TypedServer): v
         maxHP: 100,
         isDead: false,
         characterId: 'alien', // 기본 캐릭터
+    });
+
+    // Guard: identify is processed at most once per socket
+    let identified = false;
+
+    // Handle identify event (for reconnection support)
+    socket.on('identify', (data: IdentifyData) => {
+        if (identified) return;
+
+        if (!isValidString(data.playerId, 50) || data.playerId.length === 0) {
+            logger.cheat(`Invalid persistentId from ${socket.id}`);
+            return;
+        }
+
+        identified = true;
+
+        const savedState = disconnectedPlayers.get(data.playerId);
+        if (savedState) {
+            // Reconnecting player — restore state
+            clearTimeout(savedState.cleanupTimer);
+            disconnectedPlayers.delete(data.playerId);
+
+            const elapsed = Date.now() - savedState.disconnectedAt;
+            const restored = savedState.playerState;
+
+            // Time-based state cleanup: expire effects that would have ended during disconnect
+            if (restored.rageActive && elapsed > GAME_CONFIG.SKILL_RAGE.DURATION_MS) {
+                restored.rageActive = false;
+                restored.rageStartTime = undefined;
+            }
+            if (restored.madnessStartTime && elapsed > GAME_CONFIG.SKILL_MADNESS.DURATION_MS) {
+                restored.madnessStartTime = undefined;
+            }
+            restored.confusedUntil = undefined;
+            restored.ratIllusionUntil = undefined;
+            restored.telepathyLastTickTime = undefined;
+            restored.madnessLastTickTime = undefined;
+            // Clear rage timeout (was already cleared on disconnect)
+            restored.rageTimeout = undefined;
+
+            // Update to new socket ID
+            const restoredPlayer = {
+                ...restored,
+                playerId: socket.id,
+                socketId: socket.id,
+                persistentId: data.playerId,
+            };
+
+            // Remove the placeholder player that was created on connection
+            players.delete(socket.id);
+            players.set(socket.id, restoredPlayer);
+
+            logger.info(`Player ${socket.id} reconnected (persistentId: ${data.playerId}, elapsed: ${elapsed}ms)`);
+
+            // Notify the reconnecting client with their restored state
+            socket.emit('reconnected', {
+                playerId: socket.id,
+                team: restoredPlayer.team,
+                x: restoredPlayer.x,
+                y: restoredPlayer.y,
+                currentHP: restoredPlayer.currentHP,
+                maxHP: restoredPlayer.maxHP,
+                level: restoredPlayer.level,
+                experience: restoredPlayer.experience,
+                characterId: restoredPlayer.characterId,
+                playerName: restoredPlayer.playerName,
+                shardCollectCount: restoredPlayer.shardCollectCount || 0,
+                storedDamage: restoredPlayer.storedDamage || 0,
+                rageStacks: restoredPlayer.rageStacks || 0,
+            });
+
+            // Notify others that this player reconnected
+            socket.broadcast.emit('playerReconnected', {
+                playerId: socket.id,
+                team: restoredPlayer.team,
+                x: restoredPlayer.x,
+                y: restoredPlayer.y,
+                playerName: restoredPlayer.playerName,
+                level: restoredPlayer.level,
+                experience: restoredPlayer.experience,
+                currentHP: restoredPlayer.currentHP,
+                maxHP: restoredPlayer.maxHP,
+                isDead: restoredPlayer.isDead,
+                characterId: restoredPlayer.characterId,
+            });
+            return;
+        }
+
+        // New player — just record persistentId on existing player entry
+        const player = players.get(socket.id);
+        if (player) {
+            player.persistentId = data.playerId;
+            // Update name/character if provided
+            if (isValidString(data.playerName, 30)) {
+                player.playerName = data.playerName;
+            }
+            if (isValidString(data.characterId, 20)) {
+                player.characterId = data.characterId as CharacterId;
+            }
+        }
     });
 
     // Handle player position updates
@@ -154,10 +256,11 @@ export function registerPlayerHandlers(socket: TypedSocket, _io: TypedServer): v
             }
         }
 
-        // Update player data, preserving HP, death state, team, and curry-bear stored damage
+        // Update player data, preserving HP, death state, team, and all character-specific state
         // level/experience are preserved from server state (shard-based leveling)
         players.set(socket.id, {
             playerId: socket.id,
+            persistentId: existingPlayer?.persistentId,
             socketId: socket.id, // For sending events directly
             team: existingPlayer ? existingPlayer.team : 'red',
             x: validX,
@@ -172,6 +275,17 @@ export function registerPlayerHandlers(socket: TypedSocket, _io: TypedServer): v
             isDead: existingPlayer ? existingPlayer.isDead : false,
             storedDamage: existingPlayer ? existingPlayer.storedDamage || 0 : 0,
             lastMoveTime: Date.now(),
+            // Preserve character-specific state across playerMove updates
+            shardCollectCount: existingPlayer?.shardCollectCount,
+            rageActive: existingPlayer?.rageActive,
+            rageStartTime: existingPlayer?.rageStartTime,
+            rageStacks: existingPlayer?.rageStacks,
+            rageTimeout: existingPlayer?.rageTimeout,
+            confusedUntil: existingPlayer?.confusedUntil,
+            ratIllusionUntil: existingPlayer?.ratIllusionUntil,
+            telepathyLastTickTime: existingPlayer?.telepathyLastTickTime,
+            madnessLastTickTime: existingPlayer?.madnessLastTickTime,
+            madnessStartTime: existingPlayer?.madnessStartTime,
         });
 
         // Broadcast to other players (use validated position)
@@ -192,14 +306,46 @@ export function registerPlayerHandlers(socket: TypedSocket, _io: TypedServer): v
     socket.on('disconnect', () => {
         logger.info(`Player disconnected: ${socket.id}`);
 
+        const player = players.get(socket.id);
+
         // Clear rage timer to prevent orphaned setTimeout callbacks
-        const disconnectingPlayer = players.get(socket.id);
-        if (disconnectingPlayer?.rageTimeout) {
-            clearTimeout(disconnectingPlayer.rageTimeout);
+        if (player?.rageTimeout) {
+            clearTimeout(player.rageTimeout);
+            player.rageTimeout = undefined;
         }
 
+        // If player has a persistentId, save state for reconnection grace period
+        if (player?.persistentId) {
+            cleanupRateLimiter(socket.id);
+
+            // Capture the socket.id at disconnect time for the grace period callback
+            const disconnectedSocketId = socket.id;
+
+            const cleanupTimer = setTimeout(() => {
+                disconnectedPlayers.delete(player.persistentId!);
+                logger.info(`Grace period expired for persistentId: ${player.persistentId}`);
+                // Notify others that the player is permanently gone
+                io.emit('playerLeft', { playerId: disconnectedSocketId });
+            }, SERVER_CONFIG.RECONNECT_GRACE_PERIOD_MS);
+
+            disconnectedPlayers.set(player.persistentId, {
+                playerState: { ...player, rageTimeout: undefined },
+                disconnectedAt: Date.now(),
+                cleanupTimer,
+            });
+
+            players.delete(socket.id);
+
+            // Notify others that this player is temporarily disconnected
+            socket.broadcast.emit('playerTemporarilyDisconnected', {
+                playerId: socket.id,
+            });
+            return;
+        }
+
+        // No persistentId — immediate cleanup (legacy behavior)
         players.delete(socket.id);
-        cleanupRateLimiter(socket.id); // Clean up all rate limit entries for this socket
+        cleanupRateLimiter(socket.id);
 
         // Notify others
         socket.broadcast.emit('playerLeft', {

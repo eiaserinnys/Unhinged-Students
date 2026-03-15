@@ -11,6 +11,14 @@ const TEAM = SERVER_CONFIG.TEAM;
 // Store connected players
 export const players = new Map<string, Player>();
 
+// Store temporarily disconnected players (for reconnection grace period)
+export interface DisconnectedPlayerEntry {
+    playerState: Player;
+    disconnectedAt: number;
+    cleanupTimer: ReturnType<typeof setTimeout>;
+}
+export const disconnectedPlayers = new Map<string, DisconnectedPlayerEntry>();
+
 // Shard system
 const MAX_SHARDS = SERVER_CONFIG.SHARD.MAX_COUNT;
 export const shards = new Map<number, Shard>();
