@@ -1617,34 +1617,6 @@ function endRatIllusionOnMe(reason: string): void {
     }
 }
 
-// 쥐 클릭 처리
-function handleRatClick(mouseX: number, mouseY: number): boolean {
-    if (!ratIllusionEffect || !ratIllusionEffect.active) return false;
-
-    // 클릭한 위치에 쥐가 있는지 확인
-    const clickRadius = 40; // 클릭 판정 범위
-
-    for (let i = 0; i < ratIllusionEffect.rats.length; i++) {
-        const rat = ratIllusionEffect.rats[i];
-        const dx = mouseX - rat.x;
-        const dy = mouseY - rat.y;
-        const distance = Math.sqrt(dx * dx + dy * dy);
-
-        if (distance < clickRadius) {
-            logger.debug(`Clicked rat ${i} at (${rat.x.toFixed(0)}, ${rat.y.toFixed(0)})`);
-
-            // 서버에 쥐 클릭 전송
-            if (gameState.networkManager) {
-                gameState.networkManager.sendRatClick(i);
-            }
-
-            return true;
-        }
-    }
-
-    return false;
-}
-
 // Window에 노출
 window.startRatIllusionOnMe = startRatIllusionOnMe;
 window.endRatIllusionOnMe = endRatIllusionOnMe;
@@ -1773,12 +1745,7 @@ function handleQSkill(): void {
                 // NO client-side prediction for position/damage to ensure consistency
                 if (gameState.networkManager) {
                     const targetId = target.type === 'dummy' ? target.dummyIndex : target.playerId;
-                    gameState.networkManager.sendSpinThrow(
-                        targetId,
-                        dirX,
-                        dirY,
-                        target.type
-                    );
+                    gameState.networkManager.sendSpinThrow(targetId, dirX, dirY, target.type);
                 }
 
                 // Show local effect immediately for responsiveness

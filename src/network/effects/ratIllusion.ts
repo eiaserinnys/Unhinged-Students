@@ -225,7 +225,11 @@ export const RatIllusionEffectMixin = {
         ctx.font = 'bold 16px Jua, sans-serif';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        ctx.fillText(`🐭 ${remainingTime.toFixed(1)}초`, this.x, this.y - this.ratIllusionRadius - 30);
+        ctx.fillText(
+            `🐭 ${remainingTime.toFixed(1)}초`,
+            this.x,
+            this.y - this.ratIllusionRadius - 30
+        );
 
         ctx.restore();
     },

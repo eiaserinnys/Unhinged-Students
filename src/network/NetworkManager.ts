@@ -592,7 +592,9 @@ export class NetworkManager implements INetworkManager {
         // Spin throw (Hulk Sister Q skill)
         this.socket.on('playerSpinThrow', (data: unknown) => {
             const throwData = data as SpinThrowData;
-            logger.debug(`[SpinThrow] Received: target=${throwData.targetType}:${throwData.targetId}, HP=${throwData.targetCurrentHP}/${throwData.targetMaxHP}`);
+            logger.debug(
+                `[SpinThrow] Received: target=${throwData.targetType}:${throwData.targetId}, HP=${throwData.targetCurrentHP}/${throwData.targetMaxHP}`
+            );
 
             // Handle visual effect for attacker (if remote player)
             const attacker = this.remotePlayers.get(throwData.attackerId);
@@ -747,8 +749,17 @@ export class NetworkManager implements INetworkManager {
             logger.info(`Rat illusion started on you by ${casterId}!`);
 
             // 쥐 환상 효과 시작 (window.startRatIllusionOnMe 호출)
-            if (typeof (window as { startRatIllusionOnMe?: Function }).startRatIllusionOnMe === 'function') {
-                (window as { startRatIllusionOnMe: Function }).startRatIllusionOnMe({
+            type RatIllusionOnMeData = {
+                casterId: string;
+                casterX: number;
+                casterY: number;
+                ratCount: number;
+                duration: number;
+                radius: number;
+            };
+            const win = window as { startRatIllusionOnMe?: (data: RatIllusionOnMeData) => void };
+            if (typeof win.startRatIllusionOnMe === 'function') {
+                win.startRatIllusionOnMe({
                     casterId,
                     casterX,
                     casterY,
@@ -788,8 +799,9 @@ export class NetworkManager implements INetworkManager {
             if (targetId === this.playerId) {
                 logger.info(`Rat illusion ended: ${reason}`);
                 // 쥐 환상 효과 종료 (window.endRatIllusionOnMe 호출)
-                if (typeof (window as { endRatIllusionOnMe?: Function }).endRatIllusionOnMe === 'function') {
-                    (window as { endRatIllusionOnMe: Function }).endRatIllusionOnMe(reason);
+                const win = window as { endRatIllusionOnMe?: (reason: string) => void };
+                if (typeof win.endRatIllusionOnMe === 'function') {
+                    win.endRatIllusionOnMe(reason);
                 }
             }
         });
@@ -808,7 +820,7 @@ export class NetworkManager implements INetworkManager {
 
         // 다른 플레이어의 쥐 환상 시각 효과 (구경꾼용)
         this.socket.on('ratIllusionEffect', (data: unknown) => {
-            const { casterId, targetId, casterX, casterY } = data as {
+            const { casterId, targetId } = data as {
                 casterId: string;
                 targetId: string;
                 casterX: number;

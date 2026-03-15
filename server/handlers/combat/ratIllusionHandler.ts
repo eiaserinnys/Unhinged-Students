@@ -117,7 +117,9 @@ export function registerRatIllusionHandlers(socket: TypedSocket, io: TypedServer
             const damage = RAT_ILLUSION_CONFIG.HP_DRAIN_PER_SECOND * 3; // 더미에게는 3초치 데미지를 한번에
             dummy.currentHP = Math.max(0, dummy.currentHP - damage);
 
-            logger.info(`Rat illusion hit dummy ${dummyId} for ${damage} damage (${dummy.currentHP}/${dummy.maxHP})`);
+            logger.info(
+                `Rat illusion hit dummy ${dummyId} for ${damage} damage (${dummy.currentHP}/${dummy.maxHP})`
+            );
 
             // 더미 데미지 브로드캐스트
             io.emit('dummyDamaged', {
@@ -148,9 +150,7 @@ export function registerRatIllusionHandlers(socket: TypedSocket, io: TypedServer
         // 진짜 쥐 인덱스 결정 (서버에서만 알고 있음!)
         const realRatIndex = Math.floor(Math.random() * RAT_ILLUSION_CONFIG.RAT_COUNT);
 
-        logger.info(
-            `Rat illusion cast by ${socket.id} on ${targetId} (real rat: ${realRatIndex})`
-        );
+        logger.info(`Rat illusion cast by ${socket.id} on ${targetId} (real rat: ${realRatIndex})`);
 
         // 쥐 환상 효과 시작
         const illusion: ActiveRatIllusion = {
@@ -255,7 +255,9 @@ export function registerRatIllusionHandlers(socket: TypedSocket, io: TypedServer
             });
         } else {
             // 가짜 쥐 클릭
-            logger.debug(`${socket.id} clicked fake rat (index: ${ratIndex}, real: ${illusion.realRatIndex})`);
+            logger.debug(
+                `${socket.id} clicked fake rat (index: ${ratIndex}, real: ${illusion.realRatIndex})`
+            );
 
             io.to(socket.id).emit('ratIllusionFail', {
                 clickedIndex: ratIndex,

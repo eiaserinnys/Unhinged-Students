@@ -1439,7 +1439,9 @@ export function registerCombatHandlers(socket: TypedSocket, io: TypedServer): vo
             const dummyIndex = targetId as number;
             const dummy = dummies.get(dummyIndex);
             if (!dummy || dummy.currentHP <= 0) {
-                logger.warn(`SpinThrow: dummy ${dummyIndex} not found or dead (HP=${dummy?.currentHP})`);
+                logger.warn(
+                    `SpinThrow: dummy ${dummyIndex} not found or dead (HP=${dummy?.currentHP})`
+                );
                 return;
             }
             target = dummy;
@@ -1467,8 +1469,8 @@ export function registerCombatHandlers(socket: TypedSocket, io: TypedServer): vo
         if (distance > grabRangeTolerance) {
             logger.cheat(
                 `Spin throw target too far: dist=${distance.toFixed(0)}px (max: ${grabRangeTolerance.toFixed(0)}px), ` +
-                `attacker=(${attacker.x.toFixed(0)},${attacker.y.toFixed(0)}), ` +
-                `target=(${targetX.toFixed(0)},${targetY.toFixed(0)})`
+                    `attacker=(${attacker.x.toFixed(0)},${attacker.y.toFixed(0)}), ` +
+                    `target=(${targetX.toFixed(0)},${targetY.toFixed(0)})`
             );
             return;
         }
@@ -1516,7 +1518,7 @@ export function registerCombatHandlers(socket: TypedSocket, io: TypedServer): vo
 
         logger.info(
             `SpinThrow SUCCESS: ${socket.id} threw ${targetType}:${targetId} for ${finalDamage} damage, ` +
-            `from=(${targetX.toFixed(0)},${targetY.toFixed(0)}) to=(${endX.toFixed(0)},${endY.toFixed(0)})`
+                `from=(${targetX.toFixed(0)},${targetY.toFixed(0)}) to=(${endX.toFixed(0)},${endY.toFixed(0)})`
         );
 
         // === COLLISION DAMAGE ===
