@@ -61,7 +61,11 @@ interface HandlerManager {
 
 describe('GameState Module', () => {
     describe('Initial State Values', () => {
-        // Simulated game state structure (same as gameState.js)
+        // Reimplemented game state structure instead of importing from src/core/gameState.ts.
+        // Reason: The source module imports GAME_CONFIG (which chains into browser modules),
+        // uses HTMLCanvasElement and CanvasRenderingContext2D types, and registers window-level
+        // event handlers. The GameState interface and Viewport/Canvas/Handler patterns are
+        // recreated here to test the data shape and state transitions in isolation.
         function createGameState(): GameState {
             return {
                 screen: 'lobby',

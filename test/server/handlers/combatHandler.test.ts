@@ -739,4 +739,157 @@ describe('CombatHandler Security', () => {
             expect(player.rageActive).not.toBe(true);
         });
     });
+
+    describe('Attack Cooldown / Rate Limiting', () => {
+        it('should block attack when rate limited (cooldown not elapsed)', () => {
+            mockRateLimit.mockReturnValue(false);
+
+            handlers.playerAttack({ x: 100, y: 100 });
+
+            // No broadcast should happen when rate limited
+            expect(socket.broadcast.emit).not.toHaveBeenCalledWith(
+                'playerAttacked',
+                expect.any(Object)
+            );
+        });
+    });
+
+    describe('Passive: curry-bear storedDamage', () => {
+        it('should store portion of damage taken for curry-bear', () => {
+            // Attacker
+            mockPlayers.set('test-socket-1', {
+                x: 100,
+                y: 100,
+                currentHP: 100,
+                maxHP: 100,
+                isDead: false,
+                characterId: 'alien',
+            });
+
+            // Target: curry-bear
+            mockPlayers.set('test-socket-2', {
+                playerId: 'test-socket-2',
+                socketId: 'test-socket-2',
+                x: 110,
+                y: 100,
+                currentHP: 100,
+                maxHP: 100,
+                isDead: false,
+                characterId: 'curry-bear',
+                storedDamage: 0,
+            });
+
+            mockRateLimit.mockReturnValue(true);
+            handlers.playerAttack({ x: 100, y: 100 });
+
+            const curry = mockPlayers.get('test-socket-2')!;
+            expect(curry.storedDamage).toBeGreaterThan(0);
+            expect(curry.storedDamage).toBeLessThanOrEqual(mockConfig.CURRY_RECOVERY_MAX_STORED);
+        });
+
+        it('should cap storedDamage at CURRY_RECOVERY_MAX_STORED', () => {
+            mockPlayers.set('test-socket-1', {
+                x: 100,
+                y: 100,
+                currentHP: 100,
+                maxHP: 100,
+                isDead: false,
+                characterId: 'alien',
+            });
+
+            mockPlayers.set('test-socket-2', {
+                playerId: 'test-socket-2',
+                socketId: 'test-socket-2',
+                x: 110,
+                y: 100,
+                currentHP: 100,
+                maxHP: 100,
+                isDead: false,
+                characterId: 'curry-bear',
+                storedDamage: mockConfig.CURRY_RECOVERY_MAX_STORED, // Already at max
+            });
+
+            mockRateLimit.mockReturnValue(true);
+            handlers.playerAttack({ x: 100, y: 100 });
+
+            const curry = mockPlayers.get('test-socket-2')!;
+            expect(curry.storedDamage).toBe(mockConfig.CURRY_RECOVERY_MAX_STORED);
+        });
+    });
+
+    describe('Passive: hulk-sister rageStacks on damage', () => {
+        it('should increment rage stacks when hulk-sister takes damage', () => {
+            mockPlayers.set('test-socket-1', {
+                x: 100,
+                y: 100,
+                currentHP: 100,
+                maxHP: 100,
+                isDead: false,
+                characterId: 'alien',
+            });
+
+            mockPlayers.set('test-socket-2', {
+                playerId: 'test-socket-2',
+                socketId: 'test-socket-2',
+                x: 110,
+                y: 100,
+                currentHP: 150,
+                maxHP: 150,
+                isDead: false,
+                characterId: 'big-sis-hulk',
+                rageStacks: 0,
+            });
+
+            mockRateLimit.mockReturnValue(true);
+            handlers.playerAttack({ x: 100, y: 100 });
+
+            const hulk = mockPlayers.get('test-socket-2')!;
+            expect(hulk.rageStacks).toBe(1);
+        });
+
+        it('should not exceed MAX_STACKS for rage stacks', () => {
+            mockPlayers.set('test-socket-1', {
+                x: 100,
+                y: 100,
+                currentHP: 100,
+                maxHP: 100,
+                isDead: false,
+                characterId: 'alien',
+            });
+
+            mockPlayers.set('test-socket-2', {
+                playerId: 'test-socket-2',
+                socketId: 'test-socket-2',
+                x: 110,
+                y: 100,
+                currentHP: 150,
+                maxHP: 150,
+                isDead: false,
+                characterId: 'big-sis-hulk',
+                rageStacks: mockConfig.SERVER_CONFIG.HULK_PASSIVE.MAX_STACKS,
+            });
+
+            mockRateLimit.mockReturnValue(true);
+            handlers.playerAttack({ x: 100, y: 100 });
+
+            const hulk = mockPlayers.get('test-socket-2')!;
+            expect(hulk.rageStacks).toBe(mockConfig.SERVER_CONFIG.HULK_PASSIVE.MAX_STACKS);
+        });
+    });
+
+    describe('Dead Player Cannot Attack', () => {
+        it('should not process attack from a dead player', () => {
+            const player = mockPlayers.get('test-socket-1')!;
+            player.isDead = true;
+
+            mockRateLimit.mockReturnValue(true);
+            handlers.playerAttack({ x: 100, y: 100 });
+
+            // No attack broadcast should happen for dead attacker
+            expect(socket.broadcast.emit).not.toHaveBeenCalledWith(
+                'playerAttacked',
+                expect.any(Object)
+            );
+        });
+    });
 });

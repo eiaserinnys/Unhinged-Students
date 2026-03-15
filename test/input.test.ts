@@ -37,7 +37,11 @@ interface Position {
     y: number;
 }
 
-// Input state object (recreated for testing)
+// Reimplemented Input state and helper functions for testing instead of importing from src/input.ts.
+// Reason: The source module calls initInput(canvas) which registers DOM event listeners
+// (keydown, keyup, mousedown, etc.) on an HTMLCanvasElement and uses browser-only logger.
+// The exported Input object also includes confusion effect fields tied to the game loop.
+// Reimplementation lets us test the pure logic (key tracking, just-pressed detection) in isolation.
 const Input: InputState = {
     keys: {},
     keysJustPressed: {},

@@ -58,6 +58,12 @@ interface TelepathyDamageArea {
 
 // ==================== Skill Class Tests ====================
 
+// Reimplemented Skill/SkillManager/effect classes for testing instead of importing from src/skill.ts.
+// Reason: The source Skill class references GAME_CONFIG.SKILL_LASER.READY_FLASH_DURATION_MS in its
+// constructor, and src/config.ts chains into browser-only imports. The effect classes (LaserBeamEffect,
+// TeleportEffect, TelepathyEffect) and SkillUI also depend on GAME_CONFIG and rendering types.
+// Reimplementation with hardcoded values lets us test the logic in isolation.
+
 class Skill {
     name: string;
     key: string;

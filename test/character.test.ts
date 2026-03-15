@@ -71,7 +71,10 @@ interface ImageLoadCallbacks {
     reject: (error: Error) => void;
 }
 
-// Recreate Character class for testing (source uses global scope)
+// Reimplemented Character class for testing instead of importing from src/character.ts.
+// Reason: The source Character class uses `new Image()` in its constructor (loadImage/loadFallbackImage),
+// imports GAME_CONFIG which chains into browser-only modules, and references HTMLImageElement.
+// These would fail in Jest's jsdom environment without extensive mocking that would obscure test intent.
 class Character {
     x: number;
     y: number;
