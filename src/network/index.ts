@@ -5,12 +5,11 @@
 export { LaserEffectMixin } from './effects/laser.js';
 export type { LaserEffectState, LaserPhase } from './effects/laser.js';
 
-export { TeleportEffectMixin, TelepathyEffectMixin } from './effects/teleport.js';
-export type {
-    TeleportEffectState,
-    TelepathyEffectState,
-    TeleportPhase,
-} from './effects/teleport.js';
+export { TeleportEffectMixin } from './effects/teleportEffect.js';
+export type { TeleportEffectState, TeleportPhase } from './effects/teleportEffect.js';
+
+export { TelepathyEffectMixin } from './effects/telepathyEffect.js';
+export type { TelepathyEffectState } from './effects/telepathyEffect.js';
 
 export { WaveEffectMixin } from './effects/wave.js';
 export type { WaveEffectState } from './effects/wave.js';

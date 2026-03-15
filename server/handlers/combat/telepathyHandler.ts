@@ -1,5 +1,5 @@
 /**
- * @fileoverview Telepathy skill handler (R skill)
+ * @fileoverview Telepathy handlers (Alien E skill)
  */
 import logger from '../../../logger';
 import {
@@ -7,65 +7,57 @@ import {
     TELEPATHY_RADIUS,
     TELEPATHY_DAMAGE_PER_TICK,
     TELEPATHY_MAX_HEAL_PER_TICK,
+    RATE_LIMIT_TELEPATHY,
     PLAYER_RESPAWN_DELAY,
 } from '../../config';
-import { calculateDistance } from '../../validation';
-import { checkAndHandleDeath } from '../../../shared/combat';
-import { players, dummies } from '../../gameState';
-import type {
-    TypedSocket,
-    TypedServer,
-    TelepathyData,
-    TelepathyDamageData,
-    HitPlayerInfo,
-    HitDummyInfo,
-    KilledPlayerInfo,
-} from '../../types';
+import { players, dummies, rateLimit } from '../../gameState';
+import { applyDamageWithPassives } from './damageProcessor';
+import type { TypedSocket, TypedServer, HitPlayerInfo, HitDummyInfo, KilledPlayerInfo } from '../../types';
 
-/**
- * Register telepathy event handlers
- */
 export function registerTelepathyHandlers(socket: TypedSocket, io: TypedServer): void {
-    // Handle telepathy visual effect (sync with other players)
-    socket.on('telepathy', (_data: TelepathyData) => {
-        const player = players.get(socket.id);
-        if (!player) return;
+    // Handle telepathy (sync with other players)
+    socket.on('telepathy', (data) => {
+        if (!rateLimit(socket.id, 'telepathy', RATE_LIMIT_TELEPATHY)) {
+            return;
+        }
 
-        // Use server-side position and constant radius
         socket.broadcast.emit('playerTelepathy', {
             playerId: socket.id,
-            x: player.x,
-            y: player.y,
-            radius: TELEPATHY_RADIUS,
+            x: data.x,
+            y: data.y,
+            radius: data.radius,
         });
     });
 
-    // Handle telepathy damage tick
-    socket.on('telepathyDamage', (data: TelepathyDamageData) => {
+    // Handle telepathy damage
+    socket.on('telepathyDamage', (data) => {
         const attacker = players.get(socket.id);
         if (!attacker) return;
         if (attacker.isDead) return;
 
-        // Tick rate validation (anti-cheat)
+        // === TICK RATE VALIDATION ===
         const now = Date.now();
-        const lastTick = attacker.telepathyLastTickTime || 0;
         const tickInterval = SERVER_CONFIG.SKILL_TELEPATHY.TICK_INTERVAL_MS;
+        const minTickInterval = tickInterval * 0.9;
 
-        // Reject if tick is too fast (90% tolerance for network latency)
-        if (lastTick > 0 && now - lastTick < tickInterval * 0.9) {
+        if (
+            attacker.telepathyLastTickTime &&
+            now - attacker.telepathyLastTickTime < minTickInterval
+        ) {
             logger.cheat(
-                `Telepathy tick too fast from ${socket.id}: ${now - lastTick}ms (min: ${tickInterval * 0.9}ms)`
+                `Telepathy tick too fast from ${socket.id}: ${now - attacker.telepathyLastTickTime}ms (min: ${minTickInterval}ms)`
             );
             return;
         }
-
         attacker.telepathyLastTickTime = now;
 
-        // Use server-side position
         const x = attacker.x;
         const y = attacker.y;
 
-        // Log suspicious values
+        const radius = TELEPATHY_RADIUS;
+        const damagePerTarget = TELEPATHY_DAMAGE_PER_TICK;
+        const maxHeal = TELEPATHY_MAX_HEAL_PER_TICK;
+
         if (data.radius && data.radius > TELEPATHY_RADIUS * 1.1) {
             logger.cheat(
                 `Suspicious telepathy radius from ${socket.id}: ${data.radius} (server: ${TELEPATHY_RADIUS})`
@@ -78,52 +70,54 @@ export function registerTelepathyHandlers(socket: TypedSocket, io: TypedServer):
         }
 
         let totalDamageDealt = 0;
+
         const hitPlayers: HitPlayerInfo[] = [];
         const killedPlayers: KilledPlayerInfo[] = [];
-
-        // Process player damage
         players.forEach((player, playerId) => {
             if (playerId === socket.id) return;
             if (player.isDead) return;
 
-            const distance = calculateDistance(x, y, player.x, player.y);
+            const dx = player.x - x;
+            const dy = player.y - y;
+            const distance = Math.sqrt(dx * dx + dy * dy);
 
-            if (distance <= TELEPATHY_RADIUS) {
-                player.currentHP = Math.max(0, player.currentHP - TELEPATHY_DAMAGE_PER_TICK);
-                totalDamageDealt += TELEPATHY_DAMAGE_PER_TICK;
+            if (distance <= radius) {
+                applyDamageWithPassives(player, damagePerTarget, io);
+                totalDamageDealt += damagePerTarget;
 
                 hitPlayers.push({
-                    playerId,
+                    playerId: playerId,
                     currentHP: player.currentHP,
                     maxHP: player.maxHP,
-                    knockbackEndX: player.x, // No knockback for telepathy
+                    knockbackEndX: player.x,
                     knockbackEndY: player.y,
                     attackerX: x,
                     attackerY: y,
                 });
 
-                checkAndHandleDeath(
-                    player,
-                    playerId,
-                    socket.id,
-                    killedPlayers,
-                    PLAYER_RESPAWN_DELAY
-                );
+                if (player.currentHP <= 0 && !player.isDead) {
+                    player.isDead = true;
+                    player.deathTime = Date.now();
+                    killedPlayers.push({
+                        playerId: playerId,
+                        killedBy: socket.id,
+                        respawnDelay: PLAYER_RESPAWN_DELAY,
+                    });
+                }
             }
         });
 
-        // Process dummy damage
         const hitDummies: HitDummyInfo[] = [];
-        const dummyRadiusBonus = 67.5;
-
         dummies.forEach((dummy) => {
             if (dummy.currentHP <= 0) return;
 
-            const distance = calculateDistance(x, y, dummy.x, dummy.y);
+            const dx = dummy.x - x;
+            const dy = dummy.y - y;
+            const distance = Math.sqrt(dx * dx + dy * dy);
 
-            if (distance <= TELEPATHY_RADIUS + dummyRadiusBonus) {
-                dummy.currentHP = Math.max(0, dummy.currentHP - TELEPATHY_DAMAGE_PER_TICK);
-                totalDamageDealt += TELEPATHY_DAMAGE_PER_TICK;
+            if (distance <= radius + 67.5) {
+                dummy.currentHP = Math.max(0, dummy.currentHP - damagePerTarget);
+                totalDamageDealt += damagePerTarget;
 
                 hitDummies.push({
                     dummyId: dummy.id,
@@ -141,11 +135,10 @@ export function registerTelepathyHandlers(socket: TypedSocket, io: TypedServer):
             }
         });
 
-        // Broadcast telepathy tick damage (no knockback, no vignette)
         if (hitPlayers.length > 0) {
             io.emit('telepathyTick', {
                 attackerId: socket.id,
-                hitPlayers,
+                hitPlayers: hitPlayers,
             });
         }
 
@@ -162,18 +155,17 @@ export function registerTelepathyHandlers(socket: TypedSocket, io: TypedServer):
         if (hitDummies.length > 0) {
             io.emit('telepathyTickDummy', {
                 attackerId: socket.id,
-                hitDummies,
+                hitDummies: hitDummies,
             });
         }
 
-        // Calculate and send heal to attacker
-        const healAmount = Math.min(totalDamageDealt, TELEPATHY_MAX_HEAL_PER_TICK);
+        const healAmount = Math.min(totalDamageDealt, maxHeal);
         if (healAmount > 0) {
             attacker.currentHP = Math.min(attacker.maxHP, attacker.currentHP + healAmount);
 
             io.to(socket.id).emit('telepathyHeal', {
                 playerId: socket.id,
-                healAmount,
+                healAmount: healAmount,
                 newHP: attacker.currentHP,
             });
         }

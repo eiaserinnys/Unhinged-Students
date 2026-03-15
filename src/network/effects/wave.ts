@@ -93,11 +93,3 @@ export const WaveEffectMixin = {
         ctx.restore();
     },
 };
-
-// Backward compatibility: expose to window
-declare global {
-    interface Window {
-        WaveEffectMixin: typeof WaveEffectMixin;
-    }
-}
-window.WaveEffectMixin = WaveEffectMixin;

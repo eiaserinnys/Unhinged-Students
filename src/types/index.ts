@@ -33,9 +33,9 @@ export interface GameState {
     running: boolean;
     player: ICharacter | null;
     lobbyManager: ILobbyManager | null;
-    shardManager: IShardManager | null;
+    shardManager: IShardManager | object | null;
     networkManager: INetworkManager | null;
-    chatManager: IChatManager | null;
+    chatManager: IChatManager | object | null;
     skillManager: ISkillManager | null;
     skillUI: ISkillUI | null;
     laserBeamEffect: ILaserEffect | null;
@@ -372,26 +372,70 @@ export interface ISkillUI {
 // Effect Interfaces
 // =====================================================
 
+export interface LaserLine {
+    x1: number;
+    y1: number;
+    x2: number;
+    y2: number;
+}
+
+export interface TeleportPosition {
+    x: number;
+    y: number;
+    teleported: boolean;
+}
+
+export interface DamageArea {
+    x: number;
+    y: number;
+    radius: number;
+    damage?: number;
+    damagePerTarget?: number;
+    maxHeal?: number;
+}
+
 export interface ILaserEffect {
-    isAiming: boolean;
-    isFiring: boolean;
+    active: boolean;
+    phase: 'aiming' | 'firing' | 'none';
+    dirX: number;
+    dirY: number;
+    damage: number;
+    start(playerX: number, playerY: number, targetX: number, targetY: number): void;
+    update(playerX: number, playerY: number): void;
+    shouldDealDamage(): boolean;
+    getLaserLine(): LaserLine | null;
     render(ctx: CanvasRenderingContext2D): void;
-    startAiming(x: number, y: number, dirX: number, dirY: number): void;
-    fire(): void;
-    cancel(): void;
 }
 
 export interface ITeleportEffect {
-    isActive: boolean;
+    active: boolean;
+    phase: 'disappear' | 'appear' | 'none';
+    startX: number;
+    startY: number;
+    endX: number;
+    endY: number;
+    start(
+        playerX: number,
+        playerY: number,
+        gameWidth: number,
+        gameHeight: number,
+        targetX?: number | null,
+        targetY?: number | null
+    ): void;
+    update(): TeleportPosition | null;
+    shouldDealDamage(): boolean;
+    getDamageArea(): DamageArea;
     render(ctx: CanvasRenderingContext2D): void;
-    start(startX: number, startY: number, endX: number, endY: number): void;
 }
 
 export interface ITelepathyEffect {
-    isActive: boolean;
+    active: boolean;
+    radius: number;
+    start(playerX: number, playerY: number): void;
+    update(playerX: number, playerY: number): void;
+    shouldDealDamage(): boolean;
+    getDamageArea(): DamageArea;
     render(ctx: CanvasRenderingContext2D): void;
-    start(x: number, y: number, radius: number): void;
-    stop(): void;
 }
 
 export interface IWaveEffect {
@@ -776,7 +820,6 @@ declare global {
         gameState: GameState;
         GAME_WIDTH: number;
         GAME_HEIGHT: number;
-        GAME_CONFIG: GameConfig;
         getScale(): number;
         setScale(value: number): void;
         getOffsetX(): number;
@@ -792,7 +835,6 @@ declare global {
         getLoadHandler(): (() => void) | null;
         setLoadHandler(handler: () => void): void;
         logger: Logger;
-        NetworkManager: new () => INetworkManager;
         io: (options?: { path?: string }) => SocketIOClient;
     }
 }

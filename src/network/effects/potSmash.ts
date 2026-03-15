@@ -116,11 +116,3 @@ export const PotSmashEffectMixin = {
         ctx.restore();
     },
 };
-
-// Backward compatibility: expose to window
-declare global {
-    interface Window {
-        PotSmashEffectMixin: typeof PotSmashEffectMixin;
-    }
-}
-window.PotSmashEffectMixin = PotSmashEffectMixin;

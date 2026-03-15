@@ -2,6 +2,12 @@
  * @fileoverview Common damage processing utilities for combat handlers
  * Reduces code duplication across different attack types
  */
+import logger from '../../../logger';
+import {
+    SERVER_CONFIG,
+    CURRY_RECOVERY_STORE_RATIO,
+    CURRY_RECOVERY_MAX_STORED,
+} from '../../config';
 import {
     calculateDistance,
     calculateKnockbackDistance,
@@ -11,6 +17,7 @@ import { checkAndHandleDeath } from '../../../shared/combat';
 import { players, dummies } from '../../gameState';
 import type {
     TypedServer,
+    Player,
     HitPlayerInfo,
     HitDummyInfo,
     KilledPlayerInfo,
@@ -19,6 +26,66 @@ import type {
     DummyDamageResult,
     BroadcastOptions,
 } from '../../types';
+
+/**
+ * Helper function to apply damage with character-specific passive effects
+ * - Curry-bear: stores portion of damage taken for recovery skill
+ * - Hulk-sister: gains rage stacks when taking damage
+ */
+export function applyDamageWithPassives(
+    player: Player,
+    damage: number,
+    io: TypedServer
+): { currentHP: number; storedDamageChanged: boolean } {
+    const actualDamage = Math.min(damage, player.currentHP);
+    player.currentHP = Math.max(0, player.currentHP - damage);
+
+    let storedDamageChanged = false;
+
+    // Curry-bear passive: store half the damage taken
+    if (player.characterId === 'curry-bear' && actualDamage > 0) {
+        const storageAmount = Math.floor(actualDamage * CURRY_RECOVERY_STORE_RATIO);
+        player.storedDamage = player.storedDamage || 0;
+        player.storedDamage = Math.min(
+            player.storedDamage + storageAmount,
+            CURRY_RECOVERY_MAX_STORED
+        );
+        storedDamageChanged = true;
+        logger.debug(
+            `Curry-bear stored ${storageAmount} damage (total: ${player.storedDamage}/${CURRY_RECOVERY_MAX_STORED})`
+        );
+
+        // Notify the curry-bear player of their stored damage
+        if (player.socketId) {
+            io.to(player.socketId).emit('storedDamageUpdate', {
+                storedDamage: player.storedDamage,
+                maxStored: CURRY_RECOVERY_MAX_STORED,
+            });
+        }
+    }
+
+    // Hulk-sister passive: gain rage stacks when taking damage
+    if (player.characterId === 'big-sis-hulk' && actualDamage > 0) {
+        player.rageStacks = player.rageStacks || 0;
+        const maxStacks = SERVER_CONFIG.HULK_PASSIVE.MAX_STACKS;
+        if (player.rageStacks < maxStacks) {
+            player.rageStacks = Math.min(player.rageStacks + 1, maxStacks);
+            logger.debug(
+                `Hulk-sister rage stack +1 (total: ${player.rageStacks}/${maxStacks})`
+            );
+
+            // Notify the hulk-sister player of their rage stacks
+            if (player.socketId) {
+                io.to(player.socketId).emit('rageStacksUpdate', {
+                    playerId: player.playerId,
+                    stacks: player.rageStacks,
+                });
+            }
+        }
+    }
+
+    return { currentHP: player.currentHP, storedDamageChanged };
+}
 
 /**
  * Process area damage to all players within range

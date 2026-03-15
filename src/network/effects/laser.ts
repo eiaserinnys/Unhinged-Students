@@ -135,11 +135,3 @@ export const LaserEffectMixin = {
         ctx.restore();
     },
 };
-
-// Backward compatibility: expose to window
-declare global {
-    interface Window {
-        LaserEffectMixin: typeof LaserEffectMixin;
-    }
-}
-window.LaserEffectMixin = LaserEffectMixin;

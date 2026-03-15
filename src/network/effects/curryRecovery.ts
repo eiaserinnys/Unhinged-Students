@@ -97,11 +97,3 @@ export const CurryRecoveryEffectMixin = {
         ctx.restore();
     },
 };
-
-// Backward compatibility: expose to window
-declare global {
-    interface Window {
-        CurryRecoveryEffectMixin: typeof CurryRecoveryEffectMixin;
-    }
-}
-window.CurryRecoveryEffectMixin = CurryRecoveryEffectMixin;

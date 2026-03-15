@@ -10,7 +10,7 @@ import type { ClientToServerEvents, ServerToClientEvents, TypedServer, TypedSock
 // Import game state and handlers
 import { initializeDummies, initializeShards, startRespawnTimers } from './gameState';
 import { registerPlayerHandlers } from './handlers/playerHandler';
-import { registerCombatHandlers } from './handlers/combatHandler';
+import { registerCombatHandlers } from './handlers/combat';
 import { registerShardHandlers } from './handlers/shardHandler';
 import { registerChatHandlers } from './handlers/chatHandler';
 

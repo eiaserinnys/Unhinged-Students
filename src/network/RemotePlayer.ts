@@ -5,13 +5,22 @@ import { CharacterUtils } from '../characterUtils.js';
 import { ASSET_BASE } from '../config.js';
 import type { CharacterType, TeamType, IRemotePlayer, Position, Bounds } from '../types/index.js';
 
-// Import effect types only (mixins are used dynamically)
+// Import effect mixins and types
+import { LaserEffectMixin } from './effects/laser.js';
 import type { LaserEffectState } from './effects/laser.js';
-import type { TeleportEffectState, TelepathyEffectState } from './effects/teleport.js';
+import { TeleportEffectMixin } from './effects/teleportEffect.js';
+import type { TeleportEffectState } from './effects/teleportEffect.js';
+import { TelepathyEffectMixin } from './effects/telepathyEffect.js';
+import type { TelepathyEffectState } from './effects/telepathyEffect.js';
+import { WaveEffectMixin } from './effects/wave.js';
 import type { WaveEffectState } from './effects/wave.js';
+import { PotSmashEffectMixin } from './effects/potSmash.js';
 import type { PotSmashEffectState } from './effects/potSmash.js';
+import { CurryRecoveryEffectMixin } from './effects/curryRecovery.js';
 import type { CurryRecoveryEffectState } from './effects/curryRecovery.js';
+import { SpinThrowEffectMixin } from './effects/spinThrow.js';
 import type { SpinThrowEffectState } from './effects/spinThrow.js';
+import { RageEffectMixin } from './effects/rage.js';
 import type { RageEffectState } from './effects/rage.js';
 
 /**
@@ -298,30 +307,14 @@ export class RemotePlayer
         this.rageDuration = 5000;
 
         // Initialize effect systems from mixins
-        if (window.LaserEffectMixin) {
-            window.LaserEffectMixin.initLaserEffect.call(this);
-        }
-        if (window.TeleportEffectMixin) {
-            window.TeleportEffectMixin.initTeleportEffect.call(this);
-        }
-        if (window.TelepathyEffectMixin) {
-            window.TelepathyEffectMixin.initTelepathyEffect.call(this);
-        }
-        if (window.WaveEffectMixin) {
-            window.WaveEffectMixin.initWaveEffect.call(this);
-        }
-        if (window.PotSmashEffectMixin) {
-            window.PotSmashEffectMixin.initPotSmashEffect.call(this);
-        }
-        if (window.CurryRecoveryEffectMixin) {
-            window.CurryRecoveryEffectMixin.initCurryRecoveryEffect.call(this);
-        }
-        if (window.SpinThrowEffectMixin) {
-            window.SpinThrowEffectMixin.initSpinThrowEffect.call(this);
-        }
-        if (window.RageEffectMixin) {
-            window.RageEffectMixin.initRageEffect.call(this);
-        }
+        LaserEffectMixin.initLaserEffect.call(this);
+        TeleportEffectMixin.initTeleportEffect.call(this);
+        TelepathyEffectMixin.initTelepathyEffect.call(this);
+        WaveEffectMixin.initWaveEffect.call(this);
+        PotSmashEffectMixin.initPotSmashEffect.call(this);
+        CurryRecoveryEffectMixin.initCurryRecoveryEffect.call(this);
+        SpinThrowEffectMixin.initSpinThrowEffect.call(this);
+        RageEffectMixin.initRageEffect.call(this);
 
         // Load character image based on characterId
         this.loadCharacterImage(characterId);
@@ -422,30 +415,14 @@ export class RemotePlayer
         }
 
         // Update effects from mixins
-        if (window.LaserEffectMixin) {
-            window.LaserEffectMixin.updateLaser.call(this);
-        }
-        if (window.TeleportEffectMixin) {
-            window.TeleportEffectMixin.updateTeleport.call(this);
-        }
-        if (window.TelepathyEffectMixin) {
-            window.TelepathyEffectMixin.updateTelepathy.call(this);
-        }
-        if (window.WaveEffectMixin) {
-            window.WaveEffectMixin.updateWave.call(this);
-        }
-        if (window.PotSmashEffectMixin) {
-            window.PotSmashEffectMixin.updatePotSmash.call(this);
-        }
-        if (window.CurryRecoveryEffectMixin) {
-            window.CurryRecoveryEffectMixin.updateCurryRecovery.call(this);
-        }
-        if (window.SpinThrowEffectMixin) {
-            window.SpinThrowEffectMixin.updateSpinThrow.call(this);
-        }
-        if (window.RageEffectMixin) {
-            window.RageEffectMixin.updateRage.call(this);
-        }
+        LaserEffectMixin.updateLaser.call(this);
+        TeleportEffectMixin.updateTeleport.call(this);
+        TelepathyEffectMixin.updateTelepathy.call(this);
+        WaveEffectMixin.updateWave.call(this);
+        PotSmashEffectMixin.updatePotSmash.call(this);
+        CurryRecoveryEffectMixin.updateCurryRecovery.call(this);
+        SpinThrowEffectMixin.updateSpinThrow.call(this);
+        RageEffectMixin.updateRage.call(this);
     }
 
     /**
@@ -514,30 +491,14 @@ export class RemotePlayer
         this.renderAttackEffect(ctx);
 
         // Draw effects from mixins
-        if (window.LaserEffectMixin) {
-            window.LaserEffectMixin.renderLaser.call(this, ctx);
-        }
-        if (window.TeleportEffectMixin) {
-            window.TeleportEffectMixin.renderTeleport.call(this, ctx);
-        }
-        if (window.TelepathyEffectMixin) {
-            window.TelepathyEffectMixin.renderTelepathy.call(this, ctx);
-        }
-        if (window.WaveEffectMixin) {
-            window.WaveEffectMixin.renderWave.call(this, ctx);
-        }
-        if (window.PotSmashEffectMixin) {
-            window.PotSmashEffectMixin.renderPotSmash.call(this, ctx);
-        }
-        if (window.CurryRecoveryEffectMixin) {
-            window.CurryRecoveryEffectMixin.renderCurryRecovery.call(this, ctx);
-        }
-        if (window.SpinThrowEffectMixin) {
-            window.SpinThrowEffectMixin.renderSpinThrow.call(this, ctx);
-        }
-        if (window.RageEffectMixin) {
-            window.RageEffectMixin.renderRage.call(this, ctx);
-        }
+        LaserEffectMixin.renderLaser.call(this, ctx);
+        TeleportEffectMixin.renderTeleport.call(this, ctx);
+        TelepathyEffectMixin.renderTelepathy.call(this, ctx);
+        WaveEffectMixin.renderWave.call(this, ctx);
+        PotSmashEffectMixin.renderPotSmash.call(this, ctx);
+        CurryRecoveryEffectMixin.renderCurryRecovery.call(this, ctx);
+        SpinThrowEffectMixin.renderSpinThrow.call(this, ctx);
+        RageEffectMixin.renderRage.call(this, ctx);
 
         // Draw info above remote player using utility
         CharacterUtils.renderInfoAbove(ctx, this);
@@ -653,70 +614,42 @@ export class RemotePlayer
 
     // Effect methods delegated to mixins
     startLaserAiming(x: number, y: number, dirX: number, dirY: number): void {
-        if (window.LaserEffectMixin) {
-            window.LaserEffectMixin.startLaserAiming.call(this, x, y, dirX, dirY);
-        }
+        LaserEffectMixin.startLaserAiming.call(this, x, y, dirX, dirY);
     }
 
     fireLaser(): void {
-        if (window.LaserEffectMixin) {
-            window.LaserEffectMixin.fireLaser.call(this);
-        }
+        LaserEffectMixin.fireLaser.call(this);
     }
 
     startTeleport(startX: number, startY: number, endX: number, endY: number): void {
-        if (window.TeleportEffectMixin) {
-            window.TeleportEffectMixin.startTeleport.call(this, startX, startY, endX, endY);
-        }
+        TeleportEffectMixin.startTeleport.call(this, startX, startY, endX, endY);
     }
 
     startTelepathy(x: number, y: number, radius: number): void {
-        if (window.TelepathyEffectMixin) {
-            window.TelepathyEffectMixin.startTelepathy.call(this, x, y, radius);
-        }
+        TelepathyEffectMixin.startTelepathy.call(this, x, y, radius);
     }
 
     startWave(): void {
-        if (window.WaveEffectMixin) {
-            window.WaveEffectMixin.startWave.call(this);
-        }
+        WaveEffectMixin.startWave.call(this);
     }
 
     startPotSmash(dirX: number, dirY: number): void {
-        if (window.PotSmashEffectMixin) {
-            window.PotSmashEffectMixin.startPotSmash.call(this, dirX, dirY);
-        }
+        PotSmashEffectMixin.startPotSmash.call(this, dirX, dirY);
     }
 
     startCurryRecovery(healAmount: number): void {
-        if (window.CurryRecoveryEffectMixin) {
-            window.CurryRecoveryEffectMixin.startCurryRecovery.call(this, healAmount);
-        }
+        CurryRecoveryEffectMixin.startCurryRecovery.call(this, healAmount);
     }
 
     startSpinThrow(startX: number, startY: number, endX: number, endY: number): void {
-        if (window.SpinThrowEffectMixin) {
-            window.SpinThrowEffectMixin.startSpinThrow.call(this, startX, startY, endX, endY);
-        }
+        SpinThrowEffectMixin.startSpinThrow.call(this, startX, startY, endX, endY);
     }
 
     startRage(duration: number): void {
-        if (window.RageEffectMixin) {
-            window.RageEffectMixin.startRage.call(this, duration);
-        }
+        RageEffectMixin.startRage.call(this, duration);
     }
 
     endRage(): void {
-        if (window.RageEffectMixin) {
-            window.RageEffectMixin.endRage.call(this);
-        }
+        RageEffectMixin.endRage.call(this);
     }
 }
-
-// Backward compatibility: expose to window
-declare global {
-    interface Window {
-        RemotePlayer: typeof RemotePlayer;
-    }
-}
-window.RemotePlayer = RemotePlayer;

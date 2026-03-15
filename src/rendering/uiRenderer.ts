@@ -101,17 +101,3 @@ export function renderDeathScreen(ctx: CanvasRenderingContext2D): void {
 export function triggerHitVignette(): void {
     gameState.hitVignetteTime = Date.now();
 }
-
-// Expose to global scope for backward compatibility
-window.renderHitVignette = renderHitVignette;
-window.renderDeathScreen = renderDeathScreen;
-window.triggerHitVignette = triggerHitVignette;
-
-// Extend Window interface for global functions
-declare global {
-    interface Window {
-        renderHitVignette: typeof renderHitVignette;
-        renderDeathScreen: typeof renderDeathScreen;
-        triggerHitVignette: typeof triggerHitVignette;
-    }
-}

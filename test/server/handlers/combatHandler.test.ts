@@ -191,7 +191,7 @@ describe('CombatHandler Security', () => {
         // Import the module (this will use our mocks)
         jest.isolateModules(() => {
             // eslint-disable-next-line @typescript-eslint/no-require-imports
-            const module = require('../../../server/handlers/combatHandler');
+            const module = require('../../../server/handlers/combat');
             registerCombatHandlers = module.registerCombatHandlers;
         });
 

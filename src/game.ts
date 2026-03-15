@@ -27,7 +27,6 @@ import {
     cleanupInput,
     updateInput,
     updateConfusion,
-    isConfused,
     isKeyPressed,
     isKeyJustPressed,
     Input,
@@ -36,96 +35,51 @@ import { LobbyManager } from './lobby.js';
 import { Character } from './character.js';
 import { ShardManager } from './shard.js';
 import { ChatManager } from './chat.js';
-import {
-    Skill,
-    SkillManager,
-    LaserBeamEffect,
-    TeleportEffect,
-    TelepathyEffect,
-    SkillUI,
-} from './skill.js';
+import { SkillUI } from './skill.js';
 import { NetworkManager } from './network/NetworkManager.js';
-import { triggerHitVignette } from './rendering/uiRenderer.js';
-import { findNearestEnemy, findRandomEnemy } from './combat/enemyFinder.js';
-import type { CharacterType, TeamType } from './types/index.js';
+import type { TeamType } from './types/index.js';
 
-// Module-level references to concrete types (avoid casting issues)
-let laserBeamEffect: LaserBeamEffect | null = null;
-let teleportEffect: TeleportEffect | null = null;
-let telepathyEffect: TelepathyEffect | null = null;
+// Game submodules
+import {
+    // Skill executor
+    initSkillSystem,
+    initializeCharacterSkills,
+    handleQSkill,
+    handleWSkill,
+    handleESkill,
+    handleRSkill,
+    handleTSkill,
+    cleanupSkillSystem,
+    getLaserBeamEffect,
+    getTeleportEffect,
+    getTelepathyEffect,
+    getSkillManager,
+    getWaveEffect,
+    getRatIllusionEffect,
+    // Render effects
+    renderHitVignette,
+    renderWaitingTeam,
+    renderTeamAnnounce,
+    renderDeathScreen,
+    renderWaveEffect,
+    renderPotSmashEffect,
+    renderMadnessEffect,
+    renderRageEffect,
+    renderRatIllusionEffect,
+    renderConfusionEffect,
+    renderCurryRecoveryEffect,
+    renderStoredDamageUI,
+    // Combat state
+    updateStoredDamage,
+    triggerCurryRecoveryEffect,
+    startRatIllusionOnMe,
+    endRatIllusionOnMe,
+    getPotSmashEffect,
+} from './game/index.js';
+
+// Module-level references for managers (not in submodules)
 let shardManager: ShardManager | null = null;
 let chatManager: ChatManager | null = null;
-let skillManager: SkillManager | null = null;
-
-// Local wave effect interface
-interface WaveEffectState {
-    active: boolean;
-    x: number;
-    y: number;
-    startTime: number;
-    duration: number;
-    maxRadius: number;
-}
-
-// Local pot smash effect interface
-interface PotSmashEffectState {
-    active: boolean;
-    x: number;
-    y: number;
-    dirX: number;
-    dirY: number;
-    startTime: number;
-    duration: number;
-    range: number;
-    angle: number;
-}
-
-// Local spin throw effect interface
-interface SpinThrowEffectState {
-    active: boolean;
-    x: number;
-    y: number;
-    targetX: number;
-    targetY: number;
-    startTime: number;
-    duration: number;
-}
-
-// Local rat illusion effect interface (쥐 환상)
-interface RatState {
-    x: number;
-    y: number;
-    targetX: number;
-    targetY: number;
-    isReal: boolean;
-    angle: number;
-    wigglePhase: number;
-}
-
-interface RatIllusionEffectState {
-    active: boolean;
-    x: number;
-    y: number;
-    startTime: number;
-    duration: number;
-    radius: number;
-    rats: RatState[];
-}
-
-// Module-level effect states
-let waveEffect: WaveEffectState | null = null;
-let potSmashEffect: PotSmashEffectState | null = null;
-let spinThrowEffect: SpinThrowEffectState | null = null;
-let ratIllusionEffect: RatIllusionEffectState | null = null;
-
-// Enemy info from findNearestEnemy
-interface EnemyTarget {
-    x: number;
-    y: number;
-    type: string;
-    playerId?: string;
-    dummyIndex?: number;
-}
 
 // Resize canvas to fill window while maintaining 16:9 aspect ratio
 function resizeCanvas(): void {
@@ -141,28 +95,23 @@ function resizeCanvas(): void {
     let newOffsetY: number;
 
     if (windowAspectRatio > gameAspectRatio) {
-        // Window is wider - fit to height
         canvas.height = windowHeight;
         canvas.width = windowHeight * gameAspectRatio;
         newOffsetX = (windowWidth - canvas.width) / 2;
         newOffsetY = 0;
     } else {
-        // Window is taller - fit to width
         canvas.width = windowWidth;
         canvas.height = windowWidth / gameAspectRatio;
         newOffsetX = 0;
         newOffsetY = (windowHeight - canvas.height) / 2;
     }
 
-    // Calculate scale factor for rendering
     const newScale = canvas.width / GAME_WIDTH;
 
-    // Update global viewport variables
     setScale(newScale);
     setOffsetX(newOffsetX);
     setOffsetY(newOffsetY);
 
-    // Position canvas in center of window
     canvas.style.position = 'absolute';
     canvas.style.left = newOffsetX + 'px';
     canvas.style.top = newOffsetY + 'px';
@@ -177,7 +126,6 @@ function init(): void {
     console.log('[game.ts] init() called');
     logger.info('Initializing...');
 
-    // Initialize canvas references from DOM and register with global state
     const canvasElement = document.getElementById('gameCanvas') as HTMLCanvasElement | null;
     if (!canvasElement) {
         console.error('[game.ts] Canvas element not found!');
@@ -193,25 +141,19 @@ function init(): void {
     setCanvas(canvasElement);
     setCtx(ctxElement);
 
-    // Setup canvas size
     resizeCanvas();
     setResizeHandler(resizeCanvas);
     window.addEventListener('resize', resizeCanvas);
 
-    // Initialize input system
     initInput(canvasElement);
 
-    // Initialize lobby manager
     console.log('[game.ts] Creating LobbyManager...');
     gameState.lobbyManager = new LobbyManager();
     console.log('[game.ts] LobbyManager created:', gameState.lobbyManager);
     gameState.lobbyManager.setOnGameStart((selection) => {
         console.log('[game.ts] onGameStart callback fired with:', selection);
-        // Store player selection
         gameState.selectedCharacter = selection.character;
         gameState.playerName = selection.playerName;
-
-        // Start the actual game
         startGame();
     });
 
@@ -225,14 +167,10 @@ function startGame(): void {
         `Starting game with character: ${gameState.selectedCharacter}, name: ${gameState.playerName}`
     );
 
-    // Show "waiting for team" state until server assigns team
     gameState.screen = 'waitingTeam';
 
-    // Get character image path
     const characterImage = LobbyManager.getCharacterImagePath(gameState.selectedCharacter);
 
-    // Create player character with selected name
-    // Position in center of game world (not canvas)
     gameState.player = new Character(
         GAME_WIDTH / 2,
         GAME_HEIGHT / 2,
@@ -255,8 +193,7 @@ function startGame(): void {
         );
     }
 
-    // Create test dummies for combat practice
-    // Position them around the map for testing
+    // Create test dummies
     const dummyConfig = GAME_CONFIG.DUMMY;
     const dummyPositions = dummyConfig.POSITIONS.map((pos) => ({
         x: GAME_WIDTH / 2 + pos.offsetX,
@@ -271,10 +208,9 @@ function startGame(): void {
             `${ASSET_BASE}/image/alien.png`,
             GAME_HEIGHT,
             pos.name,
-            true // isDummy = true
+            true
         );
-        // Make dummies stationary and distinguishable
-        dummy.speed = 0; // Don't move
+        dummy.speed = 0;
         dummy.maxHP = dummyConfig.MAX_HP;
         dummy.currentHP = dummyConfig.MAX_HP;
         gameState.dummies.push(dummy);
@@ -282,53 +218,35 @@ function startGame(): void {
 
     logger.debug(`Created ${gameState.dummies.length} test dummies`);
 
-    // Initialize skill system
-    skillManager = new SkillManager();
-    gameState.skillManager = skillManager;
+    // Initialize skill system (from skillExecutor module)
+    const skills = initSkillSystem();
+    gameState.skillManager = skills.skillManager;
+    gameState.laserBeamEffect = skills.laserBeamEffect;
+    gameState.teleportEffect = skills.teleportEffect;
+    gameState.telepathyEffect = skills.telepathyEffect;
 
-    // Add skills based on selected character
     initializeCharacterSkills(gameState.selectedCharacter);
 
-    // Initialize skill UI
-    gameState.skillUI = new SkillUI(skillManager);
-
-    // Initialize laser beam effect
-    laserBeamEffect = new LaserBeamEffect();
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    gameState.laserBeamEffect = laserBeamEffect as any;
-
-    // Initialize teleport effect
-    teleportEffect = new TeleportEffect();
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    gameState.teleportEffect = teleportEffect as any;
-
-    // Initialize telepathy effect
-    telepathyEffect = new TelepathyEffect();
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    gameState.telepathyEffect = telepathyEffect as any;
+    gameState.skillUI = new SkillUI(skills.skillManager);
 
     logger.debug('Skill system initialized');
 
-    // Create shard manager (will be populated by server)
+    // Create shard manager
     shardManager = new ShardManager();
     shardManager.enableServerMode();
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    gameState.shardManager = shardManager as any;
+    gameState.shardManager = shardManager;
 
     // Initialize chat manager
     chatManager = new ChatManager();
     chatManager.setPlayer(gameState.player);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    gameState.chatManager = chatManager as any;
+    gameState.chatManager = chatManager;
 
-    // Initialize network manager and connect to server
-    // Auto-detects server address from window.location.hostname
+    // Initialize network manager
     gameState.networkManager = new NetworkManager();
     gameState.networkManager.setShardManager(shardManager);
     gameState.networkManager.setLocalPlayer(gameState.player);
     gameState.networkManager.setDummies(gameState.dummies);
 
-    // Set team assignment callback
     gameState.networkManager.onTeamAssigned = (team: TeamType) => {
         gameState.team = team;
         gameState.screen = 'teamAnnounce';
@@ -338,7 +256,6 @@ function startGame(): void {
 
     gameState.networkManager.connect();
 
-    // Connect chat to network after socket is ready
     setTimeout(() => {
         if (gameState.networkManager?.socket && chatManager) {
             chatManager.setSocket(gameState.networkManager.socket);
@@ -352,15 +269,18 @@ function startGame(): void {
 
 // Update game logic
 function update(deltaTime: number): void {
-    // Don't update player movement if chat is focused or player is dead
     const isChatting = chatManager && chatManager.isChatInputFocused();
     const isPlayerDead = gameState.player && gameState.player.isDead;
+    const skillManager = getSkillManager();
+    const laserBeamEffect = getLaserBeamEffect();
+    const teleportEffect = getTeleportEffect();
+    const telepathyEffect = getTelepathyEffect();
+    const ratIllusionEffect = getRatIllusionEffect();
+    const waveEffect = getWaveEffect();
 
     if (gameState.player && !isChatting && !isPlayerDead) {
-        // Pass game world dimensions and delta time
         gameState.player.update({ width: GAME_WIDTH, height: GAME_HEIGHT }, deltaTime);
 
-        // Send player position to server
         if (gameState.networkManager) {
             const pos = gameState.player.getPosition();
             gameState.networkManager.sendPlayerPosition(
@@ -377,7 +297,6 @@ function update(deltaTime: number): void {
     if (shardManager && gameState.player) {
         shardManager.update();
 
-        // Check for shard collisions
         const collectedShards = shardManager.checkCollisions(gameState.player);
         if (collectedShards.length > 0) {
             gameState.stats.shardsCollected += collectedShards.length;
@@ -385,10 +304,8 @@ function update(deltaTime: number): void {
                 `Collected ${collectedShards.length} shard(s)! Total: ${gameState.stats.shardsCollected}`
             );
 
-            // Add experience for each shard collected (1 shard = 1 exp)
             gameState.player.addExperience(collectedShards.length);
 
-            // Send shard collection to server
             if (gameState.networkManager) {
                 collectedShards.forEach((shard) => {
                     if (shard.id !== null) {
@@ -399,17 +316,15 @@ function update(deltaTime: number): void {
         }
     }
 
-    // Update dummies (respawn is handled by server)
+    // Update dummies
     gameState.dummies.forEach((dummy) => {
         dummy.update({ width: GAME_WIDTH, height: GAME_HEIGHT }, deltaTime);
     });
 
-    // Send attack to server (server handles all damage calculations)
-    // Only allow attacks if player is alive
+    // Send attack to server
     if (gameState.player && gameState.player.isAttacking && !gameState.player.isDead) {
         const attackArea = gameState.player.getAttackArea();
 
-        // Send attack to server once per attack (when attack just started)
         const currentTime = Date.now();
         if (
             !gameState.lastAttackSentTime ||
@@ -425,7 +340,6 @@ function update(deltaTime: number): void {
                 gameState.lastAttackSentTime = currentTime;
             }
         }
-        // Dummy damage is now handled by server via dummyDamaged event
     }
 
     // Update remote players
@@ -438,12 +352,12 @@ function update(deltaTime: number): void {
         updateConfusion();
     }
 
-    // Update skill manager (check for ready flashes)
+    // Update skill manager
     if (skillManager) {
         skillManager.update();
     }
 
-    // Update wave effect (for local player)
+    // Update wave effect
     if (waveEffect && waveEffect.active) {
         const elapsed = Date.now() - waveEffect.startTime;
         if (elapsed >= waveEffect.duration) {
@@ -458,7 +372,6 @@ function update(deltaTime: number): void {
             ratIllusionEffect.active = false;
             ratIllusionEffect.rats = [];
         } else {
-            // 쥐들 움직이기
             const speed = 0.02;
             for (const rat of ratIllusionEffect.rats) {
                 const dx = rat.targetX - rat.x;
@@ -470,20 +383,17 @@ function update(deltaTime: number): void {
                     rat.y += dy * speed;
                     rat.angle = Math.atan2(dy, dx);
                 } else {
-                    // 새 목표 설정
                     const newAngle = Math.random() * Math.PI * 2;
                     const newDistance = ratIllusionEffect.radius * (0.3 + Math.random() * 0.7);
                     rat.targetX = ratIllusionEffect.x + Math.cos(newAngle) * newDistance;
                     rat.targetY = ratIllusionEffect.y + Math.sin(newAngle) * newDistance;
                 }
 
-                // 흔들림 애니메이션
                 rat.wigglePhase += 0.3;
             }
 
-            // 마우스 클릭 시 쥐 클릭 처리
+            // Mouse click on rats
             if (Input.mouse.pressed && Input.mouse.button === 0) {
-                // 캔버스 좌표를 게임 좌표로 변환
                 const scale = getScale();
                 const gameX = Input.mouse.x / scale;
                 const gameY = Input.mouse.y / scale;
@@ -497,11 +407,9 @@ function update(deltaTime: number): void {
 
                     if (distance < clickRadius) {
                         logger.debug(`Clicked rat ${i}`);
-                        // 서버에 쥐 클릭 전송
                         if (gameState.networkManager) {
                             gameState.networkManager.sendRatClick(i);
                         }
-                        // 마우스 클릭 상태 리셋 (중복 클릭 방지)
                         Input.mouse.pressed = false;
                         break;
                     }
@@ -515,7 +423,6 @@ function update(deltaTime: number): void {
         const currentTime = Date.now();
         const elapsed = currentTime - gameState.madnessStartTime;
 
-        // Check if madness duration is over
         if (elapsed >= gameState.madnessDuration) {
             gameState.madnessActive = false;
             logger.debug('Madness walk ended');
@@ -523,14 +430,12 @@ function update(deltaTime: number): void {
                 gameState.networkManager.sendMadnessEnd();
             }
         } else {
-            // Check if player is moving (any arrow key pressed)
             const isMoving =
                 isKeyPressed('arrowup') ||
                 isKeyPressed('arrowdown') ||
                 isKeyPressed('arrowleft') ||
                 isKeyPressed('arrowright');
 
-            // Send damage tick if moving and tick interval passed
             if (
                 isMoving &&
                 currentTime - gameState.madnessLastTickTime >= gameState.madnessTickInterval
@@ -547,7 +452,6 @@ function update(deltaTime: number): void {
     if (gameState.rageActive) {
         const elapsed = Date.now() - gameState.rageStartTime;
 
-        // Check if rage duration is over
         if (elapsed >= gameState.rageDuration) {
             gameState.rageActive = false;
             logger.debug('Rage ended');
@@ -557,29 +461,24 @@ function update(deltaTime: number): void {
         }
     }
 
-    // Handle skill input (Q, W, E) - only when not chatting and player is alive
+    // Handle skill input (Q, W, E, R, T)
     if (skillManager && !isChatting && !isPlayerDead) {
-        // Q - Character-specific basic attack skill
         if (isKeyJustPressed('q')) {
             handleQSkill();
         }
 
-        // W - Teleport (to random enemy) - Only for characters with teleport skill
         if (isKeyJustPressed('w') && teleportEffect && !teleportEffect.active) {
             handleWSkill();
         }
 
-        // E - Character-specific skill
         if (isKeyJustPressed('e')) {
             handleESkill();
         }
 
-        // R - Additional skill (squeak-squeak only for now)
         if (isKeyJustPressed('r')) {
             handleRSkill();
         }
 
-        // T - Ultimate skill (squeak-squeak only for now)
         if (isKeyJustPressed('t')) {
             handleTSkill();
         }
@@ -592,9 +491,7 @@ function update(deltaTime: number): void {
             laserBeamEffect.update(playerPos.x, playerPos.y);
         }
 
-        // Check if laser should deal damage (when firing phase starts)
         if (laserBeamEffect.shouldDealDamage()) {
-            // Send laser attack to server
             const line = laserBeamEffect.getLaserLine();
             if (line && gameState.networkManager) {
                 gameState.networkManager.sendLaserAttack(
@@ -612,13 +509,11 @@ function update(deltaTime: number): void {
     if (teleportEffect && teleportEffect.active) {
         const teleportResult = teleportEffect.update();
 
-        // Move player when teleport completes
         if (teleportResult && teleportResult.teleported && gameState.player) {
             gameState.player.x = teleportResult.x;
             gameState.player.y = teleportResult.y;
         }
 
-        // Check if teleport should deal damage
         if (teleportEffect.shouldDealDamage()) {
             const area = teleportEffect.getDamageArea();
             if (area && gameState.networkManager) {
@@ -639,7 +534,6 @@ function update(deltaTime: number): void {
             telepathyEffect.update(playerPos.x, playerPos.y);
         }
 
-        // Check if telepathy should deal damage and heal
         if (telepathyEffect.shouldDealDamage()) {
             const area = telepathyEffect.getDamageArea();
             if (area && gameState.networkManager) {
@@ -664,40 +558,31 @@ function gameLoop(currentTime: number): void {
 
     if (!ctx || !canvas) return;
 
-    // Calculate delta time (in seconds)
     if (gameState.lastFrameTime === 0) {
         gameState.lastFrameTime = currentTime;
     }
-    gameState.deltaTime = (currentTime - gameState.lastFrameTime) / 1000; // Convert to seconds
+    gameState.deltaTime = (currentTime - gameState.lastFrameTime) / 1000;
     gameState.lastFrameTime = currentTime;
 
-    // Cap delta time to prevent huge jumps (e.g., when tab is inactive)
     if (gameState.deltaTime > 0.1) {
         gameState.deltaTime = 0.1;
     }
 
-    // Update input state (must be called before checking inputs)
     updateInput();
 
-    // Clear canvas
     ctx.fillStyle = '#1a1a1a';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    // Apply scaling for game world rendering
     ctx.save();
     ctx.scale(getScale(), getScale());
 
-    // Check current screen state
     if (gameState.screen === 'waitingTeam') {
-        // Waiting for server to assign team - show loading
         renderWaitingTeam(ctx);
     } else if (gameState.screen === 'teamAnnounce') {
-        // Render team announcement (also runs game in background)
         update(gameState.deltaTime);
         render();
         renderTeamAnnounce(ctx);
     } else {
-        // Normal gameplay
         update(gameState.deltaTime);
         render();
     }
@@ -707,177 +592,19 @@ function gameLoop(currentTime: number): void {
     requestAnimationFrame(gameLoop);
 }
 
-// Render hit vignette effect (red screen edges when damaged)
-function renderHitVignette(ctx: CanvasRenderingContext2D): void {
-    if (gameState.hitVignetteTime === 0) return;
-
-    const elapsed = Date.now() - gameState.hitVignetteTime;
-    if (elapsed >= gameState.hitVignetteDuration) {
-        gameState.hitVignetteTime = 0;
-        return;
-    }
-
-    // Calculate opacity (starts strong, fades out)
-    const progress = elapsed / gameState.hitVignetteDuration;
-    const opacity = (1 - progress) * 0.6;
-
-    ctx.save();
-
-    // Create radial gradient from center (transparent) to edges (red)
-    const centerX = GAME_WIDTH / 2;
-    const centerY = GAME_HEIGHT / 2;
-    const innerRadius = Math.min(GAME_WIDTH, GAME_HEIGHT) * 0.3;
-    const outerRadius = Math.max(GAME_WIDTH, GAME_HEIGHT) * 0.8;
-
-    const gradient = ctx.createRadialGradient(
-        centerX,
-        centerY,
-        innerRadius,
-        centerX,
-        centerY,
-        outerRadius
-    );
-    gradient.addColorStop(0, 'rgba(255, 0, 0, 0)');
-    gradient.addColorStop(0.5, `rgba(255, 0, 0, ${opacity * 0.3})`);
-    gradient.addColorStop(1, `rgba(255, 0, 0, ${opacity})`);
-
-    ctx.fillStyle = gradient;
-    ctx.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
-
-    ctx.restore();
-}
-
-// Render waiting for team assignment screen
-function renderWaitingTeam(ctx: CanvasRenderingContext2D): void {
-    ctx.save();
-
-    // Dark background
-    ctx.fillStyle = '#1a1a2e';
-    ctx.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
-
-    // Loading text
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillStyle = '#ffffff';
-    ctx.font = '600 48px Jua, sans-serif';
-    ctx.fillText('팀 배정 중...', GAME_WIDTH / 2, GAME_HEIGHT / 2);
-
-    // Animated dots
-    const dots = '.'.repeat(Math.floor(Date.now() / 500) % 4);
-    ctx.font = '600 48px Jua, sans-serif';
-    ctx.fillText(dots, GAME_WIDTH / 2 + 150, GAME_HEIGHT / 2);
-
-    ctx.restore();
-}
-
-// Render team announcement screen
-function renderTeamAnnounce(ctx: CanvasRenderingContext2D): void {
-    const team = gameState.team;
-    const elapsed = Date.now() - gameState.teamAnnounceStartTime;
-    const duration = gameState.teamAnnounceDuration;
-
-    // Check if announcement is done
-    if (elapsed >= duration) {
-        gameState.screen = 'playing';
-        return;
-    }
-
-    // Calculate animation progress
-    const progress = elapsed / duration;
-
-    // Background with team color
-    const isRed = team === 'red';
-    const bgColor = isRed ? 'rgba(220, 38, 38, 0.9)' : 'rgba(37, 99, 235, 0.9)';
-
-    ctx.save();
-    ctx.fillStyle = bgColor;
-    ctx.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
-
-    // Team text
-    const teamText = isRed ? '레드팀!' : '블루팀!';
-    const teamEmoji = isRed ? '🔴' : '🔵';
-
-    // Scale animation (starts big, settles)
-    const scale = 1 + Math.max(0, 1 - progress * 2) * 0.3;
-
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-
-    // Shadow
-    ctx.shadowColor = 'rgba(0, 0, 0, 0.5)';
-    ctx.shadowBlur = 20;
-    ctx.shadowOffsetX = 4;
-    ctx.shadowOffsetY = 4;
-
-    // Main text
-    ctx.fillStyle = '#ffffff';
-    ctx.font = `600 ${Math.round(120 * scale)}px Jua, sans-serif`;
-    ctx.fillText(teamText, GAME_WIDTH / 2, GAME_HEIGHT / 2 - 20);
-
-    // Emoji
-    ctx.font = `${Math.round(80 * scale)}px sans-serif`;
-    ctx.fillText(teamEmoji, GAME_WIDTH / 2, GAME_HEIGHT / 2 + 100);
-
-    // Fade out at the end
-    if (progress > 0.7) {
-        const fadeProgress = (progress - 0.7) / 0.3;
-        ctx.fillStyle = `rgba(26, 26, 26, ${fadeProgress})`;
-        ctx.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
-    }
-
-    ctx.restore();
-}
-
-// Render death screen with respawn timer
-function renderDeathScreen(ctx: CanvasRenderingContext2D): void {
-    // Dark overlay
-    ctx.save();
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
-    ctx.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
-
-    // Calculate remaining respawn time
-    const player = gameState.player;
-    if (!player) {
-        ctx.restore();
-        return;
-    }
-
-    const elapsedTime = Date.now() - player.deathTime;
-    const remainingTime = Math.max(0, (player.respawnDelay - elapsedTime) / 1000);
-
-    // Death message
-    ctx.fillStyle = '#FF6B6B';
-    ctx.font = '600 72px Jua, sans-serif';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-
-    ctx.shadowColor = '#000000';
-    ctx.shadowBlur = 10;
-    ctx.shadowOffsetX = 2;
-    ctx.shadowOffsetY = 2;
-
-    ctx.fillText('YOU DIED', GAME_WIDTH / 2, GAME_HEIGHT / 2 - 50);
-
-    // Respawn timer
-    ctx.fillStyle = '#ffffff';
-    ctx.font = '600 36px Jua, sans-serif';
-    ctx.fillText(
-        `Respawning in ${remainingTime.toFixed(1)}s`,
-        GAME_WIDTH / 2,
-        GAME_HEIGHT / 2 + 30
-    );
-
-    ctx.shadowColor = 'transparent';
-    ctx.shadowBlur = 0;
-    ctx.restore();
-}
-
 // Render function
 function render(): void {
     const ctx = getCtx();
     if (!ctx) return;
 
-    // Draw title (in game world coordinates)
+    const laserBeamEffect = getLaserBeamEffect();
+    const teleportEffect = getTeleportEffect();
+    const telepathyEffect = getTelepathyEffect();
+    const waveEffect = getWaveEffect();
+    const potSmashEffect = getPotSmashEffect();
+    const ratIllusionEffect = getRatIllusionEffect();
+
+    // Draw title
     ctx.fillStyle = '#00D9FF';
     ctx.font = '600 28px Jua, sans-serif';
     ctx.textAlign = 'center';
@@ -912,10 +639,9 @@ function render(): void {
         }
     });
 
-    // Draw local player (on top of remote players and dummies)
+    // Draw local player
     if (gameState.player) {
         if (gameState.player.isDead) {
-            // Render dead player as ghost (semi-transparent)
             ctx.save();
             ctx.globalAlpha = 0.3;
             gameState.player.render(ctx);
@@ -925,7 +651,7 @@ function render(): void {
         }
     }
 
-    // Draw death screen overlay if player is dead
+    // Draw death screen overlay
     if (gameState.player && gameState.player.isDead) {
         renderDeathScreen(ctx);
     }
@@ -943,7 +669,6 @@ function render(): void {
 
         ctx.fillText(`Position: (${Math.round(pos.x)}, ${Math.round(pos.y)})`, 10, 20);
 
-        // Level display with max level indicator
         if (level >= gameState.player.maxLevel) {
             ctx.fillText(`Level: ${level} (MAX)`, 10, 40);
         } else {
@@ -960,40 +685,25 @@ function render(): void {
         );
     }
 
-    // Draw laser beam effect (above players)
+    // Draw effects
     if (laserBeamEffect) {
         laserBeamEffect.render(ctx);
     }
-
-    // Draw teleport effect
     if (teleportEffect) {
         teleportEffect.render(ctx);
     }
-
-    // Draw telepathy effect
     if (telepathyEffect) {
         telepathyEffect.render(ctx);
     }
 
-    // Draw wave effect (local player)
-    renderWaveEffect(ctx);
-
-    // Draw pot smash effect (local player - Curry-Bear)
-    renderPotSmashEffect(ctx);
-
-    // Draw madness walk effect (local player)
+    renderWaveEffect(ctx, waveEffect);
+    renderPotSmashEffect(ctx, potSmashEffect);
     renderMadnessEffect(ctx);
-
-    // Draw curry recovery effect (local player - Curry-Bear)
     renderCurryRecoveryEffect(ctx);
-
-    // Draw rage effect (local player - Hulk Sister)
     renderRageEffect(ctx);
+    renderRatIllusionEffect(ctx, ratIllusionEffect);
 
-    // Draw rat illusion effect (local player - Squeak-Squeak)
-    renderRatIllusionEffect(ctx);
-
-    // Draw skill UI (above game elements, below vignette)
+    // Draw skill UI
     if (gameState.skillUI) {
         gameState.skillUI.render(ctx, GAME_WIDTH, GAME_HEIGHT);
     }
@@ -1006,1315 +716,35 @@ function render(): void {
     // Draw hit vignette effect (on top of everything)
     renderHitVignette(ctx);
 
-    // Draw confusion effect (spinning spiral when confused)
+    // Draw confusion effect
     renderConfusionEffect(ctx);
 }
 
-// Render wave effect for local player (Crazy-Eyes Q skill)
-function renderWaveEffect(ctx: CanvasRenderingContext2D): void {
-    if (!waveEffect || !waveEffect.active) return;
-
-    const elapsed = Date.now() - waveEffect.startTime;
-    const progress = Math.min(elapsed / waveEffect.duration, 1);
-
-    // Current radius (expanding outward)
-    const currentRadius = waveEffect.maxRadius * progress;
-
-    // Opacity fades as it expands
-    const opacity = 1 - progress * 0.7;
-
-    ctx.save();
-
-    // Outer glow
-    ctx.beginPath();
-    ctx.arc(waveEffect.x, waveEffect.y, currentRadius, 0, Math.PI * 2);
-    ctx.strokeStyle = `rgba(255, 105, 180, ${opacity * 0.5})`;
-    ctx.lineWidth = 15;
-    ctx.stroke();
-
-    // Inner ring
-    ctx.beginPath();
-    ctx.arc(waveEffect.x, waveEffect.y, currentRadius, 0, Math.PI * 2);
-    ctx.strokeStyle = `rgba(255, 255, 255, ${opacity})`;
-    ctx.lineWidth = 4;
-    ctx.stroke();
-
-    // Spiral effect (rotating lines)
-    const spiralCount = 6;
-    for (let i = 0; i < spiralCount; i++) {
-        const angle = (i / spiralCount) * Math.PI * 2 + progress * Math.PI * 2;
-        const innerR = currentRadius * 0.3;
-        const outerR = currentRadius * 0.9;
-
-        ctx.beginPath();
-        ctx.moveTo(
-            waveEffect.x + Math.cos(angle) * innerR,
-            waveEffect.y + Math.sin(angle) * innerR
-        );
-        ctx.lineTo(
-            waveEffect.x + Math.cos(angle) * outerR,
-            waveEffect.y + Math.sin(angle) * outerR
-        );
-        ctx.strokeStyle = `rgba(255, 182, 193, ${opacity * 0.7})`;
-        ctx.lineWidth = 3;
-        ctx.stroke();
-    }
-
-    ctx.restore();
-}
-
-// Render pot smash effect for local player (Curry-Bear Q skill)
-function renderPotSmashEffect(ctx: CanvasRenderingContext2D): void {
-    if (!potSmashEffect || !potSmashEffect.active) return;
-
-    const elapsed = Date.now() - potSmashEffect.startTime;
-    const progress = Math.min(elapsed / potSmashEffect.duration, 1);
-
-    // End effect when done
-    if (progress >= 1) {
-        potSmashEffect.active = false;
-        return;
-    }
-
-    const halfAngleRad = ((potSmashEffect.angle / 2) * Math.PI) / 180;
-    const baseAngle = Math.atan2(potSmashEffect.dirY, potSmashEffect.dirX);
-    const startAngle = baseAngle - halfAngleRad;
-    const endAngle = baseAngle + halfAngleRad;
-
-    ctx.save();
-
-    // Draw cone (curry splash)
-    const opacity = (1 - progress) * 0.6;
-    ctx.globalAlpha = opacity;
-
-    // Fill cone
-    ctx.beginPath();
-    ctx.moveTo(potSmashEffect.x, potSmashEffect.y);
-    ctx.arc(potSmashEffect.x, potSmashEffect.y, potSmashEffect.range, startAngle, endAngle);
-    ctx.closePath();
-    ctx.fillStyle = '#FFD700'; // Gold (curry color)
-    ctx.fill();
-
-    // Draw cone outline
-    ctx.globalAlpha = opacity * 1.5;
-    ctx.strokeStyle = '#FFA500'; // Orange
-    ctx.lineWidth = 3;
-    ctx.stroke();
-
-    // Draw pot emoji at the edge
-    const emojiDist = potSmashEffect.range * 0.6 * (1 - progress * 0.3);
-    const emojiX = potSmashEffect.x + Math.cos(baseAngle) * emojiDist;
-    const emojiY = potSmashEffect.y + Math.sin(baseAngle) * emojiDist;
-
-    ctx.globalAlpha = opacity * 1.5;
-    ctx.font = '40px serif';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText('🍲', emojiX, emojiY);
-
-    // Draw splash particles
-    const particleCount = 5;
-    for (let i = 0; i < particleCount; i++) {
-        const particleAngle = startAngle + (endAngle - startAngle) * (i / (particleCount - 1));
-        const particleDist = potSmashEffect.range * (0.3 + progress * 0.7);
-        const px = potSmashEffect.x + Math.cos(particleAngle) * particleDist;
-        const py = potSmashEffect.y + Math.sin(particleAngle) * particleDist;
-
-        ctx.beginPath();
-        ctx.arc(px, py, 10 * (1 - progress), 0, Math.PI * 2);
-        ctx.fillStyle = '#FFD700';
-        ctx.fill();
-    }
-
-    ctx.restore();
-}
-
-// Render madness walk effect (Crazy-Eyes E skill)
-function renderMadnessEffect(ctx: CanvasRenderingContext2D): void {
-    if (!gameState.madnessActive || !gameState.player) return;
-
-    const playerPos = gameState.player.getPosition();
-    const elapsed = Date.now() - gameState.madnessStartTime;
-    const progress = elapsed / gameState.madnessDuration;
-    const time = Date.now() / 1000;
-
-    ctx.save();
-
-    // Pulsing dark violet aura around player
-    const pulseScale = 1 + Math.sin(time * 5) * 0.1;
-    const radius = gameState.madnessRadius * pulseScale;
-
-    // Outer glow
-    const gradient = ctx.createRadialGradient(
-        playerPos.x,
-        playerPos.y,
-        0,
-        playerPos.x,
-        playerPos.y,
-        radius
-    );
-    gradient.addColorStop(0, 'rgba(148, 0, 211, 0.3)');
-    gradient.addColorStop(0.5, 'rgba(148, 0, 211, 0.15)');
-    gradient.addColorStop(1, 'rgba(148, 0, 211, 0)');
-
-    ctx.fillStyle = gradient;
-    ctx.beginPath();
-    ctx.arc(playerPos.x, playerPos.y, radius, 0, Math.PI * 2);
-    ctx.fill();
-
-    // Swirling particles
-    const particleCount = 8;
-    for (let i = 0; i < particleCount; i++) {
-        const angle = (i / particleCount) * Math.PI * 2 + time * 3;
-        const particleRadius = radius * 0.7;
-        const x = playerPos.x + Math.cos(angle) * particleRadius;
-        const y = playerPos.y + Math.sin(angle) * particleRadius;
-
-        ctx.fillStyle = `rgba(186, 85, 211, ${0.5 + Math.sin(time * 8 + i) * 0.3})`;
-        ctx.font = '20px sans-serif';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText('👀', x, y);
-    }
-
-    // Remaining time indicator (ring that shrinks)
-    const remainingRatio = 1 - progress;
-    ctx.beginPath();
-    ctx.arc(
-        playerPos.x,
-        playerPos.y,
-        radius + 10,
-        -Math.PI / 2,
-        -Math.PI / 2 + Math.PI * 2 * remainingRatio
-    );
-    ctx.strokeStyle = 'rgba(148, 0, 211, 0.8)';
-    ctx.lineWidth = 4;
-    ctx.stroke();
-
-    ctx.restore();
-}
-
-// Render rage effect (Hulk Sister E skill)
-function renderRageEffect(ctx: CanvasRenderingContext2D): void {
-    if (!gameState.rageActive || !gameState.player) return;
-
-    const playerPos = gameState.player.getPosition();
-    const elapsed = Date.now() - gameState.rageStartTime;
-    const progress = elapsed / gameState.rageDuration;
-    const pulsePhase = Math.sin(elapsed / 100) * 0.3 + 0.7;
-
-    ctx.save();
-
-    // Red glow around player
-    const glowRadius = 80 + Math.sin(elapsed / 150) * 15;
-    const gradient = ctx.createRadialGradient(
-        playerPos.x,
-        playerPos.y,
-        0,
-        playerPos.x,
-        playerPos.y,
-        glowRadius
-    );
-    gradient.addColorStop(0, `rgba(255, 0, 0, ${0.3 * pulsePhase})`);
-    gradient.addColorStop(0.5, `rgba(255, 50, 0, ${0.2 * pulsePhase})`);
-    gradient.addColorStop(1, 'rgba(255, 0, 0, 0)');
-
-    ctx.fillStyle = gradient;
-    ctx.beginPath();
-    ctx.arc(playerPos.x, playerPos.y, glowRadius, 0, Math.PI * 2);
-    ctx.fill();
-
-    // Flame particles rising
-    const particleCount = 6;
-    for (let i = 0; i < particleCount; i++) {
-        const angle = (i / particleCount) * Math.PI * 2 + elapsed / 500;
-        const particleRadius = 45 + Math.sin(elapsed / 200 + i) * 10;
-        const riseAmount = (elapsed / 50 + i * 20) % 60;
-
-        const px = playerPos.x + Math.cos(angle) * particleRadius;
-        const py = playerPos.y - riseAmount;
-
-        ctx.globalAlpha = 0.8 - (riseAmount / 60) * 0.6;
-        ctx.font = '16px sans-serif';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText('\uD83D\uDD25', px, py);
-    }
-
-    // Rage indicator above head
-    ctx.globalAlpha = pulsePhase;
-    ctx.font = 'bold 14px Jua, sans-serif';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillStyle = '#FF0000';
-    ctx.strokeStyle = '#000000';
-    ctx.lineWidth = 2;
-
-    const indicatorY = playerPos.y - 70;
-    ctx.strokeText('RAGE!', playerPos.x, indicatorY);
-    ctx.fillText('RAGE!', playerPos.x, indicatorY);
-
-    // Remaining time ring
-    const remainingRatio = 1 - progress;
-    ctx.globalAlpha = 0.8;
-    ctx.beginPath();
-    ctx.arc(
-        playerPos.x,
-        playerPos.y,
-        glowRadius + 10,
-        -Math.PI / 2,
-        -Math.PI / 2 + Math.PI * 2 * remainingRatio
-    );
-    ctx.strokeStyle = '#FF0000';
-    ctx.lineWidth = 4;
-    ctx.stroke();
-
-    ctx.restore();
-}
-
-// Render rat illusion effect (Squeak-Squeak Q skill)
-// 화면 전체를 쥐로 가득 채우는 효과!
-function renderRatIllusionEffect(ctx: CanvasRenderingContext2D): void {
-    if (!ratIllusionEffect || !ratIllusionEffect.active) return;
-
-    const elapsed = Date.now() - ratIllusionEffect.startTime;
-    const progress = Math.min(elapsed / ratIllusionEffect.duration, 1);
-
-    // 페이드 인/아웃 효과
-    let opacity = 1;
-    if (progress < 0.1) {
-        opacity = progress / 0.1; // 페이드 인
-    } else if (progress > 0.8) {
-        opacity = 1 - (progress - 0.8) / 0.2; // 페이드 아웃
-    }
-
-    ctx.save();
-
-    // 파란색 배경 오버레이 (스크린샷처럼)
-    ctx.fillStyle = `rgba(180, 210, 230, ${opacity * 0.85})`;
-    ctx.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
-
-    // 화면 전체에 쥐 그리기 (다양한 크기와 투명도)
-    const time = Date.now() / 1000;
-    const ratSize = 60; // 기본 쥐 크기
-    const cols = Math.ceil(GAME_WIDTH / ratSize) + 2;
-    const rows = Math.ceil(GAME_HEIGHT / ratSize) + 2;
-
-    for (let row = 0; row < rows; row++) {
-        for (let col = 0; col < cols; col++) {
-            // 각 쥐마다 약간씩 다른 오프셋과 크기
-            const seed = row * cols + col;
-            const offsetX = Math.sin(seed * 1.7) * 15;
-            const offsetY = Math.cos(seed * 2.3) * 15;
-            const sizeVariation = 0.7 + Math.sin(seed * 0.9) * 0.3;
-            const alphaVariation = 0.5 + Math.sin(seed * 1.3) * 0.3;
-
-            // 약간의 움직임
-            const moveX = Math.sin(time * 0.5 + seed * 0.3) * 5;
-            const moveY = Math.cos(time * 0.7 + seed * 0.5) * 5;
-
-            const x = col * ratSize + offsetX + moveX - ratSize;
-            const y = row * ratSize + offsetY + moveY - ratSize;
-            const size = ratSize * sizeVariation;
-
-            ctx.save();
-            ctx.translate(x, y);
-            ctx.globalAlpha = opacity * alphaVariation;
-
-            // 쥐 얼굴 그리기 (귀여운 스타일)
-            drawCuteRat(ctx, size, seed, time);
-
-            ctx.restore();
-        }
-    }
-
-    // 클릭 가능한 쥐들 (진짜 찾아야 하는 쥐들)
-    ctx.globalAlpha = opacity;
-    for (let i = 0; i < ratIllusionEffect.rats.length; i++) {
-        const rat = ratIllusionEffect.rats[i];
-        ctx.save();
-        ctx.translate(rat.x, rat.y);
-
-        // 클릭 가능한 쥐는 더 크고 뚜렷하게
-        const pulseScale = 1 + Math.sin(time * 4 + i) * 0.1;
-        ctx.scale(pulseScale, pulseScale);
-
-        drawCuteRat(ctx, 80, i * 100, time, true);
-
-        ctx.restore();
-    }
-
-    // 상단에 안내 메시지
-    const remainingTime = Math.max(0, (ratIllusionEffect.duration - elapsed) / 1000);
-    ctx.globalAlpha = opacity;
-    ctx.fillStyle = '#FFFFFF';
-    ctx.font = 'bold 32px Jua, sans-serif';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.shadowColor = '#000';
-    ctx.shadowBlur = 6;
-    ctx.fillText(`🐭 진짜 쥐를 찾아라! ${remainingTime.toFixed(1)}초`, GAME_WIDTH / 2, 50);
-
-    ctx.restore();
-}
-
-// 귀여운 쥐 그리기 함수
-function drawCuteRat(
-    ctx: CanvasRenderingContext2D,
-    size: number,
-    seed: number,
-    time: number,
-    isClickable: boolean = false
-): void {
-    const scale = size / 60;
-
-    // 얼굴 색상 (약간씩 다른 톤)
-    const hue = 200 + Math.sin(seed * 0.7) * 20; // 파란색 계열
-    const lightness = 85 + Math.sin(seed * 1.1) * 10;
-    const faceColor = `hsl(${hue}, 30%, ${lightness}%)`;
-    const earColor = `hsl(${hue}, 35%, ${lightness - 5}%)`;
-
-    // 클릭 가능한 쥐는 핑크색
-    const actualFaceColor = isClickable ? '#FFD1DC' : faceColor;
-    const actualEarColor = isClickable ? '#FFC0CB' : earColor;
-
-    ctx.save();
-    ctx.scale(scale, scale);
-
-    // 귀 (큰 동그라미)
-    ctx.beginPath();
-    ctx.arc(-20, -20, 18, 0, Math.PI * 2);
-    ctx.fillStyle = actualEarColor;
-    ctx.fill();
-
-    ctx.beginPath();
-    ctx.arc(20, -20, 18, 0, Math.PI * 2);
-    ctx.fillStyle = actualEarColor;
-    ctx.fill();
-
-    // 얼굴 (큰 동그라미)
-    ctx.beginPath();
-    ctx.arc(0, 0, 25, 0, Math.PI * 2);
-    ctx.fillStyle = actualFaceColor;
-    ctx.fill();
-
-    // 눈 (작은 점)
-    ctx.beginPath();
-    ctx.arc(-10, -5, 4, 0, Math.PI * 2);
-    ctx.fillStyle = '#333';
-    ctx.fill();
-
-    ctx.beginPath();
-    ctx.arc(10, -5, 4, 0, Math.PI * 2);
-    ctx.fillStyle = '#333';
-    ctx.fill();
-
-    // 눈 반짝임
-    ctx.beginPath();
-    ctx.arc(-9, -6, 1.5, 0, Math.PI * 2);
-    ctx.fillStyle = '#FFF';
-    ctx.fill();
-
-    ctx.beginPath();
-    ctx.arc(11, -6, 1.5, 0, Math.PI * 2);
-    ctx.fillStyle = '#FFF';
-    ctx.fill();
-
-    // 코 (작은 타원)
-    ctx.beginPath();
-    ctx.ellipse(0, 5, 6, 4, 0, 0, Math.PI * 2);
-    ctx.fillStyle = isClickable ? '#FF69B4' : '#AAA';
-    ctx.fill();
-
-    // 입 (작은 미소)
-    ctx.beginPath();
-    ctx.arc(0, 10, 8, 0.1 * Math.PI, 0.9 * Math.PI);
-    ctx.strokeStyle = '#888';
-    ctx.lineWidth = 1.5;
-    ctx.stroke();
-
-    // 수염 (양쪽 3개씩)
-    ctx.strokeStyle = '#AAA';
-    ctx.lineWidth = 1;
-    for (let i = 0; i < 3; i++) {
-        const angle = -0.3 + i * 0.3;
-        // 왼쪽 수염
-        ctx.beginPath();
-        ctx.moveTo(-15, 5 + i * 3);
-        ctx.lineTo(-30, 5 + i * 3 + Math.sin(angle) * 5);
-        ctx.stroke();
-        // 오른쪽 수염
-        ctx.beginPath();
-        ctx.moveTo(15, 5 + i * 3);
-        ctx.lineTo(30, 5 + i * 3 + Math.sin(-angle) * 5);
-        ctx.stroke();
-    }
-
-    // 클릭 가능한 쥐는 반짝임 효과
-    if (isClickable) {
-        const sparklePhase = time * 3 + seed;
-        for (let i = 0; i < 4; i++) {
-            const sparkleAngle = sparklePhase + (i * Math.PI) / 2;
-            const sparkleX = Math.cos(sparkleAngle) * 35;
-            const sparkleY = Math.sin(sparkleAngle) * 35;
-            ctx.fillStyle = `rgba(255, 255, 100, ${0.5 + Math.sin(sparklePhase * 2 + i) * 0.3})`;
-            ctx.font = '14px sans-serif';
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'middle';
-            ctx.fillText('✨', sparkleX, sparkleY);
-        }
-    }
-
-    ctx.restore();
-}
-
-// Render confusion effect when player is confused (reversed controls)
-function renderConfusionEffect(ctx: CanvasRenderingContext2D): void {
-    if (typeof isConfused !== 'function' || !isConfused()) return;
-
-    // Pink tint overlay
-    ctx.save();
-    ctx.fillStyle = 'rgba(255, 105, 180, 0.15)';
-    ctx.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
-
-    // Spinning spirals around edges
-    const time = Date.now() / 1000;
-    const spiralCount = 8;
-
-    for (let i = 0; i < spiralCount; i++) {
-        const angle = (i / spiralCount) * Math.PI * 2 + time * 2;
-        const centerX = GAME_WIDTH / 2;
-        const centerY = GAME_HEIGHT / 2;
-        const radius = Math.min(GAME_WIDTH, GAME_HEIGHT) * 0.4;
-
-        const x = centerX + Math.cos(angle) * radius;
-        const y = centerY + Math.sin(angle) * radius;
-
-        ctx.fillStyle = `rgba(255, 182, 193, ${0.3 + Math.sin(time * 5 + i) * 0.2})`;
-        ctx.font = '40px sans-serif';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText('🌀', x, y);
-    }
-
-    // "혼란!" text in center
-    ctx.fillStyle = '#FF69B4';
-    ctx.font = 'bold 48px Jua, sans-serif';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText('혼란!', GAME_WIDTH / 2, 80);
-
-    ctx.restore();
-}
-
-// Render curry recovery effect (Curry-Bear E skill)
-function renderCurryRecoveryEffect(ctx: CanvasRenderingContext2D): void {
-    if (!gameState.curryRecoveryActive || !gameState.player) return;
-
-    const playerPos = gameState.player.getPosition();
-    const elapsed = Date.now() - gameState.curryRecoveryStartTime;
-    const duration = GAME_CONFIG.SKILL_CURRY_RECOVERY.EFFECT_DURATION_MS;
-    const progress = elapsed / duration;
-
-    // End effect after duration
-    if (progress >= 1) {
-        gameState.curryRecoveryActive = false;
-        return;
-    }
-
-    ctx.save();
-
-    // Rising curry particles
-    const particleCount = 12;
-    for (let i = 0; i < particleCount; i++) {
-        const angle = (i / particleCount) * Math.PI * 2;
-        const baseRadius = 60;
-        const riseAmount = progress * 100;
-        const spreadX = Math.cos(angle) * baseRadius * (1 - progress * 0.5);
-        const x = playerPos.x + spreadX;
-        const y = playerPos.y - riseAmount + Math.sin(angle * 3 + elapsed / 100) * 10;
-
-        ctx.globalAlpha = (1 - progress) * 0.8;
-        ctx.font = `${20 + progress * 10}px sans-serif`;
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText('🍛', x, y);
-    }
-
-    // Healing glow
-    const glowRadius = 80 + progress * 40;
-    const gradient = ctx.createRadialGradient(
-        playerPos.x,
-        playerPos.y,
-        0,
-        playerPos.x,
-        playerPos.y,
-        glowRadius
-    );
-    gradient.addColorStop(0, `rgba(255, 165, 0, ${(1 - progress) * 0.4})`);
-    gradient.addColorStop(0.5, `rgba(255, 215, 0, ${(1 - progress) * 0.2})`);
-    gradient.addColorStop(1, 'rgba(255, 215, 0, 0)');
-
-    ctx.fillStyle = gradient;
-    ctx.beginPath();
-    ctx.arc(playerPos.x, playerPos.y, glowRadius, 0, Math.PI * 2);
-    ctx.fill();
-
-    // "+" symbols rising
-    ctx.fillStyle = '#32CD32';
-    ctx.font = `bold ${24 + progress * 12}px sans-serif`;
-    const plusCount = 5;
-    for (let i = 0; i < plusCount; i++) {
-        const plusAngle = (i / plusCount) * Math.PI * 2 + elapsed / 200;
-        const plusRadius = 40 + progress * 60;
-        const plusX = playerPos.x + Math.cos(plusAngle) * plusRadius;
-        const plusY = playerPos.y - progress * 80 + Math.sin(elapsed / 150 + i) * 15;
-
-        ctx.globalAlpha = (1 - progress) * 0.9;
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText('+', plusX, plusY);
-    }
-
-    ctx.restore();
-}
-
-// Render stored damage UI for curry-bear
-function renderStoredDamageUI(ctx: CanvasRenderingContext2D): void {
-    // Always show for curry-bear (even when 0)
-    ctx.save();
-
-    // Position below the skill UI
-    const x = GAME_WIDTH / 2;
-    const y = GAME_HEIGHT - 120;
-
-    // Background bar
-    const barWidth = 150;
-    const barHeight = 16;
-    const fillRatio = gameState.storedDamage / gameState.maxStoredDamage;
-
-    // Background
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
-    ctx.fillRect(x - barWidth / 2, y, barWidth, barHeight);
-
-    // Fill bar (orange gradient)
-    const gradient = ctx.createLinearGradient(x - barWidth / 2, y, x + barWidth / 2, y);
-    gradient.addColorStop(0, '#FFA500');
-    gradient.addColorStop(1, '#FFD700');
-    ctx.fillStyle = gradient;
-    ctx.fillRect(x - barWidth / 2, y, barWidth * fillRatio, barHeight);
-
-    // Border
-    ctx.strokeStyle = '#FFA500';
-    ctx.lineWidth = 2;
-    ctx.strokeRect(x - barWidth / 2, y, barWidth, barHeight);
-
-    // Label with emoji
-    ctx.fillStyle = '#FFFFFF';
-    ctx.font = 'bold 14px Jua, sans-serif';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'bottom';
-    ctx.fillText(`🍛 저장: ${gameState.storedDamage}/${gameState.maxStoredDamage}`, x, y - 2);
-
-    ctx.restore();
-}
-
-// Note: triggerHitVignette is imported from rendering/uiRenderer.js
-
-// Update stored damage for curry-bear (called from network.js)
-function updateStoredDamage(storedDamage: number, maxStored: number): void {
-    gameState.storedDamage = storedDamage;
-    gameState.maxStoredDamage = maxStored;
-}
-
-// Trigger curry recovery visual effect (called from network.js)
-function triggerCurryRecoveryEffect(_healAmount: number): void {
-    gameState.curryRecoveryActive = true;
-    gameState.curryRecoveryStartTime = Date.now();
-    gameState.storedDamage = 0; // Reset stored damage after recovery
-}
-
 // Expose to window for backward compatibility with network callbacks
-window.triggerHitVignette = triggerHitVignette;
 window.updateStoredDamage = updateStoredDamage;
 window.triggerCurryRecoveryEffect = triggerCurryRecoveryEffect;
-
-// ============================================================
-// 쥐 환상 (Rat Illusion) - 내가 걸렸을 때 처리
-// ============================================================
-
-interface RatIllusionOnMeData {
-    casterId: string;
-    casterX: number;
-    casterY: number;
-    ratCount: number;
-    duration: number;
-    radius: number;
-}
-
-// 내가 쥐 환상에 걸렸을 때 시작
-function startRatIllusionOnMe(data: RatIllusionOnMeData): void {
-    logger.info(`Rat illusion started on me! Caster: ${data.casterId}`);
-
-    // 쥐 환상 효과 생성 (내 위치 기준)
-    if (!gameState.player) return;
-
-    const playerPos = gameState.player.getPosition();
-    const rats: RatState[] = [];
-
-    for (let i = 0; i < data.ratCount; i++) {
-        const angle = (i / data.ratCount) * Math.PI * 2 + (Math.random() - 0.5) * 0.5;
-        const distance = data.radius * (0.5 + Math.random() * 0.5);
-        const x = playerPos.x + Math.cos(angle) * distance;
-        const y = playerPos.y + Math.sin(angle) * distance;
-
-        const targetAngle = Math.random() * Math.PI * 2;
-        const targetDistance = data.radius * (0.3 + Math.random() * 0.7);
-
-        rats.push({
-            x,
-            y,
-            targetX: playerPos.x + Math.cos(targetAngle) * targetDistance,
-            targetY: playerPos.y + Math.sin(targetAngle) * targetDistance,
-            isReal: false, // 서버만 알고 있음!
-            angle: Math.random() * Math.PI * 2,
-            wigglePhase: Math.random() * Math.PI * 2,
-        });
-    }
-
-    ratIllusionEffect = {
-        active: true,
-        x: playerPos.x,
-        y: playerPos.y,
-        startTime: Date.now(),
-        duration: data.duration,
-        radius: data.radius,
-        rats,
-    };
-}
-
-// 쥐 환상 효과 종료
-function endRatIllusionOnMe(reason: string): void {
-    logger.info(`Rat illusion ended: ${reason}`);
-    if (ratIllusionEffect) {
-        ratIllusionEffect.active = false;
-        ratIllusionEffect.rats = [];
-    }
-}
-
-// Window에 노출
 window.startRatIllusionOnMe = startRatIllusionOnMe;
 window.endRatIllusionOnMe = endRatIllusionOnMe;
 
-// Note: findNearestEnemy and findRandomEnemy are imported from combat/enemyFinder.js
-// Expose to window for backward compatibility
-window.findNearestEnemy = findNearestEnemy;
-window.findRandomEnemy = findRandomEnemy;
-
-// Handle Q skill based on selected character
-function handleQSkill(): void {
-    if (!gameState.player || !skillManager) return;
-
-    const playerPos = gameState.player.getPosition();
-
-    switch (gameState.selectedCharacter) {
-        case 'crazy-eyes': {
-            // 눈 돌아가는 사람 - 이상한 파동
-            // Wave attack doesn't have a visual effect that blocks input
-            const waveSkill = skillManager.useSkill('q');
-            if (waveSkill) {
-                logger.debug(`Used skill: ${waveSkill.name} - wave attack`);
-
-                // Send wave attack to server
-                if (gameState.networkManager) {
-                    gameState.networkManager.sendWaveAttack();
-                }
-
-                // Show local wave effect (create if not exists)
-                if (!waveEffect) {
-                    waveEffect = {
-                        active: false,
-                        x: 0,
-                        y: 0,
-                        startTime: 0,
-                        duration: GAME_CONFIG.SKILL_WAVE.EXPAND_DURATION_MS,
-                        maxRadius: GAME_CONFIG.SKILL_WAVE.RADIUS,
-                    };
-                }
-                waveEffect.active = true;
-                waveEffect.x = playerPos.x;
-                waveEffect.y = playerPos.y;
-                waveEffect.startTime = Date.now();
-            }
-            break;
-        }
-
-        case 'curry-bear': {
-            // 카레 곰돌이 - 냄비 내려치기
-            const potSkill = skillManager.useSkill('q');
-            if (potSkill) {
-                // Get attack direction (toward nearest enemy or last movement direction)
-                let dirX = 1;
-                let dirY = 0;
-                const target = findNearestEnemy(false) as EnemyTarget | null;
-                if (target) {
-                    dirX = target.x - playerPos.x;
-                    dirY = target.y - playerPos.y;
-                    const len = Math.sqrt(dirX * dirX + dirY * dirY);
-                    if (len > 0) {
-                        dirX /= len;
-                        dirY /= len;
-                    }
-                }
-
-                logger.debug(`Used skill: ${potSkill.name} - pot smash`);
-
-                // Send pot smash to server
-                if (gameState.networkManager) {
-                    gameState.networkManager.sendPotSmash(dirX, dirY);
-                }
-
-                // Show local pot smash effect
-                if (!potSmashEffect) {
-                    potSmashEffect = {
-                        active: false,
-                        x: 0,
-                        y: 0,
-                        dirX: 0,
-                        dirY: 0,
-                        startTime: 0,
-                        duration: GAME_CONFIG.SKILL_POT_SMASH.EFFECT_DURATION_MS,
-                        range: GAME_CONFIG.SKILL_POT_SMASH.RANGE,
-                        angle: GAME_CONFIG.SKILL_POT_SMASH.ANGLE,
-                    };
-                }
-                potSmashEffect.active = true;
-                potSmashEffect.x = playerPos.x;
-                potSmashEffect.y = playerPos.y;
-                potSmashEffect.dirX = dirX;
-                potSmashEffect.dirY = dirY;
-                potSmashEffect.startTime = Date.now();
-            }
-            break;
-        }
-
-        case 'big-sis-hulk': {
-            // 헐크 언니 - 돌려 던지기
-            // 먼저 타겟을 찾고, 유효한 타겟이 있을 때만 스킬 사용
-            const target = findNearestEnemy(false) as EnemyTarget | null; // players AND dummies
-            if (!target || (target.type !== 'dummy' && !target.playerId)) {
-                logger.debug('No enemy to grab');
-                break;
-            }
-
-            const dx = target.x - playerPos.x;
-            const dy = target.y - playerPos.y;
-            const distance = Math.sqrt(dx * dx + dy * dy);
-
-            if (distance > GAME_CONFIG.SKILL_SPIN_THROW.GRAB_RANGE) {
-                logger.debug('Enemy too far to grab');
-                break;
-            }
-
-            // 유효한 타겟이 있을 때만 스킬 사용
-            const throwSkill = skillManager.useSkill('q');
-            if (throwSkill) {
-                // Calculate throw direction (away from hulk)
-                const dirX = dx / distance;
-                const dirY = dy / distance;
-
-                logger.debug(`Used skill: ${throwSkill.name} - grabbing ${target.type}`);
-
-                // Send spin throw to server
-                // Server will calculate final position and damage, then broadcast to all clients
-                // NO client-side prediction for position/damage to ensure consistency
-                if (gameState.networkManager) {
-                    const targetId = target.type === 'dummy' ? target.dummyIndex : target.playerId;
-                    gameState.networkManager.sendSpinThrow(targetId, dirX, dirY, target.type);
-                }
-
-                // Show local effect immediately for responsiveness
-                if (!spinThrowEffect) {
-                    spinThrowEffect = {
-                        active: false,
-                        x: 0,
-                        y: 0,
-                        targetX: 0,
-                        targetY: 0,
-                        startTime: 0,
-                        duration: GAME_CONFIG.SKILL_SPIN_THROW.EFFECT_DURATION_MS,
-                    };
-                }
-                spinThrowEffect.active = true;
-                spinThrowEffect.x = playerPos.x;
-                spinThrowEffect.y = playerPos.y;
-                spinThrowEffect.targetX = target.x;
-                spinThrowEffect.targetY = target.y;
-                spinThrowEffect.startTime = Date.now();
-            }
-            break;
-        }
-
-        case 'squeak-squeak': {
-            // 찍찍찍찍찍 - 쥐 환상
-            // 이미 쥐 환상이 활성화 중이면 스킬 사용 불가
-            if (ratIllusionEffect && ratIllusionEffect.active) break;
-
-            const ratSkill = skillManager.useSkill('q');
-            if (ratSkill) {
-                logger.debug(`Used skill: ${ratSkill.name} - rat illusion`);
-
-                // 서버에 쥐 환상 시전 요청 (서버가 타겟 결정 및 효과 적용)
-                if (gameState.networkManager) {
-                    gameState.networkManager.sendRatIllusion();
-                }
-            }
-            break;
-        }
-
-        case 'alien': // 외계인 - 레이저 빔
-        default: {
-            if (laserBeamEffect && !laserBeamEffect.active) {
-                const laserSkill = skillManager.useSkill('q');
-                if (laserSkill) {
-                    const target = findNearestEnemy(true) as EnemyTarget | null; // playersOnly = true
-                    if (target) {
-                        laserBeamEffect.start(playerPos.x, playerPos.y, target.x, target.y);
-                        logger.debug(
-                            `Used skill: ${laserSkill.name} - targeting ${target.type} at (${target.x.toFixed(0)}, ${target.y.toFixed(0)})`
-                        );
-
-                        // Send laser aiming to server for sync with other players
-                        if (gameState.networkManager) {
-                            gameState.networkManager.sendLaserAiming(
-                                playerPos.x,
-                                playerPos.y,
-                                laserBeamEffect.dirX,
-                                laserBeamEffect.dirY
-                            );
-                        }
-                    }
-                }
-            }
-            break;
-        }
-    }
-}
-
-// Handle W skill based on selected character
-function handleWSkill(): void {
-    if (!gameState.player || !skillManager) return;
-
-    const playerPos = gameState.player.getPosition();
-
-    switch (gameState.selectedCharacter) {
-        case 'crazy-eyes': // 눈 돌아가는 사람 - W 스킬 없음
-        case 'curry-bear': // 카레 곰돌이 - W 스킬 없음
-        case 'big-sis-hulk': // 헐크 언니 - W 스킬 없음
-            // 이 캐릭터들은 W 스킬이 없음
-            break;
-
-        case 'squeak-squeak': {
-            // 찍찍찍찍찍 - 수면 가루
-            const sleepSkill = skillManager.useSkill('w');
-            if (sleepSkill) {
-                logger.debug(`Used skill: ${sleepSkill.name} - sleep powder`);
-
-                // TODO: Phase 2에서 구현
-                // - 수면 가루 효과
-                // - 적 수면 상태
-                // - 서버 연동
-            }
-            break;
-        }
-
-        case 'alien': // 외계인 - 순간이동
-        default: {
-            const skill = skillManager.useSkill('w');
-            if (skill && teleportEffect) {
-                const target = findRandomEnemy() as EnemyTarget | null;
-
-                if (target) {
-                    // Teleport to near the target enemy
-                    teleportEffect.start(
-                        playerPos.x,
-                        playerPos.y,
-                        GAME_WIDTH,
-                        GAME_HEIGHT,
-                        target.x,
-                        target.y
-                    );
-                    logger.debug(
-                        `Used skill: ${skill.name} - teleporting to ${target.type} at (${target.x.toFixed(0)}, ${target.y.toFixed(0)})`
-                    );
-                } else {
-                    // No enemies, teleport randomly
-                    teleportEffect.start(playerPos.x, playerPos.y, GAME_WIDTH, GAME_HEIGHT);
-                    logger.debug(`Used skill: ${skill.name} - random teleport (no enemies)`);
-                }
-
-                // Send teleport event to server for sync
-                if (gameState.networkManager) {
-                    gameState.networkManager.sendTeleport(
-                        teleportEffect.startX,
-                        teleportEffect.startY,
-                        teleportEffect.endX,
-                        teleportEffect.endY
-                    );
-                }
-            }
-            break;
-        }
-    }
-}
-
-// Handle E skill based on selected character
-function handleESkill(): void {
-    if (!gameState.player || !skillManager) return;
-
-    const playerPos = gameState.player.getPosition();
-
-    switch (gameState.selectedCharacter) {
-        case 'curry-bear': {
-            // 카레 곰돌이 - 카레 회복
-            if (gameState.storedDamage <= 0) {
-                logger.debug('No stored damage to recover');
-                return;
-            }
-
-            const curryRecoverySkill = skillManager.useSkill('e');
-            if (curryRecoverySkill) {
-                logger.debug(
-                    `Used skill: ${curryRecoverySkill.name} - recovering ${gameState.storedDamage} HP`
-                );
-
-                // Trigger recovery effect
-                gameState.curryRecoveryActive = true;
-                gameState.curryRecoveryStartTime = Date.now();
-
-                // Send to server
-                if (gameState.networkManager) {
-                    gameState.networkManager.sendCurryRecovery();
-                }
-            }
-            break;
-        }
-
-        case 'big-sis-hulk': {
-            // 헐크 언니 - 폭주
-            // Don't allow if rage is already active
-            if (gameState.rageActive) return;
-
-            const rageSkill = skillManager.useSkill('e');
-            if (rageSkill) {
-                logger.debug(`Used skill: ${rageSkill.name} - RAGE activated!`);
-
-                // Initialize rage state
-                gameState.rageActive = true;
-                gameState.rageStartTime = Date.now();
-                gameState.rageDuration = GAME_CONFIG.SKILL_RAGE.DURATION_MS;
-
-                // Send to server
-                if (gameState.networkManager) {
-                    gameState.networkManager.sendRageStart();
-                }
-            }
-            break;
-        }
-
-        case 'crazy-eyes': {
-            // 눈 돌아가는 사람 - 광기 산책
-            // Don't allow if madness is already active
-            if (gameState.madnessActive) return;
-
-            const madnessSkill = skillManager.useSkill('e');
-            if (madnessSkill) {
-                logger.debug(`Used skill: ${madnessSkill.name} - madness walk activated`);
-
-                // Initialize madness state
-                gameState.madnessActive = true;
-                gameState.madnessStartTime = Date.now();
-                gameState.madnessDuration = GAME_CONFIG.SKILL_MADNESS.DURATION_MS;
-                gameState.madnessLastTickTime = Date.now();
-                gameState.madnessTickInterval = GAME_CONFIG.SKILL_MADNESS.TICK_INTERVAL_MS;
-                gameState.madnessRadius = GAME_CONFIG.SKILL_MADNESS.RADIUS;
-
-                // Send madness start to server
-                if (gameState.networkManager) {
-                    gameState.networkManager.sendMadnessStart();
-                }
-            }
-            break;
-        }
-
-        case 'squeak-squeak': {
-            // 찍찍찍찍찍 - 쥐 폭탄
-            const bombSkill = skillManager.useSkill('e');
-            if (bombSkill) {
-                logger.debug(`Used skill: ${bombSkill.name} - rat bomb`);
-
-                // TODO: Phase 2에서 구현
-                // - 폭탄 폭발 + 쥐 4마리 소환
-                // - 쥐들이 적 공격
-                // - 서버 연동
-            }
-            break;
-        }
-
-        case 'alien': // 외계인 - 텔레파시
-        default: {
-            if (telepathyEffect && !telepathyEffect.active) {
-                const telepathySkill = skillManager.useSkill('e');
-                if (telepathySkill) {
-                    telepathyEffect.start(playerPos.x, playerPos.y);
-                    logger.debug(`Used skill: ${telepathySkill.name}`);
-
-                    // Send telepathy event to server for sync
-                    if (gameState.networkManager) {
-                        gameState.networkManager.sendTelepathy(
-                            playerPos.x,
-                            playerPos.y,
-                            telepathyEffect.radius
-                        );
-                    }
-                }
-            }
-            break;
-        }
-    }
-}
-
-// Handle R skill based on selected character (squeak-squeak: 인형 안고 자기)
-function handleRSkill(): void {
-    if (!gameState.player || !skillManager) return;
-
-    // Only squeak-squeak has R skill for now
-    if (gameState.selectedCharacter !== 'squeak-squeak') return;
-
-    const rSkill = skillManager.useSkill('r');
-    if (rSkill) {
-        logger.debug(`Used skill: ${rSkill.name} - doll hug shield`);
-
-        // TODO: Phase 2에서 구현
-        // - 쥐 모양 방어막 생성
-        // - 공격 반사
-        // - 서버 연동
-    }
-}
-
-// Handle T skill based on selected character (squeak-squeak: 쥐 살리기)
-function handleTSkill(): void {
-    if (!gameState.player || !skillManager) return;
-
-    // Only squeak-squeak has T skill for now
-    if (gameState.selectedCharacter !== 'squeak-squeak') return;
-
-    const tSkill = skillManager.useSkill('t');
-    if (tSkill) {
-        logger.debug(`Used skill: ${tSkill.name} - rat revive!`);
-
-        // TODO: Phase 2에서 구현
-        // - 죽은 아군 전원 부활
-        // - 서버 연동
-    }
-}
-
-// Initialize skills based on selected character
-function initializeCharacterSkills(characterId: CharacterType): void {
-    if (!skillManager) return;
-
-    // Clear existing skills (skills is a Map, skillOrder is an array)
-    skillManager.skills.clear();
-    skillManager.skillOrder = [];
-
-    switch (characterId) {
-        case 'crazy-eyes': // 눈 돌아가는 사람
-            // Q = 이상한 파동 (Wave Attack) - 기본 공격
-            skillManager.addSkill(
-                new Skill(
-                    '이상한 파동',
-                    'q',
-                    GAME_CONFIG.SKILL_WAVE.COOLDOWN_MS,
-                    GAME_CONFIG.SKILL_WAVE.COLOR,
-                    '🌀'
-                )
-            );
-            // E = 광기 산책
-            skillManager.addSkill(
-                new Skill(
-                    '광기 산책',
-                    'e',
-                    GAME_CONFIG.SKILL_MADNESS.COOLDOWN_MS,
-                    GAME_CONFIG.SKILL_MADNESS.COLOR,
-                    '👀'
-                )
-            );
-            logger.info('Initialized skills for 눈 돌아가는 사람');
-            break;
-
-        case 'curry-bear': // 카레 곰돌이
-            // Q = 냄비 내려치기
-            skillManager.addSkill(
-                new Skill(
-                    '냄비 내려치기',
-                    'q',
-                    GAME_CONFIG.SKILL_POT_SMASH.COOLDOWN_MS,
-                    GAME_CONFIG.SKILL_POT_SMASH.COLOR,
-                    '🍲'
-                )
-            );
-            // E = 카레 회복
-            skillManager.addSkill(
-                new Skill(
-                    '카레 회복',
-                    'e',
-                    GAME_CONFIG.SKILL_CURRY_RECOVERY.COOLDOWN_MS,
-                    GAME_CONFIG.SKILL_CURRY_RECOVERY.COLOR,
-                    '🍛'
-                )
-            );
-            logger.info('Initialized skills for 카레 곰돌이');
-            break;
-
-        case 'big-sis-hulk': // 헐크 언니
-            // Q = 돌려 던지기
-            skillManager.addSkill(
-                new Skill(
-                    '돌려 던지기',
-                    'q',
-                    GAME_CONFIG.SKILL_SPIN_THROW.COOLDOWN_MS,
-                    GAME_CONFIG.SKILL_SPIN_THROW.COLOR,
-                    '🌀'
-                )
-            );
-            // E = 폭주
-            skillManager.addSkill(
-                new Skill(
-                    '폭주',
-                    'e',
-                    GAME_CONFIG.SKILL_RAGE.COOLDOWN_MS,
-                    GAME_CONFIG.SKILL_RAGE.COLOR,
-                    '🔥'
-                )
-            );
-            logger.info('Initialized skills for 헐크 언니');
-            break;
-
-        case 'squeak-squeak': // 찍찍찍찍찍 🐭
-            // Q = 쥐 환상
-            skillManager.addSkill(
-                new Skill(
-                    '쥐 환상',
-                    'q',
-                    GAME_CONFIG.SKILL_RAT_ILLUSION.COOLDOWN_MS,
-                    GAME_CONFIG.SKILL_RAT_ILLUSION.COLOR,
-                    '👻'
-                )
-            );
-            // W = 수면 가루
-            skillManager.addSkill(
-                new Skill(
-                    '수면 가루',
-                    'w',
-                    GAME_CONFIG.SKILL_SLEEP_POWDER.COOLDOWN_MS,
-                    GAME_CONFIG.SKILL_SLEEP_POWDER.COLOR,
-                    '😴'
-                )
-            );
-            // E = 쥐 폭탄
-            skillManager.addSkill(
-                new Skill(
-                    '쥐 폭탄',
-                    'e',
-                    GAME_CONFIG.SKILL_RAT_BOMB.COOLDOWN_MS,
-                    GAME_CONFIG.SKILL_RAT_BOMB.COLOR,
-                    '💣'
-                )
-            );
-            // R = 인형 안고 자기
-            skillManager.addSkill(
-                new Skill(
-                    '인형 안고 자기',
-                    'r',
-                    GAME_CONFIG.SKILL_DOLL_HUG.COOLDOWN_MS,
-                    GAME_CONFIG.SKILL_DOLL_HUG.COLOR,
-                    '🧸'
-                )
-            );
-            // T = 쥐 살리기
-            skillManager.addSkill(
-                new Skill(
-                    '쥐 살리기',
-                    't',
-                    GAME_CONFIG.SKILL_RAT_REVIVE.COOLDOWN_MS,
-                    GAME_CONFIG.SKILL_RAT_REVIVE.COLOR,
-                    '🐭'
-                )
-            );
-            logger.info('Initialized skills for 찍찍찍찍찍 (5 skills)');
-            break;
-
-        case 'alien': // 외계인 (기본)
-        default:
-            // Q = 레이저 빔
-            skillManager.addSkill(
-                new Skill(
-                    '레이저',
-                    'q',
-                    GAME_CONFIG.SKILL_LASER.COOLDOWN_MS,
-                    GAME_CONFIG.SKILL_LASER.COLOR,
-                    '🎇'
-                )
-            );
-            // W = 순간이동
-            skillManager.addSkill(
-                new Skill(
-                    '순간이동',
-                    'w',
-                    GAME_CONFIG.SKILL_TELEPORT.COOLDOWN_MS,
-                    GAME_CONFIG.SKILL_TELEPORT.COLOR,
-                    '💫'
-                )
-            );
-            // E = 텔레파시
-            skillManager.addSkill(
-                new Skill(
-                    '텔레파시',
-                    'e',
-                    GAME_CONFIG.SKILL_TELEPATHY.COOLDOWN_MS,
-                    GAME_CONFIG.SKILL_TELEPATHY.COLOR,
-                    '👽'
-                )
-            );
-            logger.info('Initialized skills for 외계인');
-            break;
-    }
-}
-
 // Cleanup game resources to prevent memory leaks
 function cleanupGame(): void {
-    // Stop game loop
     gameState.running = false;
 
-    // Cleanup input system
     if (typeof cleanupInput === 'function') {
         cleanupInput();
     }
 
-    // Cleanup network
     if (gameState.networkManager) {
         gameState.networkManager.disconnect();
         gameState.networkManager = null;
     }
 
-    // Remove resize handler
     const currentResizeHandler = getResizeHandler();
     if (currentResizeHandler) {
         window.removeEventListener('resize', currentResizeHandler);
         setResizeHandler(() => {});
     }
 
-    // Clear game state objects
     gameState.player = null;
     gameState.lobbyManager = null;
     gameState.shardManager = null;
@@ -2327,15 +757,9 @@ function cleanupGame(): void {
     gameState.dummies = [];
 
     // Clear module-level references
-    laserBeamEffect = null;
-    teleportEffect = null;
-    telepathyEffect = null;
     shardManager = null;
     chatManager = null;
-    skillManager = null;
-    waveEffect = null;
-    potSmashEffect = null;
-    spinThrowEffect = null;
+    cleanupSkillSystem();
 
     logger.info('Game cleaned up');
 }

@@ -106,11 +106,3 @@ export const RageEffectMixin = {
         ctx.restore();
     },
 };
-
-// Backward compatibility: expose to window
-declare global {
-    interface Window {
-        RageEffectMixin: typeof RageEffectMixin;
-    }
-}
-window.RageEffectMixin = RageEffectMixin;

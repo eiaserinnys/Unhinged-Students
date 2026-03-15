@@ -253,6 +253,3 @@ export const GAME_CONFIG: GameConfig = {
 
 // Default export
 export default GAME_CONFIG;
-
-// Backward compatibility: expose to window
-window.GAME_CONFIG = GAME_CONFIG;

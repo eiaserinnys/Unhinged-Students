@@ -234,11 +234,3 @@ export const RatIllusionEffectMixin = {
         ctx.restore();
     },
 };
-
-// Backward compatibility: expose to window
-declare global {
-    interface Window {
-        RatIllusionEffectMixin: typeof RatIllusionEffectMixin;
-    }
-}
-window.RatIllusionEffectMixin = RatIllusionEffectMixin;

@@ -1446,6 +1446,3 @@ export class NetworkManager implements INetworkManager {
         logger.info('Network manager cleaned up');
     }
 }
-
-// Backward compatibility: expose to window
-window.NetworkManager = NetworkManager;

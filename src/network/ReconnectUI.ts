@@ -229,11 +229,3 @@ export class ReconnectUI implements IReconnectUI {
         }
     }
 }
-
-// Backward compatibility: expose to window
-declare global {
-    interface Window {
-        ReconnectUI: typeof ReconnectUI;
-    }
-}
-window.ReconnectUI = ReconnectUI;

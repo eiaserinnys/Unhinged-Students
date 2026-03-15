@@ -1,28 +1,7 @@
 // Skill System for Unhinged Students
 
 import { GAME_CONFIG } from './config.js';
-
-interface LaserLine {
-    x1: number;
-    y1: number;
-    x2: number;
-    y2: number;
-}
-
-interface TeleportPosition {
-    x: number;
-    y: number;
-    teleported: boolean;
-}
-
-interface DamageArea {
-    x: number;
-    y: number;
-    radius: number;
-    damage?: number;
-    damagePerTarget?: number;
-    maxHeal?: number;
-}
+import type { LaserLine, TeleportPosition, DamageArea } from './types/index.js';
 
 // Base Skill class
 export class Skill {

@@ -120,11 +120,3 @@ export const SpinThrowEffectMixin = {
         ctx.restore();
     },
 };
-
-// Backward compatibility: expose to window
-declare global {
-    interface Window {
-        SpinThrowEffectMixin: typeof SpinThrowEffectMixin;
-    }
-}
-window.SpinThrowEffectMixin = SpinThrowEffectMixin;

@@ -105,14 +105,3 @@ export function findRandomEnemy(): EnemyInfo | null {
 
     return enemies[Math.floor(Math.random() * enemies.length)];
 }
-
-// Expose to global scope
-declare global {
-    interface Window {
-        findNearestEnemy: typeof findNearestEnemy;
-        findRandomEnemy: typeof findRandomEnemy;
-    }
-}
-
-window.findNearestEnemy = findNearestEnemy;
-window.findRandomEnemy = findRandomEnemy;
