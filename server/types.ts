@@ -301,8 +301,10 @@ export interface PlayerDamagedData {
     hitPlayers: HitPlayerInfo[];
 }
 
-// Re-exported from shared/types.ts — shared/combat.ts uses this type
-export type { KilledPlayerInfo } from '../shared/types';
+// Import and re-export from shared/types.ts
+// Import needed for local usage (AreaDamageResult), re-export for consumers
+import type { KilledPlayerInfo } from '../shared/types';
+export type { KilledPlayerInfo };
 
 export interface PlayerDiedData {
     playerId: string;
