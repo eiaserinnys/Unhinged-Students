@@ -50,8 +50,10 @@ export interface Player {
     rageStartTime?: number;
     rageStacks?: number;
     rageTimeout?: ReturnType<typeof setTimeout>;
-    // Squeak-squeak specific (rat illusion = invincible)
-    ratIllusionUntil?: number;
+    // Squeak-squeak specific
+    ratIllusionUntil?: number;   // invincible while under rat illusion
+    sleepUntil?: number;          // cannot move while asleep (sleep powder W)
+    ratIllusionKilled?: boolean;  // killed by rat illusion → cannot be revived by T skill
     // Shard collection tracking (server-authoritative leveling)
     shardCollectCount?: number;
 }
@@ -147,6 +149,12 @@ export interface ClientToServerEvents {
     // Rat Illusion events
     ratIllusion: (data: RatIllusionData) => void;
     ratClick: (data: RatClickData) => void;
+
+    // Squeak-squeak W/E/R/T skill events
+    sleepPowder: () => void;
+    ratBomb: () => void;
+    dollHug: () => void;
+    ratRevive: () => void;
 }
 
 // Server to Client Events
@@ -213,6 +221,14 @@ export interface ServerToClientEvents {
     ratIllusionSuccess: (data: RatIllusionSuccessData) => void;
     ratIllusionFail: (data: RatIllusionFailData) => void;
     ratIllusionEffect: (data: RatIllusionEffectData) => void;
+
+    // Squeak-squeak W/E/R/T skill events
+    sleepPowderEffect: (data: SleepPowderEffectData) => void;
+    ratBombEffect: (data: RatBombEffectData) => void;
+    dollHugShieldStart: (data: DollHugShieldStartData) => void;
+    dollHugShieldHit: (data: DollHugShieldHitData) => void;
+    dollHugShieldEnd: (data: DollHugShieldEndData) => void;
+    ratReviveEffect: (data: RatReviveEffectData) => void;
 }
 
 // ========================================
@@ -618,6 +634,68 @@ export interface RatIllusionEffectData {
     targetId: string;
     casterX: number;
     casterY: number;
+}
+
+// Sleep Powder events (W)
+export interface SleepPowderEffectData {
+    casterId: string;
+    casterX: number;
+    casterY: number;
+    radius: number;
+    affectedPlayers: Array<{
+        playerId: string;
+        duration: number;
+    }>;
+}
+
+// Rat Bomb events (E)
+export interface RatBombEffectData {
+    casterId: string;
+    casterX: number;
+    casterY: number;
+    explosionDamage: number;
+    rats: Array<{
+        x: number;
+        y: number;
+        damage: number;
+    }>;
+    hitPlayers: Array<{
+        playerId: string;
+        currentHP: number;
+        maxHP: number;
+    }>;
+}
+
+// Doll Hug events (R)
+export interface DollHugShieldStartData {
+    playerId: string;
+    shieldHP: number;
+    maxShieldHP: number;
+    duration: number;
+}
+
+export interface DollHugShieldHitData {
+    playerId: string;
+    absorbed: number;
+    shieldHP: number;
+    maxShieldHP: number;
+}
+
+export interface DollHugShieldEndData {
+    playerId: string;
+    reason: string;
+}
+
+// Rat Revive events (T)
+export interface RatReviveEffectData {
+    casterId: string;
+    revivedPlayers: Array<{
+        playerId: string;
+        x: number;
+        y: number;
+        currentHP: number;
+        maxHP: number;
+    }>;
 }
 
 // ========================================

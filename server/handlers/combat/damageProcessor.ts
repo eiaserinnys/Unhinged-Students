@@ -12,6 +12,7 @@ import {
 } from '../../validation';
 import { checkAndHandleDeath } from '../../../shared/combat';
 import { players, dummies } from '../../gameState';
+import { absorbShieldDamage } from './dollHugHandler';
 import type {
     TypedServer,
     Player,
@@ -34,8 +35,11 @@ export function applyDamageWithPassives(
     damage: number,
     io: TypedServer
 ): { currentHP: number; storedDamageChanged: boolean } {
-    const actualDamage = Math.min(damage, player.currentHP);
-    player.currentHP = Math.max(0, player.currentHP - damage);
+    // Squeak-squeak passive: doll hug shield absorbs damage first (R skill)
+    const effectiveDamage = absorbShieldDamage(player.playerId, damage, io);
+
+    const actualDamage = Math.min(effectiveDamage, player.currentHP);
+    player.currentHP = Math.max(0, player.currentHP - effectiveDamage);
 
     let storedDamageChanged = false;
 

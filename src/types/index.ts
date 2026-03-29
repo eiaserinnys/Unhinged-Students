@@ -75,6 +75,14 @@ export interface GameState {
     waveEffect: IWaveEffect | null;
     potSmashEffect: IPotSmashEffect | null;
     spinThrowEffect: ISpinThrowEffect | null;
+    // Squeak-Squeak skill effects
+    ratIllusionCastSuccessTime: number;
+    sleepPowderEffect: SleepPowderEffectState | null;
+    sleepUntil: number;
+    ratBombEffect: RatBombEffectState | null;
+    dollHugShields: Map<string, DollHugShieldState> | null;
+    ratReviveEffect: RatReviveEffectState | null;
+    playerId?: string | null;
 }
 
 // =====================================================
@@ -217,6 +225,44 @@ export interface GameEventCallbacks {
         radius: number;
     }): void;
     onRatIllusionEnd(reason: string): void;
+    // Squeak-Squeak Q caster feedback
+    onRatIllusionCastSuccess?(targetId: string): void;
+    // Squeak-Squeak W
+    onSleepPowderEffect?(data: {
+        casterId: string;
+        casterX: number;
+        casterY: number;
+        affectedPlayers: Array<{ playerId: string; duration: number }>;
+    }): void;
+    onSleepStart?(duration: number): void;
+    // Squeak-Squeak E
+    onRatBombEffect?(data: {
+        casterId: string;
+        casterX: number;
+        casterY: number;
+        explosionDamage: number;
+        rats: Array<{ x: number; y: number; damage: number }>;
+        hitPlayers: Array<{ playerId: string; currentHP: number; maxHP: number }>;
+    }): void;
+    // Squeak-Squeak R
+    onDollHugShieldStart?(data: {
+        playerId: string;
+        shieldHP: number;
+        maxShieldHP: number;
+        duration: number;
+    }): void;
+    onDollHugShieldHit?(data: {
+        playerId: string;
+        absorbed: number;
+        shieldHP: number;
+        maxShieldHP: number;
+    }): void;
+    onDollHugShieldEnd?(data: { playerId: string; reason: string }): void;
+    // Squeak-Squeak T
+    onRatReviveEffect?(data: {
+        casterId: string;
+        revivedPlayers: Array<{ playerId: string; x: number; y: number; currentHP: number; maxHP: number }>;
+    }): void;
 }
 
 export interface INetworkManager {
@@ -274,6 +320,10 @@ export interface INetworkManager {
     sendRageEnd(): void;
     sendRatIllusion(targetId?: string): void;
     sendRatClick(ratIndex: number): void;
+    sendSleepPowder(): void;
+    sendRatBomb(): void;
+    sendDollHug(): void;
+    sendRatRevive(): void;
     addRemotePlayer(playerData: PlayerData): void;
     removeRemotePlayer(playerId: string): void;
     sendPlayerPosition(
@@ -469,6 +519,39 @@ export interface ISpinThrowEffect {
     isActive: boolean;
     render(ctx: CanvasRenderingContext2D): void;
     start(startX: number, startY: number, endX: number, endY: number): void;
+}
+
+// Squeak-Squeak skill state types
+export interface SleepPowderEffectState {
+    active: boolean;
+    casterId: string;
+    casterX: number;
+    casterY: number;
+    affectedPlayers: Array<{ playerId: string; duration: number }>;
+    startTime: number;
+}
+
+export interface RatBombEffectState {
+    active: boolean;
+    casterId: string;
+    casterX: number;
+    casterY: number;
+    rats: Array<{ x: number; y: number; damage: number }>;
+    startTime: number;
+}
+
+export interface DollHugShieldState {
+    shieldHP: number;
+    maxShieldHP: number;
+    startTime: number;
+    duration: number;
+}
+
+export interface RatReviveEffectState {
+    active: boolean;
+    casterId: string;
+    revivedPlayers: Array<{ playerId: string; x: number; y: number; currentHP: number; maxHP: number }>;
+    startTime: number;
 }
 
 // =====================================================

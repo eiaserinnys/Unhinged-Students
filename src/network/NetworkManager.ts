@@ -881,7 +881,93 @@ export class NetworkManager implements INetworkManager {
                 casterY: number;
             };
             logger.debug(`Rat illusion effect: ${casterId} -> ${targetId}`);
-            // TODO: 구경꾼용 시각 효과 표시
+            // 시전자 피드백: 나한테 성공적으로 걸었다는 표시
+            if (casterId === this.playerId) {
+                this.gameCallbacks?.onRatIllusionCastSuccess?.(targetId);
+            }
+        });
+
+        // Sleep Powder effect (Squeak-Squeak W skill)
+        this.socket.on('sleepPowderEffect', (data: unknown) => {
+            const { casterId, casterX, casterY, affectedPlayers } = data as {
+                casterId: string;
+                casterX: number;
+                casterY: number;
+                affectedPlayers: Array<{ playerId: string; duration: number }>;
+            };
+            logger.debug(`Sleep powder by ${casterId}: ${affectedPlayers.length} targets`);
+            this.gameCallbacks?.onSleepPowderEffect?.({ casterId, casterX, casterY, affectedPlayers });
+            // 내가 잠들었을 때 처리
+            const myEntry = affectedPlayers.find(p => p.playerId === this.playerId);
+            if (myEntry && this.localPlayer) {
+                logger.info(`You fell asleep for ${myEntry.duration}ms!`);
+                this.gameCallbacks?.onSleepStart?.(myEntry.duration);
+            }
+        });
+
+        // Rat Bomb effect (Squeak-Squeak E skill)
+        this.socket.on('ratBombEffect', (data: unknown) => {
+            const { casterId, casterX, casterY, explosionDamage, rats, hitPlayers } = data as {
+                casterId: string;
+                casterX: number;
+                casterY: number;
+                explosionDamage: number;
+                rats: Array<{ x: number; y: number; damage: number }>;
+                hitPlayers: Array<{ playerId: string; currentHP: number; maxHP: number }>;
+            };
+            logger.debug(`Rat bomb by ${casterId}, hit ${hitPlayers.length} players`);
+            this.gameCallbacks?.onRatBombEffect?.({ casterId, casterX, casterY, explosionDamage, rats, hitPlayers });
+            // 내가 맞았을 때 HP 업데이트
+            const myEntry = hitPlayers.find(p => p.playerId === this.playerId);
+            if (myEntry && this.localPlayer) {
+                this.localPlayer.currentHP = myEntry.currentHP;
+                this.localPlayer.hitFlashTime = Date.now();
+            }
+        });
+
+        // Doll Hug Shield events (Squeak-Squeak R skill)
+        this.socket.on('dollHugShieldStart', (data: unknown) => {
+            const { playerId, shieldHP, maxShieldHP, duration } = data as {
+                playerId: string;
+                shieldHP: number;
+                maxShieldHP: number;
+                duration: number;
+            };
+            logger.debug(`Doll hug shield start: ${playerId} (${shieldHP}HP, ${duration}ms)`);
+            this.gameCallbacks?.onDollHugShieldStart?.({ playerId, shieldHP, maxShieldHP, duration });
+        });
+
+        this.socket.on('dollHugShieldHit', (data: unknown) => {
+            const { playerId, absorbed, shieldHP, maxShieldHP } = data as {
+                playerId: string;
+                absorbed: number;
+                shieldHP: number;
+                maxShieldHP: number;
+            };
+            logger.debug(`Doll hug shield hit: ${playerId} absorbed ${absorbed}`);
+            this.gameCallbacks?.onDollHugShieldHit?.({ playerId, absorbed, shieldHP, maxShieldHP });
+        });
+
+        this.socket.on('dollHugShieldEnd', (data: unknown) => {
+            const { playerId, reason } = data as { playerId: string; reason: string };
+            logger.debug(`Doll hug shield ended: ${playerId} (${reason})`);
+            this.gameCallbacks?.onDollHugShieldEnd?.({ playerId, reason });
+        });
+
+        // Rat Revive effect (Squeak-Squeak T skill)
+        this.socket.on('ratReviveEffect', (data: unknown) => {
+            const { casterId, revivedPlayers } = data as {
+                casterId: string;
+                revivedPlayers: Array<{ playerId: string; x: number; y: number; currentHP: number; maxHP: number }>;
+            };
+            logger.info(`Rat revive by ${casterId}: ${revivedPlayers.length} revived`);
+            this.gameCallbacks?.onRatReviveEffect?.({ casterId, revivedPlayers });
+            // 내가 부활했을 때 처리
+            const myRevive = revivedPlayers.find(p => p.playerId === this.playerId);
+            if (myRevive && this.localPlayer) {
+                this.localPlayer.currentHP = myRevive.currentHP;
+                logger.info(`You were revived with ${myRevive.currentHP}/${myRevive.maxHP} HP!`);
+            }
         });
 
         // Shard events
@@ -1269,6 +1355,30 @@ export class NetworkManager implements INetworkManager {
     sendRatClick(ratIndex: number): void {
         if (!this.connected || !this.socket) return;
         this.socket.emit('ratClick', { ratIndex });
+    }
+
+    // Send sleep powder to server (Squeak-Squeak W skill)
+    sendSleepPowder(): void {
+        if (!this.connected || !this.socket) return;
+        this.socket.emit('sleepPowder');
+    }
+
+    // Send rat bomb to server (Squeak-Squeak E skill)
+    sendRatBomb(): void {
+        if (!this.connected || !this.socket) return;
+        this.socket.emit('ratBomb');
+    }
+
+    // Send doll hug shield to server (Squeak-Squeak R skill)
+    sendDollHug(): void {
+        if (!this.connected || !this.socket) return;
+        this.socket.emit('dollHug');
+    }
+
+    // Send rat revive to server (Squeak-Squeak T skill)
+    sendRatRevive(): void {
+        if (!this.connected || !this.socket) return;
+        this.socket.emit('ratRevive');
     }
 
     addRemotePlayer(playerData: PlayerData): void {

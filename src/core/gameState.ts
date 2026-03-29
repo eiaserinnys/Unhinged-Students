@@ -81,6 +81,17 @@ export const gameState: GameState = {
     potSmashEffect: null,
     // Spin throw effect (Hulk Sister Q skill)
     spinThrowEffect: null,
+    // Squeak-Squeak Q — caster success feedback
+    ratIllusionCastSuccessTime: 0,
+    // Squeak-Squeak W — sleep powder effect
+    sleepPowderEffect: null,
+    sleepUntil: 0,
+    // Squeak-Squeak E — rat bomb effect
+    ratBombEffect: null,
+    // Squeak-Squeak R — doll hug shields
+    dollHugShields: null,
+    // Squeak-Squeak T — rat revive effect
+    ratReviveEffect: null,
 };
 
 // Getter/setter functions for viewport variables

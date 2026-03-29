@@ -74,6 +74,14 @@ import {
     triggerCurryRecoveryEffect,
     startRatIllusionOnMe,
     endRatIllusionOnMe,
+    onRatIllusionCastSuccess,
+    onSleepPowderEffect,
+    onSleepStart,
+    onRatBombEffect,
+    onDollHugShieldStart,
+    onDollHugShieldHit,
+    onDollHugShieldEnd,
+    onRatReviveEffect,
     getPotSmashEffect,
 } from './game/index.js';
 
@@ -259,6 +267,14 @@ function startGame(): void {
         onCurryRecoveryEffect: triggerCurryRecoveryEffect,
         onRatIllusionStart: startRatIllusionOnMe,
         onRatIllusionEnd: endRatIllusionOnMe,
+        onRatIllusionCastSuccess,
+        onSleepPowderEffect,
+        onSleepStart,
+        onRatBombEffect,
+        onDollHugShieldStart,
+        onDollHugShieldHit,
+        onDollHugShieldEnd,
+        onRatReviveEffect,
     });
 
     gameState.networkManager.connect();

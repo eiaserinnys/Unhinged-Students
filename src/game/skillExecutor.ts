@@ -446,6 +446,9 @@ export function handleWSkill(): void {
             const sleepSkill = skillManager.useSkill('w');
             if (sleepSkill) {
                 logger.debug(`Used skill: ${sleepSkill.name} - sleep powder`);
+                if (gameState.networkManager) {
+                    gameState.networkManager.sendSleepPowder();
+                }
             }
             break;
         }
@@ -561,6 +564,9 @@ export function handleESkill(): void {
             const bombSkill = skillManager.useSkill('e');
             if (bombSkill) {
                 logger.debug(`Used skill: ${bombSkill.name} - rat bomb`);
+                if (gameState.networkManager) {
+                    gameState.networkManager.sendRatBomb();
+                }
             }
             break;
         }
@@ -598,6 +604,9 @@ export function handleRSkill(): void {
     const rSkill = skillManager.useSkill('r');
     if (rSkill) {
         logger.debug(`Used skill: ${rSkill.name} - doll hug shield`);
+        if (gameState.networkManager) {
+            gameState.networkManager.sendDollHug();
+        }
     }
 }
 
@@ -612,6 +621,9 @@ export function handleTSkill(): void {
     const tSkill = skillManager.useSkill('t');
     if (tSkill) {
         logger.debug(`Used skill: ${tSkill.name} - rat revive!`);
+        if (gameState.networkManager) {
+            gameState.networkManager.sendRatRevive();
+        }
     }
 }
 

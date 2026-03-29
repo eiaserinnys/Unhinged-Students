@@ -13,6 +13,10 @@ import { registerCurryHandlers } from './curryHandler';
 import { registerSpinThrowHandlers } from './spinThrowHandler';
 import { registerRageHandlers } from './rageHandler';
 import { registerRatIllusionHandlers } from './ratIllusionHandler';
+import { registerSleepPowderHandlers } from './sleepPowderHandler';
+import { registerRatBombHandlers } from './ratBombHandler';
+import { registerDollHugHandlers } from './dollHugHandler';
+import { registerRatReviveHandlers } from './ratReviveHandler';
 import type { TypedSocket, TypedServer } from '../../types';
 
 /**
@@ -30,4 +34,8 @@ export function registerCombatHandlers(socket: TypedSocket, io: TypedServer): vo
     registerSpinThrowHandlers(socket, io);
     registerRageHandlers(socket, io);
     registerRatIllusionHandlers(socket, io);
+    registerSleepPowderHandlers(socket, io);
+    registerRatBombHandlers(socket, io);
+    registerDollHugHandlers(socket, io);
+    registerRatReviveHandlers(socket, io);
 }

@@ -113,6 +113,8 @@ export function registerPlayerHandlers(socket: TypedSocket, io: TypedServer): vo
             }
             restored.confusedUntil = undefined;
             restored.ratIllusionUntil = undefined;
+            restored.sleepUntil = undefined;
+            restored.ratIllusionKilled = undefined;
             restored.telepathyLastTickTime = undefined;
             restored.madnessLastTickTime = undefined;
             // Clear rage timeout (was already cleared on disconnect)
@@ -195,6 +197,11 @@ export function registerPlayerHandlers(socket: TypedSocket, io: TypedServer): vo
         }
 
         const existingPlayer = players.get(socket.id);
+
+        // Block movement when asleep (sleep powder W skill)
+        if (existingPlayer?.sleepUntil && existingPlayer.sleepUntil > Date.now()) {
+            return;
+        }
 
         // Clamp coordinates to game bounds (anti-cheat: prevent out-of-bounds positions)
         const clamped = clampCoordinates(data.x, data.y);
@@ -283,6 +290,8 @@ export function registerPlayerHandlers(socket: TypedSocket, io: TypedServer): vo
             rageTimeout: existingPlayer?.rageTimeout,
             confusedUntil: existingPlayer?.confusedUntil,
             ratIllusionUntil: existingPlayer?.ratIllusionUntil,
+            sleepUntil: existingPlayer?.sleepUntil,
+            ratIllusionKilled: existingPlayer?.ratIllusionKilled,
             telepathyLastTickTime: existingPlayer?.telepathyLastTickTime,
             madnessLastTickTime: existingPlayer?.madnessLastTickTime,
             madnessStartTime: existingPlayer?.madnessStartTime,

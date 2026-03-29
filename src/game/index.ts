@@ -53,4 +53,12 @@ export {
     triggerCurryRecoveryEffect,
     startRatIllusionOnMe,
     endRatIllusionOnMe,
+    onRatIllusionCastSuccess,
+    onSleepPowderEffect,
+    onSleepStart,
+    onRatBombEffect,
+    onDollHugShieldStart,
+    onDollHugShieldHit,
+    onDollHugShieldEnd,
+    onRatReviveEffect,
 } from './combatState.js';
