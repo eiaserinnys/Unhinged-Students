@@ -4,8 +4,9 @@
  * 못 찾으면 초당 체력 10 감소
  */
 import logger from '../../../logger';
+import { SERVER_CONFIG } from '../../config';
 import { GAME_CONFIG } from '../../../shared/config';
-import { players, dummies } from '../../gameState';
+import { players, dummies, rateLimit } from '../../gameState';
 import type { TypedSocket, TypedServer } from '../../types';
 
 // 활성화된 쥐 환상 효과 추적
@@ -54,6 +55,10 @@ function endRatIllusion(targetId: string, io: TypedServer, reason: string): void
 export function registerRatIllusionHandlers(socket: TypedSocket, io: TypedServer): void {
     // 쥐 환상 시전
     socket.on('ratIllusion', (data: { targetId?: string }) => {
+        if (!rateLimit(socket.id, 'ratIllusion', SERVER_CONFIG.RATE_LIMIT.RAT_ILLUSION_MS)) {
+            return;
+        }
+
         const caster = players.get(socket.id);
         if (!caster) return;
         if (caster.isDead) return;

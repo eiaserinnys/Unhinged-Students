@@ -26,6 +26,7 @@ interface ServerOnlyConfig {
         CURRY_RECOVERY_MS: number;
         RAGE_MS: number;
         SPIN_THROW_MS: number;
+        RAT_ILLUSION_MS: number;
     };
 }
 
@@ -53,6 +54,7 @@ const SERVER_ONLY_CONFIG: ServerOnlyConfig = {
         CURRY_RECOVERY_MS: GAME_CONFIG.SKILL_CURRY_RECOVERY.COOLDOWN_MS,
         RAGE_MS: GAME_CONFIG.SKILL_RAGE.COOLDOWN_MS,
         SPIN_THROW_MS: GAME_CONFIG.SKILL_SPIN_THROW.COOLDOWN_MS,
+        RAT_ILLUSION_MS: GAME_CONFIG.SKILL_RAT_ILLUSION.COOLDOWN_MS,
     },
 };
 
