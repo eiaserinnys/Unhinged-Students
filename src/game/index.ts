@@ -54,3 +54,10 @@ export {
     startRatIllusionOnMe,
     endRatIllusionOnMe,
 } from './combatState.js';
+
+// Match UI (from uiRenderer)
+export {
+    renderMatchTimer,
+    renderScoreboard,
+    renderMatchResult,
+} from '../rendering/uiRenderer.js';

@@ -81,6 +81,10 @@ export const gameState: GameState = {
     potSmashEffect: null,
     // Spin throw effect (Hulk Sister Q skill)
     spinThrowEffect: null,
+    // Match state (server-authoritative)
+    matchRemainingMs: 0,
+    matchTeamKills: { red: 0, blue: 0 },
+    matchResult: null,
 };
 
 // Getter/setter functions for viewport variables

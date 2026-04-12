@@ -194,6 +194,67 @@ describe('UI Renderer Module', () => {
         });
     });
 
+    describe('Match Timer', () => {
+        function formatTime(ms: number): string {
+            const totalSeconds = Math.ceil(ms / 1000);
+            const minutes = Math.floor(totalSeconds / 60);
+            const seconds = totalSeconds % 60;
+            return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+        }
+
+        test('should format 3 minutes as 3:00', () => {
+            expect(formatTime(180000)).toBe('3:00');
+        });
+
+        test('should format 90 seconds as 1:30', () => {
+            expect(formatTime(90000)).toBe('1:30');
+        });
+
+        test('should format 59 seconds as 0:59', () => {
+            expect(formatTime(59000)).toBe('0:59');
+        });
+
+        test('should format 1 second as 0:01', () => {
+            expect(formatTime(1000)).toBe('0:01');
+        });
+
+        test('should ceil partial seconds (1500ms → 0:02)', () => {
+            expect(formatTime(1500)).toBe('0:02');
+        });
+
+        test('should handle 0ms as 0:00', () => {
+            expect(formatTime(0)).toBe('0:00');
+        });
+
+        test('should format 2:30 correctly', () => {
+            expect(formatTime(150000)).toBe('2:30');
+        });
+    });
+
+    describe('Match Result', () => {
+        function determineWinner(teamKills: { red: number; blue: number }): 'red' | 'blue' | 'draw' {
+            if (teamKills.red > teamKills.blue) return 'red';
+            if (teamKills.blue > teamKills.red) return 'blue';
+            return 'draw';
+        }
+
+        test('should determine red as winner when red has more kills', () => {
+            expect(determineWinner({ red: 5, blue: 3 })).toBe('red');
+        });
+
+        test('should determine blue as winner when blue has more kills', () => {
+            expect(determineWinner({ red: 2, blue: 4 })).toBe('blue');
+        });
+
+        test('should determine draw when kills are equal', () => {
+            expect(determineWinner({ red: 3, blue: 3 })).toBe('draw');
+        });
+
+        test('should determine draw when both have 0 kills', () => {
+            expect(determineWinner({ red: 0, blue: 0 })).toBe('draw');
+        });
+    });
+
     describe('triggerHitVignette Function', () => {
         test('should set hitVignetteTime to current time', () => {
             const state = { hitVignetteTime: 0 };

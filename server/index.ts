@@ -13,6 +13,7 @@ import { registerPlayerHandlers } from './handlers/playerHandler';
 import { registerCombatHandlers } from './handlers/combat';
 import { registerShardHandlers } from './handlers/shardHandler';
 import { registerChatHandlers } from './handlers/chatHandler';
+import { checkAutoStart } from './matchManager';
 
 const app = express();
 const httpServer = createServer(app);
@@ -79,6 +80,12 @@ io.on('connection', (socket: TypedSocket) => {
     registerCombatHandlers(socket, io);
     registerShardHandlers(socket, io);
     registerChatHandlers(socket, io);
+
+    // Check if match should auto-start when a new player connects
+    // Delayed slightly to let the identify handshake complete first
+    socket.on('identify', () => {
+        setTimeout(() => checkAutoStart(io), 100);
+    });
 });
 
 const PORT = process.env.PORT || 3000;

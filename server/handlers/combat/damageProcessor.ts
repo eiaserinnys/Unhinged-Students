@@ -12,6 +12,7 @@ import {
 } from '../../validation';
 import { checkAndHandleDeath } from '../../../shared/combat';
 import { players, dummies } from '../../gameState';
+import { recordKill } from '../../matchManager';
 import type {
     TypedServer,
     Player,
@@ -248,6 +249,12 @@ export function broadcastDamageEvents(
                 killedBy: killed.killedBy,
                 respawnDelay: killed.respawnDelay,
             });
+
+            // Track kill for match scoring
+            const killer = players.get(killed.killedBy);
+            if (killer) {
+                recordKill(killer.team, io);
+            }
         });
     }
 

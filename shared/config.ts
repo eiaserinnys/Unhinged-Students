@@ -165,6 +165,12 @@ export interface GameConfigType {
         MAX_HP: number;
         SPEED: number;
     };
+    MATCH: {
+        DURATION_MS: number;
+        TIME_SYNC_INTERVAL_MS: number;
+        RESULT_DISPLAY_MS: number;
+        MIN_PLAYERS_TO_START: number;
+    };
 }
 
 export const GAME_CONFIG: GameConfigType = {
@@ -424,5 +430,15 @@ export const GAME_CONFIG: GameConfigType = {
     SQUEAK_STATS: {
         MAX_HP: 70,
         SPEED: 350,
+    },
+
+    // =====================================
+    // MATCH
+    // =====================================
+    MATCH: {
+        DURATION_MS: 180000, // 3 minutes per match
+        TIME_SYNC_INTERVAL_MS: 1000, // Sync timer every second
+        RESULT_DISPLAY_MS: 8000, // Show result screen for 8 seconds
+        MIN_PLAYERS_TO_START: 2, // Minimum players to start a match
     },
 };

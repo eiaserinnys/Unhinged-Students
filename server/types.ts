@@ -213,6 +213,12 @@ export interface ServerToClientEvents {
     ratIllusionSuccess: (data: RatIllusionSuccessData) => void;
     ratIllusionFail: (data: RatIllusionFailData) => void;
     ratIllusionEffect: (data: RatIllusionEffectData) => void;
+
+    // Match events
+    matchTimeSync: (data: MatchTimeSyncData) => void;
+    matchScoreUpdate: (data: MatchScoreUpdateData) => void;
+    matchEnd: (data: MatchEndData) => void;
+    matchReset: () => void;
 }
 
 // ========================================
@@ -657,4 +663,31 @@ export interface DummyDamageResult {
 export interface BroadcastOptions {
     playerDamageEvent?: string;
     dummyDamageEvent?: string;
+}
+
+// ========================================
+// MATCH EVENT DATA TYPES
+// ========================================
+
+export type MatchWinner = 'red' | 'blue' | 'draw';
+export type MatchState = 'waiting' | 'playing' | 'ended';
+
+export interface TeamKills {
+    red: number;
+    blue: number;
+}
+
+export interface MatchTimeSyncData {
+    remainingMs: number;
+    teamKills: TeamKills;
+}
+
+export interface MatchScoreUpdateData {
+    teamKills: TeamKills;
+}
+
+export interface MatchEndData {
+    winner: MatchWinner;
+    teamKills: TeamKills;
+    durationMs: number;
 }

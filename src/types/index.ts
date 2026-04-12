@@ -16,7 +16,15 @@ export type CharacterType =
 
 export type TeamType = 'red' | 'blue';
 
-export type ScreenType = 'lobby' | 'waitingTeam' | 'teamAnnounce' | 'playing';
+export type ScreenType = 'lobby' | 'waitingTeam' | 'teamAnnounce' | 'playing' | 'matchResult';
+
+export type MatchWinner = 'red' | 'blue' | 'draw';
+
+export interface MatchResultData {
+    winner: MatchWinner;
+    teamKills: { red: number; blue: number };
+    durationMs: number;
+}
 
 export type SkillKey = 'q' | 'w' | 'e' | 'r' | 't';
 
@@ -75,6 +83,10 @@ export interface GameState {
     waveEffect: IWaveEffect | null;
     potSmashEffect: IPotSmashEffect | null;
     spinThrowEffect: ISpinThrowEffect | null;
+    // Match state (server-authoritative)
+    matchRemainingMs: number;
+    matchTeamKills: { red: number; blue: number };
+    matchResult: MatchResultData | null;
 }
 
 // =====================================================

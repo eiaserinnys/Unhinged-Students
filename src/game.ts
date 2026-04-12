@@ -75,6 +75,10 @@ import {
     startRatIllusionOnMe,
     endRatIllusionOnMe,
     getPotSmashEffect,
+    // Match UI
+    renderMatchTimer,
+    renderScoreboard,
+    renderMatchResult,
 } from './game/index.js';
 
 // Module-level references for managers (not in submodules)
@@ -589,6 +593,10 @@ function gameLoop(currentTime: number): void {
         update(gameState.deltaTime);
         render();
         renderTeamAnnounce(ctx);
+    } else if (gameState.screen === 'matchResult') {
+        // Freeze gameplay, show result overlay
+        render();
+        renderMatchResult(ctx);
     } else {
         update(gameState.deltaTime);
         render();
@@ -611,23 +619,28 @@ function render(): void {
     const potSmashEffect = getPotSmashEffect();
     const ratIllusionEffect = getRatIllusionEffect();
 
-    // Draw title
-    ctx.fillStyle = '#00D9FF';
-    ctx.font = '600 28px Jua, sans-serif';
-    ctx.textAlign = 'center';
-    ctx.fillText('미친 제자들', GAME_WIDTH / 2, 40);
+    // Draw match timer + scoreboard (replaces title during match)
+    if (gameState.matchRemainingMs > 0) {
+        renderMatchTimer(ctx);
+        renderScoreboard(ctx);
+    } else {
+        // Default: title + connection status
+        ctx.fillStyle = '#00D9FF';
+        ctx.font = '600 28px Jua, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('미친 제자들', GAME_WIDTH / 2, 40);
 
-    // Draw instructions
-    ctx.fillStyle = '#E0E0E0';
-    ctx.font = '16px Jua, sans-serif';
-    const connectionStatus =
-        gameState.networkManager && gameState.networkManager.connected
-            ? 'Connected'
-            : 'Connecting...';
-    const playerCount = gameState.networkManager
-        ? gameState.networkManager.remotePlayers.size + 1
-        : 1;
-    ctx.fillText(`${connectionStatus} | Players: ${playerCount}`, GAME_WIDTH / 2, 70);
+        ctx.fillStyle = '#E0E0E0';
+        ctx.font = '16px Jua, sans-serif';
+        const connectionStatus =
+            gameState.networkManager && gameState.networkManager.connected
+                ? 'Connected'
+                : 'Connecting...';
+        const playerCount = gameState.networkManager
+            ? gameState.networkManager.remotePlayers.size + 1
+            : 1;
+        ctx.fillText(`${connectionStatus} | Players: ${playerCount}`, GAME_WIDTH / 2, 70);
+    }
 
     // Draw shards
     if (shardManager) {

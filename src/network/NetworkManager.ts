@@ -1,6 +1,7 @@
 // Network module for multiplayer
 
 import { logger } from '../utils/logger.js';
+import { gameState } from '../core/gameState.js';
 import { triggerHitVignette } from '../rendering/uiRenderer.js';
 import { setConfused } from '../input.js';
 import { ReconnectUI } from './ReconnectUI.js';
@@ -1091,6 +1092,47 @@ export class NetworkManager implements INetworkManager {
                     remotePlayer.maxHP = respawnData.maxHP || remotePlayer.maxHP;
                 }
             }
+        });
+
+        // Register match lifecycle events
+        this.registerMatchEvents();
+    }
+
+    private registerMatchEvents(): void {
+        if (!this.socket) return;
+
+        // Match timer sync (every second from server)
+        this.socket.on('matchTimeSync', (data: unknown) => {
+            const syncData = data as { remainingMs: number; teamKills: { red: number; blue: number } };
+            gameState.matchRemainingMs = syncData.remainingMs;
+            gameState.matchTeamKills = syncData.teamKills;
+        });
+
+        // Match score update (on each kill)
+        this.socket.on('matchScoreUpdate', (data: unknown) => {
+            const scoreData = data as { teamKills: { red: number; blue: number } };
+            gameState.matchTeamKills = scoreData.teamKills;
+        });
+
+        // Match ended
+        this.socket.on('matchEnd', (data: unknown) => {
+            const endData = data as { winner: string; teamKills: { red: number; blue: number }; durationMs: number };
+            gameState.matchResult = {
+                winner: endData.winner as 'red' | 'blue' | 'draw',
+                teamKills: endData.teamKills,
+                durationMs: endData.durationMs,
+            };
+            gameState.screen = 'matchResult';
+            logger.info(`Match ended — winner: ${endData.winner}`);
+        });
+
+        // Match reset (new match starting)
+        this.socket.on('matchReset', () => {
+            gameState.matchResult = null;
+            gameState.matchRemainingMs = 0;
+            gameState.matchTeamKills = { red: 0, blue: 0 };
+            gameState.screen = 'playing';
+            logger.info('Match reset — new match starting');
         });
     }
 
