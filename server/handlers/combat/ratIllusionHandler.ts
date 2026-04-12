@@ -7,6 +7,7 @@ import logger from '../../../logger';
 import { SERVER_CONFIG } from '../../config';
 import { GAME_CONFIG } from '../../../shared/config';
 import { players, dummies, rateLimit } from '../../gameState';
+import { recordKill } from '../../matchManager';
 import type { TypedSocket, TypedServer } from '../../types';
 
 // 활성화된 쥐 환상 효과 추적
@@ -201,6 +202,11 @@ export function registerRatIllusionHandlers(socket: TypedSocket, io: TypedServer
                     killedBy: illusion.casterId,
                     respawnDelay: GAME_CONFIG.PLAYER.RESPAWN_DELAY_MS,
                 });
+
+                const killer = players.get(illusion.casterId);
+                if (killer) {
+                    recordKill(killer.team, io);
+                }
 
                 endRatIllusion(targetId!, io, 'killed');
             }

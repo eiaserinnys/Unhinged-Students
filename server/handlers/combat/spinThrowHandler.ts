@@ -7,6 +7,7 @@ import { GAME_CONFIG } from '../../../shared/config';
 import { clampCoordinates } from '../../validation';
 import { players, dummies, rateLimit } from '../../gameState';
 import { applyDamageWithPassives } from './damageProcessor';
+import { recordKill } from '../../matchManager';
 import { checkAndHandleDeath } from '../../../shared/combat';
 import type {
     TypedSocket,
@@ -246,6 +247,11 @@ export function registerSpinThrowHandlers(socket: TypedSocket, io: TypedServer):
                     killedBy: killed.killedBy,
                     respawnDelay: killed.respawnDelay,
                 });
+
+                const killer = players.get(killed.killedBy);
+                if (killer) {
+                    recordKill(killer.team, io);
+                }
             });
         }
 
@@ -285,6 +291,11 @@ export function registerSpinThrowHandlers(socket: TypedSocket, io: TypedServer):
                         respawnDelay: killed.respawnDelay,
                     });
                     logger.info(`${killed.playerId} has been killed by spin throw from ${socket.id}!`);
+
+                    const killer = players.get(killed.killedBy);
+                    if (killer) {
+                        recordKill(killer.team, io);
+                    }
                 }
             }
         }

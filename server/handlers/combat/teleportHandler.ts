@@ -13,6 +13,7 @@ import {
 } from '../../validation';
 import { players, dummies, rateLimit } from '../../gameState';
 import { applyDamageWithPassives } from './damageProcessor';
+import { recordKill } from '../../matchManager';
 import type {
     TypedSocket,
     TypedServer,
@@ -162,6 +163,11 @@ export function registerTeleportHandlers(socket: TypedSocket, io: TypedServer): 
                     killedBy: killed.killedBy,
                     respawnDelay: killed.respawnDelay,
                 });
+
+                const killer = players.get(killed.killedBy);
+                if (killer) {
+                    recordKill(killer.team, io);
+                }
             });
         }
 
